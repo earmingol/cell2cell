@@ -2,6 +2,9 @@
 
 from __future__ import absolute_import
 
+import pandas as pd
+from cell2cell.io.read_data import load_rnaseq
+
 class Cell:
     '''Specific cell/tissue/organ element containing associated RNAseq data.
 
@@ -30,18 +33,18 @@ class Cell:
     '''
     _id_counter = 0
 
-    def __init__(self, scrnaseq_data):
+    def __init__(self, sc_rnaseq_data):
         self.id = Cell._id_counter
         Cell._id_counter += 1
 
-        self.type = str(scrnaseq_data.columns[-1])
+        self.type = str(sc_rnaseq_data.columns[-1])
 
         # RNAseq data
-        self.rnaseq_data = scrnaseq_data.copy()
+        self.rnaseq_data = sc_rnaseq_data.copy()
         self.rnaseq_data.columns = ['value']
 
-        # Abundance from RNAseq data
-        self.abundance = self.rnaseq_data.copy()
+        # Binary ppi data
+        self.binary_ppi = pd.DataFrame(columns=['A', 'B'])
 
         # Object created
         print("New cell instance created for " + self.type)
@@ -55,7 +58,7 @@ class Cell:
     __repr__ = __str__
 
 
-def cells_from_rnaseq(rnaseq_file, cell_columns, gene_column, **kwargs):
+def cells_from_rnaseq(rnaseq_file, gene_column, **kwargs):
     '''Create new instances of Cells based on the RNAseq data and the cell/tissue/organ types provided.
 
     Parameters
@@ -81,9 +84,8 @@ def cells_from_rnaseq(rnaseq_file, cell_columns, gene_column, **kwargs):
     '''
 
     print("Generating objects according to RNAseq data provided")
+    rnaseq_data = load_rnaseq(rnaseq_file, gene_column, kwargs)
     cells = {}
-    for cell in cell_columns:
+    for cell in rnaseq_data.columns:
         cells[Cell._id_counter - 1] = Cell(rnaseq_data[[cell]])
     return cells
-
-    return rnaseq_data

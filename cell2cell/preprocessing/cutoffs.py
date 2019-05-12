@@ -1,21 +1,31 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import absolute_import
 
 import numpy as np
 import pandas as pd
 
 
-def get_cutoffs(RNAseq_data, type = 'percentile', val = 0.8, verbose = True, cutoff_data = None):
+def percentile_cutoff(rnaseq_data, percentile = 0.8):
+    cutoffs = pd.DataFrame()
+    cutoffs['cutoff'] = rnaseq_data.quantile(percentile, axis=1)
+    cutoffs['gene'] = rnaseq_data['gene_id']
+    cutoffs.index = rnaseq_data.index
+    return cutoffs
+
+
+def standep(rnaseq_data, k):
+    '''Not implemented yet'''
+    pass
+
+
+def get_cutoffs(rnaseq_data, type ='percentile', verbose = True, **kwargs):
     if verbose:
         print("Calculating cutoffs for gene abundances")
-    cutoffs = pd.DataFrame()
     if type == 'percentile':
-        cutoffs['cutoff'] = RNAseq_data.quantile(val, axis=1)
-        cutoffs['gene'] = RNAseq_data['gene_id']
-    elif type == 'matlab':
-        if cutoff_data is None:
-            raise("Cutoff data has to be provided to use matlab cutoffs")
-        gene_header = RNAseq_data.columns[0]
-        cutoffs = cutoff_data[[gene_header, 'K=38']]
-        cutoffs.columns = [gene_header, 'cutoff']
+        cutoffs = percentile_cutoff(rnaseq_data, kwargs['percentile'])
+    elif type == 'standep':
+        cutoffs = standep(rnaseq_data, kwargs['k'])
     else:
         raise ValueError(type + ' is not a valid cutoff')
     return cutoffs
