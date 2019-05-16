@@ -2,14 +2,17 @@
 
 from __future__ import absolute_import
 
-from cell2cell.preprocessing.binary import get_binary_rnaseq
+from cell2cell.preprocessing.binary import get_binary_rnaseq, get_binary_ppi
+from cell2cell.preprocessing import cutoffs
+from cell2cell.core import cell
+from cell2cell.interaction import calculation
 
 import itertools
 import numpy as np
 import pandas as pd
 
 
-def generate_interaction_elements(binary_data, interaction_type, verbose=True):
+def generate_interaction_elements(binary_rnaseq, ppi_data, interaction_type, verbose=True):
     '''Create all pointers of pairwise interactions needed to perform the analyses.
     All these information as well as the related data to each pairwise interaction is called Interaction Space.
 
@@ -30,7 +33,7 @@ def generate_interaction_elements(binary_data, interaction_type, verbose=True):
         print('Creating ' + interaction_type.capitalize() + ' Interaction Space')
 
     # Cells
-    cell_instances = list(binary_data.columns)  # @Erick, check if position 0 of columns contain index header.
+    cell_instances = list(binary_rnaseq.columns)  # @Erick, check if position 0 of columns contain index header.
     cell_number = len(cell_instances)
 
     # Generate pairwise interactions
@@ -40,7 +43,10 @@ def generate_interaction_elements(binary_data, interaction_type, verbose=True):
     # Interaction elements
     interaction_space = {}
     interaction_space['pairs'] = pairwise_interactions
-    interaction_space['interaction_matrices'] = {}
+    interaction_space['cells'] = cell.cells_from_rnaseq(binary_rnaseq)
+
+    for cell_instance in interaction_space['cells'].values():
+        cell_instance.binary_ppi = get_binary_ppi(ppi_data, cell_instance.rnaseq_data, column='value')
 
     # Cell-cell interaction matrix
     interaction_space['cci_matrix'] = pd.DataFrame(np.zeros((cell_number, cell_number)), columns=cell_instances, index=cell_instances)
@@ -49,14 +55,24 @@ def generate_interaction_elements(binary_data, interaction_type, verbose=True):
 
 
 class InteractionSpace():
-    def __init__(self, rnaseq_data, ppi_data, interaction_type, gene_cutoffs, verbose = True):
-        self.binary_data = get_binary_rnaseq(rnaseq_data, gene_cutoffs)
-        self.ppi_data = ppi_data
+    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, verbose = True):
+        if 'type' in gene_cutoffs.keys():
+            cutoff_values = cutoffs.get_cutoffs(rnaseq_data,
+                                                gene_cutoffs,
+                                                verbose=verbose)
+        else:
+            raise ValueError("If dataframe is not included in gene_cutoffs, please provide the type of method to obtain them.")
+
+        self.binary_rnaseq = get_binary_rnaseq(rnaseq_data, cutoff_values)
         self.interaction_type = interaction_type
-        self.interaction_space = generate_interaction_elements(self.binary_data, self.interaction_type, verbose)
+        self.ppi_data = ppi_dict[self.interaction_type]
+        self.interaction_elements = generate_interaction_elements(self.binary_rnaseq,
+                                                                  self.ppi_data,
+                                                                  self.interaction_type,
+                                                                  verbose = verbose)
 
 
-    def pairwise_interaction(self, cell1, cell2, ppi_data, verbose=True):
+    def pairwise_interaction(self, cell1, cell2, verbose=True):
         '''Function that perform the interaction analysis of a pair of cells.
 
         Parameters
@@ -88,43 +104,21 @@ class InteractionSpace():
         '''
 
         if verbose:
-            print("Computing physical interaction between " + cell1.type + " and " + cell2.type)
-
-        # Creating protein-protein interaction matrix
-        product_filter = list(set(list(ppi_data['A'].values) + list(ppi_data['B'].values)))
-        product_number = len(product_filter)
-        data = np.zeros((product_number, product_number))
-        interaction_matrix = pd.DataFrame(data, columns=product_filter, index=product_filter)
-
-        # Filling out protein-protein interaction matrix
-        for index, row in ppi_data.iterrows():  ###### MAKE THIS FOR PARALLEL OR THE OTHER WHEN RUNNING ALL PAIRWISE ANALYSES (CElegans_analysis.py)?
-            # Use function to evaluate PPI based on score and RNAseq_data
-            try:  # To avoid errors when a gene in PPI is not in RNAseq data
-                A = row['A']
-                B = row['B']
-                score = row['score']
-                interaction_matrix.loc[A, B] = compute_ppi_score(cell1.relative_abundance['value'].loc[A],
-                                                                 cell2.relative_abundance['value'].loc[B], score)
-                interaction_matrix.loc[B, A] = compute_ppi_score(cell1.relative_abundance['value'].loc[B],
-                                                                 cell2.relative_abundance['value'].loc[A], score)
-            except:
-                pass
+            print("Computing {} interaction between {} and {}".format(self.interaction_type, cell1.type,cell2.type))
 
         # Calculate cell-cell interaction score
-        cci_score = compute_cci_score(cell1, cell2, interaction_matrix,
-                                      ppi_data)  # Function to compute cell-cell interaction score
-        return cci_score, interaction_matrix
+        cci_score = calculation.compute_cci_score(cell1, cell2)  # Function to compute cell-cell interaction score
+        return cci_score
 
     def compute_pairwise_interactions(self, verbose = True):
         ### Compute pairwise physical interactions
         print("Computing pairwise physical interactions")
-        for pair in self.interaction_space['pairs']:  ###### MAKE THIS FOR PARALLEL?
-            cell1 = self.cells[pair[0]]
-            cell2 = self.cells[pair[1]]
-            cci_score, interaction_matrix = self.pairwise_interaction(cell1, cell2, self.PPI_data, verbose = verbose)
-            self.interaction_space['interaction_matrices'][pair] = interaction_matrix
-            self.interaction_space['CCI_matrix'].loc[pair[0], pair[1]] = cci_score
-            self.interaction_space['CCI_matrix'].loc[pair[1], pair[0]] = cci_score
+        for pair in self.interaction_elements['pairs']:  ###### MAKE THIS FOR PARALLEL?
+            cell1 = self.interaction_elements['cells'][pair[0]]
+            cell2 = self.interaction_elements['cells'][pair[1]]
+            cci_score = self.pairwise_interaction(cell1, cell2, verbose=verbose)
+            self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_score
+            self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_score
 
     def get_genes_for_filter(self):
         genes = []

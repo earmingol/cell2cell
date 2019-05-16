@@ -65,8 +65,8 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins = None, ref
 
     # Contact-Contact interactions
     contacts = ppi_data.loc[ppi_data[header_interactorA].isin(contact_proteins) & ppi_data[header_interactorB].isin(contact_proteins)]
+    print('Filtering PPI interactions by using a list of genes for {} interactions'.format(interaction_type))
     if interaction_type == 'contacts':
-        print('Filtering PPI network by using a product list')
         new_ppi_data = contacts.drop_duplicates()
     else:
         # Extracell-surface interactions

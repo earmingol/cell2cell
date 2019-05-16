@@ -7,4 +7,4 @@ import cell2cell.core
 import cell2cell.interaction
 import cell2cell.io
 import cell2cell.preprocessing
-import cell2cell.validation
+import cell2cell.analysis

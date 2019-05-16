@@ -3,22 +3,14 @@
 from __future__ import absolute_import
 
 import pandas as pd
-from cell2cell.io.read_data import load_rnaseq
 
 class Cell:
     '''Specific cell/tissue/organ element containing associated RNAseq data.
 
     Parameters
     ----------
-    RNAseq_data : pandas DataFrame object
-        Object containing a column for gene ids as well as another column for the RNAseq valuues (TPM).
-
-    gene_column : str
-        Name of the column containing gene ids.
-
-    cell_column : str
-        Name of the column containing cell/tissue/organ expression data.
-
+    sc_rnaseq_data : pandas DataFrame object
+        Object containing a column for the RNAseq values (usually TPM). Gene ids are the indexes of this DataFrame.
 
     Attributes
     ----------
@@ -29,7 +21,11 @@ class Cell:
         Identifier name of the respective cell/tissue/organ that RNAseq data belongs to.
 
     rnaseq_data : pandas DataFrame object
-        Object containing a column for gene ids as well as another column for the RNAseq valuues (TPM).
+        Copy of sc_rnaseq_data.
+
+    binary_ppi : pandas DataFrame object
+        Object containing a ppi table, but the values in each cell corresponds to the binary expression of the respective
+        protein/gene in the original ppi table.
     '''
     _id_counter = 0
 
@@ -44,7 +40,7 @@ class Cell:
         self.rnaseq_data.columns = ['value']
 
         # Binary ppi data
-        self.binary_ppi = pd.DataFrame(columns=['A', 'B'])
+        self.binary_ppi = pd.DataFrame(columns=['A', 'B', 'score'])
 
         # Object created
         print("New cell instance created for " + self.type)
@@ -58,7 +54,7 @@ class Cell:
     __repr__ = __str__
 
 
-def cells_from_rnaseq(rnaseq_file, gene_column, **kwargs):
+def cells_from_rnaseq(rnaseq_data, cell_columns = None):
     '''Create new instances of Cells based on the RNAseq data and the cell/tissue/organ types provided.
 
     Parameters
@@ -70,22 +66,18 @@ def cells_from_rnaseq(rnaseq_file, gene_column, **kwargs):
     cell columns : array-like, list
         List of strings containing the names of cell types in RNAseq data.
 
-    gene_column : str
-        Name of the column containing gene ids.
-
-    **kwargs : keyworded arguments
-        Arguments of function load_table.
-
     Returns
     -------
     cells : dict
         Dictionary containing all Cell instances generated from RNAseq data to represent each cell/tissue/organ type.
-        The keys of this dictionary are the ids for the corresponding Cell instance.
+        The keys of this dictionary are the names of the corresponding Cell instance.
     '''
 
     print("Generating objects according to RNAseq data provided")
-    rnaseq_data = load_rnaseq(rnaseq_file, gene_column, kwargs)
-    cells = {}
-    for cell in rnaseq_data.columns:
-        cells[Cell._id_counter - 1] = Cell(rnaseq_data[[cell]])
+    cells = dict()
+    if cell_columns is None:
+        cell_columns = rnaseq_data.columns
+
+    for cell in cell_columns:
+        cells[cell] = Cell(rnaseq_data[[cell]])
     return cells

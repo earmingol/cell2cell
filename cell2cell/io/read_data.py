@@ -44,11 +44,40 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes = True, log_transformati
     return rnaseq_data
 
 
+def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_transformation = False, **kwargs):
+    '''
+    Load RNAseq data from table. Genes names are index. Cells/tissues/organs are columns.
+
+
+
+
+
+    '''
+    print("Opening Cutoff data from {}".format(cutoff_file))
+    cutoff_data = load_table(cutoff_file, **kwargs)
+    if gene_column is not None:
+        cutoff_data = cutoff_data.set_index(gene_column)
+    else:
+        cutoff_data = cutoff_data.set_index(cutoff_data.columns[0])
+
+    # Keep only numeric data
+    cutoff_data = cutoff_data.select_dtypes([np.number])
+
+    if drop_nangenes:
+        cutoff_data = drop_empty_genes(cutoff_data)
+
+    if log_transformation:
+        cutoff_data = log10_transformation(cutoff_data)
+
+    return cutoff_data
+
+
 def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None,  **kwargs):
     '''Load PPI network from table. Column of Interactor 1 and Interactor 2 must be specified.
 
 
     '''
+    print("Opening PPI data from {}".format(ppi_file))
     ppi_data = load_table(ppi_file,  **kwargs)
     unidirectional_ppi = remove_ppi_bidirectionality(ppi_data, interaction_columns)
     simplified_ppi = simplify_ppi(unidirectional_ppi, interaction_columns, score)
@@ -63,7 +92,9 @@ def load_go_terms(go_terms_file):
     '''Load GO terms obo-basic file'''
     import goenrich
 
+    print("Opening GO terms from {}".format(go_terms_file))
     go_terms = goenrich.obo.ontology(go_terms_file)
+    print(go_terms_file + ' was correctly loaded')
     return go_terms
 
 
@@ -75,9 +106,12 @@ def load_go_annotations(goa_file):
 
     '''
     import goenrich
+
+    print("Opening GO annotations from {}".format(goa_file))
     goa = goenrich.read.goa(goa_file)
     goa_cols = list(goa.columns)
     goa = goa[goa_cols[:3] + [goa_cols[4]]]
     new_cols = ['db', 'Gene', 'Name', 'GO']
     goa.columns = new_cols
+    print(goa_file + ' was correctly loaded')
     return goa
