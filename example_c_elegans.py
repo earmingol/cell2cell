@@ -15,17 +15,16 @@ score = 'RSPGM_Score'   # Columns name of interaction score or probability in th
 # RNA-seq data setup
 gene_header = 'gene_id' # Name of the column containing gene names
 
-# Cutoffs dictionary
-gene_cutoffs = dict()
-gene_cutoffs['type'] = 'percentile'
-gene_cutoffs['parameter'] = 0.8 # In this case is for percentyle
-gene_cutoffs['file'] = cutoff_file
+# Cutoff
+cutoff_type = 'percentile'
+cutoff_paramater = 0.8 # In this case is for percentile
 
 # Interaction to analyze
 interaction_type = 'combined'
 
-# Subsampling percentage
+# Subsampling
 subsampling_percentage = 0.8
+iterations = 1000
 
 
 #==========================================================================================================
@@ -62,41 +61,54 @@ if __name__ == '__main__':
                                rnaseq_genes=list(rnaseq_data.index),
                                format='excel')
 
-    go_data = c2c.io.load_go_annotations(go_annotations_file)
+    go_annotations = c2c.io.load_go_annotations(go_annotations_file)
     go_terms = c2c.io.load_go_terms(go_terms_file)
 
+    # Cutoffs dictionary
+    gene_cutoffs = dict()
+    gene_cutoffs['type'] = cutoff_type
+    gene_cutoffs['parameter'] = cutoff_paramater
+    gene_cutoffs['file'] = cutoff_file
 
     # Run analysis
 
     #binary_rnaseq = c2c.preprocessing.get_binary_rnaseq(rnaseq_data, gene_cutoffs['dataframe'])
     #binary_ppi = c2c.preprocessing.get_binary_ppi(ppi_data, binary_rnaseq, column='Germline')
 
-    contact_proteins = c2c.preprocessing.get_genes_from_parent_go_terms(go_data,
+    contact_proteins = c2c.preprocessing.get_genes_from_parent_go_terms(go_annotations,
                                                                         go_terms,
                                                                         contact_go_terms,
                                                                         go_header = 'GO',
                                                                         gene_header = 'Gene',
                                                                         verbose = False)
 
-    mediator_proteins = c2c.preprocessing.get_genes_from_parent_go_terms(go_data,
+    mediator_proteins = c2c.preprocessing.get_genes_from_parent_go_terms(go_annotations,
                                                                          go_terms,
                                                                          mediator_go_terms,
                                                                          go_header = 'GO',
                                                                          gene_header = 'Gene',
                                                                          verbose = False)
 
-    ppi_dict = dict()
-    for interaction in ['contacts', 'mediated', 'combined']:
-        ppi_dict[interaction] = c2c.preprocessing.filter_ppi_network(ppi_data,
-                                                                     contact_proteins,
-                                                                     mediator_proteins,
-                                                                     interaction_type=interaction)
-        #ppi_dict[interaction] = ppi_data
+    ppi_dict = c2c.preprocessing.get_all_ppis(ppi_data,
+                                              contact_proteins,
+                                              mediator_proteins)
 
-    interaction_space = c2c.interaction.space.InteractionSpace(rnaseq_data,
-                                                               ppi_dict,
-                                                               interaction_type,
-                                                               gene_cutoffs,
-                                                               verbose=True)
+    import random
 
-    interaction_space.compute_pairwise_interactions()
+    cell_ids = list(rnaseq_data.columns)
+    last_item = int(len(cell_ids) * subsampling_percentage)
+
+    subsampling_space = []
+
+    for i in range(iterations):
+        print("PERFORMING SUBSAMPLING ITERATION NUMBER {} OUT OF {}".format(i, iterations))
+        random.shuffle(cell_ids)
+        included_cells = cell_ids[:last_item]
+
+        subsampling_space.append(c2c.interaction.space.InteractionSpace(rnaseq_data[included_cells],
+                                                                        ppi_dict,
+                                                                        interaction_type,
+                                                                        gene_cutoffs,
+                                                                        verbose=False))
+
+        subsampling_space[-1].compute_pairwise_interactions(verbose=False)

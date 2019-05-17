@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 from cell2cell.preprocessing.binary import get_binary_rnaseq, get_binary_ppi
-from cell2cell.preprocessing import cutoffs
+from cell2cell.preprocessing import cutoffs, integration
 from cell2cell.core import cell
 from cell2cell.interaction import calculation
 
@@ -43,8 +43,9 @@ def generate_interaction_elements(binary_rnaseq, ppi_data, interaction_type, ver
     # Interaction elements
     interaction_space = {}
     interaction_space['pairs'] = pairwise_interactions
-    interaction_space['cells'] = cell.cells_from_rnaseq(binary_rnaseq)
+    interaction_space['cells'] = cell.cells_from_rnaseq(binary_rnaseq, verbose=verbose)
 
+    # Cell-specific binary ppi
     for cell_instance in interaction_space['cells'].values():
         cell_instance.binary_ppi = get_binary_ppi(ppi_data, cell_instance.rnaseq_data, column='value')
 
@@ -112,8 +113,9 @@ class InteractionSpace():
 
     def compute_pairwise_interactions(self, verbose = True):
         ### Compute pairwise physical interactions
-        print("Computing pairwise physical interactions")
-        for pair in self.interaction_elements['pairs']:  ###### MAKE THIS FOR PARALLEL?
+        if verbose:
+            print("Computing pairwise interactions")
+        for pair in self.interaction_elements['pairs']:  #@Erick, PARALLELIZE THIS FOR?
             cell1 = self.interaction_elements['cells'][pair[0]]
             cell2 = self.interaction_elements['cells'][pair[1]]
             cci_score = self.pairwise_interaction(cell1, cell2, verbose=verbose)
