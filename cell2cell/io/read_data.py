@@ -2,17 +2,20 @@
 
 from __future__ import absolute_import
 
+import pickle
+import os
 import pandas as pd
 import numpy as np
-from cell2cell.preprocessing.rnaseq import drop_empty_genes, log10_transformation
-from cell2cell.preprocessing.ppi import remove_ppi_bidirectionality, simplify_ppi, ppi_rnaseq_gene_match
+from cell2cell.preprocessing import rnaseq, ppi
 
-def load_table(filename, format ='excel', sep ='\t', sheet_name = False):
-    '''Function to open any table into a pandas dataframe.'''
+def load_table(filename, format='excel', sep='\t', sheet_name=False):
+    '''
+    Function to open any table into a pandas dataframe.
+    '''
     if format == 'excel':
-        table = pd.read_excel(filename, sheet_name = sheet_name)
+        table = pd.read_excel(filename, sheet_name=sheet_name)
     elif format == 'csv' or format == 'txt':
-        table = pd.read_csv(filename, sep = sep)
+        table = pd.read_csv(filename, sep=sep)
     else:
         print("Specify a correct format")
         table = None
@@ -20,7 +23,7 @@ def load_table(filename, format ='excel', sep ='\t', sheet_name = False):
     return table
 
 
-def load_rnaseq(rnaseq_file, gene_column, drop_nangenes = True, log_transformation = False, **kwargs):
+def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation=False, **kwargs):
     '''
     Load RNAseq data from table. Genes names are index. Cells/tissues/organs are columns.
 
@@ -36,10 +39,10 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes = True, log_transformati
     rnaseq_data = rnaseq_data.select_dtypes([np.number])
 
     if drop_nangenes:
-        rnaseq_data = drop_empty_genes(rnaseq_data)
+        rnaseq_data = rnaseq.drop_empty_genes(rnaseq_data)
 
     if log_transformation:
-        rnaseq_data = log10_transformation(rnaseq_data)
+        rnaseq_data = rnaseq.log10_transformation(rnaseq_data)
 
     return rnaseq_data
 
@@ -64,32 +67,34 @@ def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_tran
     cutoff_data = cutoff_data.select_dtypes([np.number])
 
     if drop_nangenes:
-        cutoff_data = drop_empty_genes(cutoff_data)
+        cutoff_data = rnaseq.drop_empty_genes(cutoff_data)
 
     if log_transformation:
-        cutoff_data = log10_transformation(cutoff_data)
+        cutoff_data = rnaseq.log10_transformation(cutoff_data)
 
     return cutoff_data
 
 
 def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None,  **kwargs):
-    '''Load PPI network from table. Column of Interactor 1 and Interactor 2 must be specified.
+    '''
+    Load PPI network from table. Column of Interactor 1 and Interactor 2 must be specified.
 
 
     '''
     print("Opening PPI data from {}".format(ppi_file))
     ppi_data = load_table(ppi_file,  **kwargs)
-    unidirectional_ppi = remove_ppi_bidirectionality(ppi_data, interaction_columns)
-    simplified_ppi = simplify_ppi(unidirectional_ppi, interaction_columns, score)
+    unidirectional_ppi = ppi.remove_ppi_bidirectionality(ppi_data, interaction_columns)
+    simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score)
     if rnaseq_genes is not None:
-        simplified_ppi = ppi_rnaseq_gene_match(simplified_ppi, rnaseq_genes)
+        simplified_ppi = ppi.ppi_rnaseq_gene_match(simplified_ppi, rnaseq_genes)
     return simplified_ppi
 
 
-# go_terms_file = 'http://purl.obolibrary.org/obo/go/go-basic.obo'
-
 def load_go_terms(go_terms_file):
-    '''Load GO terms obo-basic file'''
+    '''
+    Load GO terms obo-basic file
+    Example: go_terms_file = 'http://purl.obolibrary.org/obo/go/go-basic.obo'
+    '''
     import goenrich
 
     print("Opening GO terms from {}".format(go_terms_file))
@@ -98,12 +103,10 @@ def load_go_terms(go_terms_file):
     return go_terms
 
 
-# goa_file = 'http://current.geneontology.org/annotations/wb.gaf.gz'
-
 def load_go_annotations(goa_file):
     '''
     Load GO annotation for a given organism.
-
+    Example: goa_file = 'http://current.geneontology.org/annotations/wb.gaf.gz'
     '''
     import goenrich
 
@@ -115,3 +118,18 @@ def load_go_annotations(goa_file):
     goa.columns = new_cols
     print(goa_file + ' was correctly loaded')
     return goa
+
+
+def import_variable(filename):
+    '''
+    Import a large size variable in a python readable way using pickle.
+    '''
+
+    max_bytes = 2 ** 31 - 1
+    bytes_in = bytearray(0)
+    input_size = os.path.getsize(filename)
+    with open(filename, 'rb') as f_in:
+        for _ in range(0, input_size, max_bytes):
+            bytes_in += f_in.read(max_bytes)
+    variable = pickle.loads(bytes_in)
+    return variable

@@ -59,7 +59,7 @@ class Cell:
     __repr__ = __str__
 
 
-def cells_from_rnaseq(rnaseq_data, cell_columns = None, verbose=True):
+def cells_from_rnaseq(rnaseq_data, cell_columns=None, verbose=True):
     '''Create new instances of Cells based on the RNAseq data and the cell/tissue/organ types provided.
 
     Parameters

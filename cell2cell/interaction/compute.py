@@ -6,21 +6,21 @@ import numpy as np
 
 
 def compute_cci_score(cell1, cell2):
-    '''Function that calculate an score for the interaction between two cells based on the interactions of their proteins
-    with the proteins of the other cell.
-    This score is based on ........
+    '''Function that calculates an score for the interaction between two cells based on the interactions of their
+    proteins with the proteins of the other cell. This score is based on ........
 
     Parameters
     ----------
     cell1 : Cell class
-
+        First cell/tissue/organ type to compute interaction between a pair of them.
 
     cell2 : Cell class
+        Second cell/tissue/organ type to compute interaction between a pair of them.
 
     Returns
     -------
     cci_score : float
-        Score for the interaction of the gene/protein of the pair of cells based on their relative abundances.
+        Score for the interaction of the of the pair of cells based on the abundance of gene/proteins in the ppi network.
     '''
     c1_A = cell1.binary_ppi['A'].values
     c1_B = cell1.binary_ppi['B'].values

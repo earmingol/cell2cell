@@ -2,10 +2,9 @@
 
 from __future__ import absolute_import
 
-from cell2cell.preprocessing.binary import get_binary_rnaseq, get_binary_ppi
-from cell2cell.preprocessing import cutoffs, integration
+from cell2cell.preprocessing import binary, cutoffs
 from cell2cell.core import cell
-from cell2cell.interaction import calculation
+from cell2cell.interaction import compute
 
 import itertools
 import numpy as np
@@ -47,7 +46,7 @@ def generate_interaction_elements(binary_rnaseq, ppi_data, interaction_type, ver
 
     # Cell-specific binary ppi
     for cell_instance in interaction_space['cells'].values():
-        cell_instance.binary_ppi = get_binary_ppi(ppi_data, cell_instance.rnaseq_data, column='value')
+        cell_instance.binary_ppi = binary.get_binary_ppi(ppi_data, cell_instance.rnaseq_data, column='value')
 
     # Cell-cell interaction matrix
     interaction_space['cci_matrix'] = pd.DataFrame(np.zeros((cell_number, cell_number)), columns=cell_instances, index=cell_instances)
@@ -56,7 +55,7 @@ def generate_interaction_elements(binary_rnaseq, ppi_data, interaction_type, ver
 
 
 class InteractionSpace():
-    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, verbose = True):
+    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, verbose=True):
         if 'type' in gene_cutoffs.keys():
             cutoff_values = cutoffs.get_cutoffs(rnaseq_data,
                                                 gene_cutoffs,
@@ -64,13 +63,13 @@ class InteractionSpace():
         else:
             raise ValueError("If dataframe is not included in gene_cutoffs, please provide the type of method to obtain them.")
 
-        self.binary_rnaseq = get_binary_rnaseq(rnaseq_data, cutoff_values)
+        self.binary_rnaseq = binary.get_binary_rnaseq(rnaseq_data, cutoff_values)
         self.interaction_type = interaction_type
         self.ppi_data = ppi_dict[self.interaction_type]
         self.interaction_elements = generate_interaction_elements(self.binary_rnaseq,
                                                                   self.ppi_data,
                                                                   self.interaction_type,
-                                                                  verbose = verbose)
+                                                                  verbose=verbose)
 
 
     def pairwise_interaction(self, cell1, cell2, verbose=True):
@@ -108,10 +107,10 @@ class InteractionSpace():
             print("Computing {} interaction between {} and {}".format(self.interaction_type, cell1.type,cell2.type))
 
         # Calculate cell-cell interaction score
-        cci_score = calculation.compute_cci_score(cell1, cell2)  # Function to compute cell-cell interaction score
+        cci_score = compute.compute_cci_score(cell1, cell2)  # Function to compute cell-cell interaction score
         return cci_score
 
-    def compute_pairwise_interactions(self, verbose = True):
+    def compute_pairwise_interactions(self, verbose=True):
         ### Compute pairwise physical interactions
         if verbose:
             print("Computing pairwise interactions")

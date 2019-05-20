@@ -6,10 +6,10 @@ rnaseq_file = './data/CElegans_RNASeqData_Cell.xlsx'
 ppi_file = './data/CElegans_PPIs_RSPGM.xlsx'
 go_annotations_file = './data/wb.gaf.gz'
 go_terms_file = './data/go-basic.obo'
-cutoff_file = None
+cutoff_file = None  # Keep this None when a cutoff file is not provide (cutoff values will be computed here instead)
 
 # PPI network setup
-interactors = ['WormBase_ID_a', 'WormBase_ID_b']   # Columns name of interactors. They will be transforme to 'A' and 'B'.
+interactors = ['WormBase_ID_a', 'WormBase_ID_b']   # Columns name of interactors. They will be transforms to 'A' and 'B'.
 score = 'RSPGM_Score'   # Columns name of interaction score or probability in the network - Not used in this example.
 
 # RNA-seq data setup
@@ -26,7 +26,7 @@ interaction_type = 'combined'
 subsampling_percentage = 0.8
 iterations = 1000
 
-
+# GO Terms to filter PPIs
 #==========================================================================================================
 # MODIFY THESE TO INCLUDE DIFFERENT SURFACE (CONTACT) AND EXTRACELLULAR (MEDIATOR) PROTEINS
 #==========================================================================================================
@@ -41,11 +41,10 @@ contact_go_terms = ['GO:0007155',  # Cell adhesion
                     ]
 
 mediator_go_terms = ['GO:0005615',  # Extracellular space
-                     #'GO:0012505',  # Endomembrane system | Some proteins could be not secreted.
+                     #'GO:0012505',  # Endomembrane system | Some proteins are not secreted.
                      'GO:0005576',  # Extracellular region
                     ]
 #==========================================================================================================
-
 
 if __name__ == '__main__':
     # Load Data
@@ -71,27 +70,13 @@ if __name__ == '__main__':
     gene_cutoffs['file'] = cutoff_file
 
     # Run analysis
-
-    #binary_rnaseq = c2c.preprocessing.get_binary_rnaseq(rnaseq_data, gene_cutoffs['dataframe'])
-    #binary_ppi = c2c.preprocessing.get_binary_ppi(ppi_data, binary_rnaseq, column='Germline')
-
-    contact_proteins = c2c.preprocessing.get_genes_from_parent_go_terms(go_annotations,
-                                                                        go_terms,
-                                                                        contact_go_terms,
-                                                                        go_header = 'GO',
-                                                                        gene_header = 'Gene',
-                                                                        verbose = False)
-
-    mediator_proteins = c2c.preprocessing.get_genes_from_parent_go_terms(go_annotations,
-                                                                         go_terms,
-                                                                         mediator_go_terms,
-                                                                         go_header = 'GO',
-                                                                         gene_header = 'Gene',
-                                                                         verbose = False)
-
-    ppi_dict = c2c.preprocessing.get_all_ppis(ppi_data,
-                                              contact_proteins,
-                                              mediator_proteins)
+    ppi_dict = c2c.preprocessing.ppis_from_goterms(ppi_data,
+                                                   go_annotations,
+                                                   go_terms,
+                                                   contact_go_terms,
+                                                   mediator_go_terms,
+                                                   use_children=True,
+                                                   verbose=True)
 
     import random
 
@@ -105,10 +90,20 @@ if __name__ == '__main__':
         random.shuffle(cell_ids)
         included_cells = cell_ids[:last_item]
 
-        subsampling_space.append(c2c.interaction.space.InteractionSpace(rnaseq_data[included_cells],
-                                                                        ppi_dict,
-                                                                        interaction_type,
-                                                                        gene_cutoffs,
-                                                                        verbose=False))
+        interaction_space = c2c.interaction.space.InteractionSpace(rnaseq_data[included_cells],
+                                                                   ppi_dict,
+                                                                   interaction_type,
+                                                                   gene_cutoffs,
+                                                                   verbose=False)
 
-        subsampling_space[-1].compute_pairwise_interactions(verbose=False)
+        interaction_space.compute_pairwise_interactions(verbose=False)
+
+        # clustering
+        clusters = c2c.clustering.clustering_interactions(interaction_space.interaction_elements['cci_matrix'],
+                                                          method='louvain')
+
+
+        iteration_elements = (interaction_space.interaction_elements['cci_matrix'], clusters)
+        subsampling_space.append(iteration_elements)
+
+

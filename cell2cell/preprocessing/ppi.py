@@ -22,7 +22,7 @@ def remove_ppi_bidirectionality(PPI_data, interaction_columns):
     return unidirectional_ppi
 
 
-def simplify_ppi(ppi_data, interaction_columns, score = None):
+def simplify_ppi(ppi_data, interaction_columns, score=None):
     print('Simplying PPI network')
     header_interactorA = interaction_columns[0]
     header_interactorB = interaction_columns[1]
@@ -43,7 +43,7 @@ def ppi_rnaseq_gene_match(ppi_data, rnaseq_genes):
     return ppi_data
 
 
-def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins = None, reference_list = None, interaction_type = 'contacts', interaction_columns = ['A', 'B']):
+def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None, interaction_type='contacts', interaction_columns=['A', 'B']):
     '''
     :param ppi_data:
     :param interaction_columns:

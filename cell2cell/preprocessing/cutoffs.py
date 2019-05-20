@@ -20,7 +20,7 @@ def standep(rnaseq_data, k):
     pass
 
 
-def get_cutoffs(rnaseq_data, parameters, verbose = True):
+def get_cutoffs(rnaseq_data, parameters, verbose=True):
     parameter = parameters['parameter']
     type = parameters['type']
     if verbose:
