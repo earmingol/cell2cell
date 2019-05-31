@@ -31,7 +31,7 @@ cutoff_setup['parameter'] = 0.8 # In this case is for percentile, representing t
 # Analysis
 analysis_setup['interaction_type'] = 'combined'
 analysis_setup['subsampling_percentage'] = 0.8
-analysis_setup['iterations'] = 10
+analysis_setup['iterations'] = 1000
 analysis_setup['go_descendants'] = True   # This is for including the descendant GO terms (hierarchically below) to filter PPIs
 analysis_setup['verbose'] = False
 analysis_setup['cpu_cores'] = 7 # To enable parallel computing
