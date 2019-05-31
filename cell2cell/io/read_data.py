@@ -8,17 +8,30 @@ import pandas as pd
 import numpy as np
 from cell2cell.preprocessing import rnaseq, ppi
 
-def load_table(filename, format='excel', sep='\t', sheet_name=False):
+def load_table(filename, format='auto', sep='\t', sheet_name=False):
     '''
     Function to open any table into a pandas dataframe.
     '''
+    if filename is None:
+        return None
+
+    if format == 'auto':
+        if ('.xlsx' in filename) or ('.xls' in filename):
+            format = 'excel'
+        elif ('.csv' in filename):
+            format = 'csv'
+            sep = ','
+        elif ('.tsv' in filename) or ('.txt' in filename):
+            format = 'csv'
+            sep = '\t'
+
     if format == 'excel':
         table = pd.read_excel(filename, sheet_name=sheet_name)
     elif format == 'csv' or format == 'txt':
         table = pd.read_csv(filename, sep=sep)
     else:
         print("Specify a correct format")
-        table = None
+        return None
     print(filename + ' was correctly loaded')
     return table
 
