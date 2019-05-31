@@ -5,7 +5,8 @@ from __future__ import absolute_import
 import pandas as pd
 
 class Cell:
-    '''Specific cell/tissue/organ element containing associated RNAseq data.
+    '''
+    Specific cell/tissue/organ element containing associated RNAseq data.
 
     Parameters
     ----------
@@ -60,7 +61,8 @@ class Cell:
 
 
 def cells_from_rnaseq(rnaseq_data, cell_columns=None, verbose=True):
-    '''Create new instances of Cells based on the RNAseq data and the cell/tissue/organ types provided.
+    '''
+    Creates new instances of Cells based on the RNAseq data and the cell/tissue/organ types provided.
 
     Parameters
     ----------
