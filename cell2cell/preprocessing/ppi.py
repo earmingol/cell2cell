@@ -8,8 +8,8 @@ import pandas as pd
 ### Manipulate PPI networks
 def remove_ppi_bidirectionality(PPI_data, interaction_columns):
     '''
-    This functon remove duplicate interactions. For example, wheb P1-P2 and P2-P1 interactions are present in the
-    dataset.
+    This function removes duplicate interactions. For example, when P1-P2 and P2-P1 interactions are present in the
+    dataset, only one of them will remain.
     '''
     print('Removing bidirectionality of PPI network')
     header_interactorA = interaction_columns[0]

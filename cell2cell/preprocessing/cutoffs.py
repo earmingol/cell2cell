@@ -32,9 +32,7 @@ def get_cutoffs(rnaseq_data, parameters, verbose=True):
     elif type == 'file':
         if parameter['file'] is not None:
             cutoffs = read_data.load_cutoffs(parameters['file'],
-                                             drop_nangenes=True,
-                                             log_transformation=False,
-                                             format='excel')
+                                             format='auto')
         else:
             raise ValueError("Please provide complete path for the cutoff file (assign it to the key 'file' in parameters)")
     else:
