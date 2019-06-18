@@ -42,7 +42,7 @@ class SubsamplingSpace:
                                  subsampling_percentage=0.8, iterations=1000, n_jobs=1, verbose=True):
         '''
         This function performs the subsampling method by generating a list of cells to consider in each iteration.
-        Then, for each list of cells a InteractionSpace is generated to perform the cell2cell anaysis and return the
+        Then, for each list of cells a InteractionSpace is generated to perform the cell2cell analysis and return the
         respective CCI Matrix and clusters.
         '''
         # Last position for subsampling when shuffling
@@ -74,8 +74,9 @@ def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interactio
     '''
     Functional unit to perform parallel computing in SubsamplingSpace
     '''
-    random.shuffle(cell_ids)
-    included_cells = cell_ids[:last_item]
+    cell_ids_ = cell_ids.copy()
+    random.shuffle(cell_ids_)
+    included_cells = cell_ids_[:last_item]
 
     interaction_space = InteractionSpace(rnaseq_data[included_cells],
                                          ppi_dict,
