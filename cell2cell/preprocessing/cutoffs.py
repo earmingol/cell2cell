@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 
-def percentile_cutoff(rnaseq_data, percentile = 0.8):
+def local_percentile_cutoff(rnaseq_data, percentile = 0.8):
     cutoffs = rnaseq_data.quantile(percentile, axis=1).to_frame()
     #cutoffs.index = rnaseq_data.index
     cutoffs.columns = ['value']
@@ -25,16 +25,13 @@ def get_cutoffs(rnaseq_data, parameters, verbose=True):
     type = parameters['type']
     if verbose:
         print("Calculating cutoffs for gene abundances")
-    if type == 'percentile':
-        cutoffs = percentile_cutoff(rnaseq_data, parameter)
+    if type == 'local_percentile':
+        cutoffs = local_percentile_cutoff(rnaseq_data, parameter)
     elif type == 'standep':
         cutoffs = standep(rnaseq_data, parameter)
     elif type == 'file':
-        if parameter['file'] is not None:
-            cutoffs = read_data.load_cutoffs(parameters['file'],
-                                             format='auto')
-        else:
-            raise ValueError("Please provide complete path for the cutoff file (assign it to the key 'file' in parameters)")
+        cutoffs = read_data.load_cutoffs(parameter,
+                                         format='auto')
     else:
         raise ValueError(type + ' is not a valid cutoff')
     cutoffs.columns = ['value']
