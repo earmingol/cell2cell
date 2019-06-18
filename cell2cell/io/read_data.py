@@ -116,7 +116,7 @@ def load_go_terms(go_terms_file):
     return go_terms
 
 
-def load_go_annotations(goa_file):
+def load_go_annotations(goa_file, experimental_evidence=False):
     '''
     Load GO annotation for a given organism.
     Example: goa_file = 'http://current.geneontology.org/annotations/wb.gaf.gz'
@@ -124,7 +124,8 @@ def load_go_annotations(goa_file):
     import goenrich
 
     print("Opening GO annotations from {}".format(goa_file))
-    goa = goenrich.read.goa(goa_file)
+
+    goa = goenrich.read.goa(goa_file, experimental_evidence)
     goa_cols = list(goa.columns)
     goa = goa[goa_cols[:3] + [goa_cols[4]]]
     new_cols = ['db', 'Gene', 'Name', 'GO']
@@ -133,7 +134,7 @@ def load_go_annotations(goa_file):
     return goa
 
 
-def import_variable(filename):
+def import_pickle_variable(filename):
     '''
     Import a large size variable in a python readable way using pickle.
     '''

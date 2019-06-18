@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import pickle
 import networkx as nx
 
+from cell2cell.core import networks
 
 def export_variable(variable, filename):
     '''
@@ -19,10 +20,13 @@ def export_variable(variable, filename):
             f_out.write(bytes_out[idx:idx + max_bytes])
 
 
-def network2gephi(cci_network, filename, format='excel'):
+def network2gephi(cci_matrix, filename, format='excel'):
     '''
-    Export a CCI network (networkx object) into a spreadsheet readable by Gephi.
+    Export a CCI matrix into a spreadsheet readable by Gephi.
     '''
+    cci_network = networks.network_from_adjacency(cci_matrix,
+                                                  package='networkx')
+
     gephi_df = nx.to_pandas_edgelist(cci_network)
     gephi_df = gephi_df.assign(Type='Undirected')
     gephi_df = gephi_df[['source', 'target', 'Type', 'weight']]
