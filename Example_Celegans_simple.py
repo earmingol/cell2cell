@@ -13,7 +13,6 @@ files['rnaseq'] = './data/CElegans_RNASeqData_Cell.xlsx'
 files['ppi'] = './data/CElegans_PPIs_RSPGM.xlsx'
 files['go_annotations'] = './data/wb.gaf.gz'
 files['go_terms'] = './data/go-basic.obo'
-files['cutoffs'] = None  # Keep this None when a cutoff file is not provided (cutoff values will be computed instead)
 files['output_folder'] = './outputs/'
 
 # RNA-seq data setup
@@ -26,13 +25,14 @@ ppi_setup['protein_cols'] = ['WormBase_ID_a', 'WormBase_ID_b']   # Name of colum
 ppi_setup['score_col'] = 'RSPGM_Score'   # Name of column for interaction score or probability in the network - Not used in this example.
 
 # Cutoff
-cutoff_setup['type'] = 'percentile'
+cutoff_setup['type'] = 'local_percentile'
 cutoff_setup['parameter'] = 0.8 # In this case is for percentile, representing to compute the 80-th percentile value.
 
 # Analysis
 analysis_setup['interaction_type'] = 'combined'
 analysis_setup['subsampling_percentage'] = 0.8
-analysis_setup['iterations'] = 1000
+analysis_setup['iterations'] = 5
+analysis_setup['goa_experimental_evidence'] = True # Consider experimental evidence to retrieve genes from GO terms
 analysis_setup['go_descendants'] = True   # This is for including the descendant GO terms (hierarchically below) to filter PPIs
 analysis_setup['clustering_algorithm'] = 'louvain'
 analysis_setup['clustering_method'] = 'raw'
@@ -43,34 +43,12 @@ if __name__ == '__main__':
     import time
     start = time.time()
 
-    # Load Data
-    rnaseq_data = c2c.io.load_rnaseq(files['rnaseq'],
-                                     rnaseq_setup['gene_col'],
-                                     drop_nangenes=rnaseq_setup['drop_nangenes'],
-                                     log_transformation=rnaseq_setup['log_transform'],
-                                     format='auto')
-
-    ppi_data = c2c.io.load_ppi(files['ppi'],
-                               ppi_setup['protein_cols'],
-                               score=ppi_setup['score_col'],
-                               rnaseq_genes=list(rnaseq_data.index),
-                               format='auto')
-
-    go_annotations = c2c.io.load_go_annotations(files['go_annotations'])
-    go_terms = c2c.io.load_go_terms(files['go_terms'])
-
     # Run Analysis
-    if 'cutoffs' not in files.keys():
-        cutoff_setup['file'] = None
-    else:
-        cutoff_setup['file'] = files['cutoffs']
-
-    subsampling_space = c2c.analysis.run_analysis(rnaseq_data,
-                                                  ppi_data,
-                                                  go_annotations,
-                                                  go_terms,
-                                                  cutoff_setup,
-                                                  analysis_setup)
+    subsampling_space, filtered_ppis = c2c.analysis.run_analysis(files,
+                                                                 rnaseq_setup,
+                                                                 ppi_setup,
+                                                                 cutoff_setup,
+                                                                 analysis_setup)
 
     print("It took %.2f seconds" % (time.time() - start))
 
