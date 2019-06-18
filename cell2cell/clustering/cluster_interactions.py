@@ -17,19 +17,18 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
     clustering = dict()
     clustering['algorithm'] = algorithm
     clustering['method'] = method
+    clustering['raw_clusters'] = []
+
 
     if method == 'average':
-        cci_matrix = compute_average(interaction_elements)
+        clustering['final_cci_matrix'] = compute_average(interaction_elements)
         if algorithm == 'louvain':
-            clustering.update(community_detection(cci_matrix=cci_matrix,
+            clustering.update(community_detection(cci_matrix=clustering['final_cci_matrix'],
                                                   verbose=verbose))
         elif algorithm == 'hierarchical_louvain':
             pass
         else:
             raise ValueError("Clustering algorithm not implemented yet. Specify an implemented one")
-
-        clustering['raw_clusters'] = []
-        clustering['final_cci_matrix'] = cci_matrix
 
     elif method == 'raw':
         # Parallel computing
@@ -40,24 +39,22 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
             if algorithm == 'louvain':
                 inputs = [{'interaction_elements' : element, 'verbose' : verbose} for element in interaction_elements]
                 clustering['raw_clusters'] = pool.map(parallel_computing.parallel_community_detection, inputs, chunksize)
+                clustering['final_cci_matrix'] = compute_clustering_ratio(interaction_elements=interaction_elements,
+                                                                          raw_clusters=clustering['raw_clusters'])
+                clustering.update(community_detection(cci_matrix=clustering['final_cci_matrix'],
+                                                      verbose=verbose))
             elif algorithm == 'hierarchical_louvain':
                 pass
             else:
                 raise ValueError("Clustering algorithm not implemented yet. Specify an implemented one")
 
-        # Compute final clusters from individual iterations
-        # Generate final CCI matrix
-        # Store them into clustering dictionary
-        #clustering['final_cci_matrix'] = cci_matrix_from_raw(clustering['raw'],
-        #                                               algorithm=algorithm)
-        #clustering.update(clustering_algorithm)
     else:
         raise ValueError("Specificy a correct method. It could be 'average' or 'raw'.")
 
 
     return clustering
 
-
+# Community algorithms
 def community_detection(cci_matrix, randomize = True, verbose=True):
     '''Compute Community Detection clustering (or Louvain method, for more info see https://arxiv.org/abs/0803.0476) and
     then generate the compartments containing cells that belong to the same cluster.
@@ -72,15 +69,15 @@ def community_detection(cci_matrix, randomize = True, verbose=True):
 
     Returns
     -------
-    compartments : list
-        List containing other lists, where each of these lists is a compartment that contain the name or id of each cell
-        that belongs to it.
+    results : dict
+        Dictionary that contains ...
     '''
 
     if verbose:
         print("Performing Community Detection")
 
-    G = networks.network_from_adjacency(cci_matrix)
+    G = networks.network_from_adjacency(cci_matrix,
+                                        package='networkx')
 
     # Compute the best partition
     partition = community.best_partition(G, randomize = randomize)
@@ -97,6 +94,16 @@ def community_detection(cci_matrix, randomize = True, verbose=True):
     return results
 
 
+def community_walktrap(cci_matrix):
+    G = networks.network_from_adjacency(cci_matrix,
+                                        package='igraph')
+
+    hier_community = G.community_walktrap(weights='weight',
+                                          steps=20)
+
+    return hier_community
+
+
 def compute_average(interaction_elements):
     matrices = [element['cci_matrix'].values for element in interaction_elements]
     mean_matrix = np.nanmean(matrices, axis=0)
@@ -105,3 +112,38 @@ def compute_average(interaction_elements):
                                columns=interaction_elements[0]['cci_matrix'].columns)
     mean_matrix = mean_matrix.fillna(0)
     return mean_matrix
+
+
+def compute_clustering_ratio(interaction_elements, raw_clusters):
+    '''
+    This function computes the ratio of times that each pair of cells that was clustered together.
+    @ Erick, PARALLELIZE this function
+    '''
+
+    # Initialize matrices to store data
+    total_cells = list(interaction_elements[0]['cci_matrix'].index)
+    pair_participation = pd.DataFrame(np.zeros((len(total_cells), len(total_cells))),
+                                      columns=total_cells,
+                                      index=total_cells)
+
+    pair_clustering = pair_participation.copy()
+
+    # Compute ratios
+    for i, element in enumerate(interaction_elements):
+        included_cells = element['cells']
+
+        # Update Total Participation
+        old_values = pair_participation.loc[included_cells, included_cells].values
+        pair_participation.loc[included_cells, included_cells] = old_values + np.ones(old_values.shape)
+
+        # Update Pairs
+        cluster_df = raw_clusters[i]['clusters']
+
+        for cluster in cluster_df['Cluster'].unique():
+            clustered_cells = cluster_df['Cell'].loc[cluster_df['Cluster'] == cluster].values
+            old_pair = pair_clustering.loc[clustered_cells, clustered_cells].values
+            pair_clustering.loc[clustered_cells, clustered_cells] = old_pair + np.ones(old_pair.shape) - np.identity(len(clustered_cells)) # Remove self interactions
+
+    cci_matrix = pair_clustering / pair_participation
+
+    return cci_matrix
