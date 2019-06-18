@@ -6,7 +6,7 @@ import numpy as np
 import networkx
 
 ### Gene Ontology related functions
-def get_genes_from_go_terms(go_annotations, go_filter, go_header='GO', gene_header='Gene'):
+def go2genes(go_annotations, go_filter, go_header='GO', gene_header='Gene'):
     print('Filtering genes by using GO terms')
     filtered_genes = list(np.unique(go_annotations.loc[go_annotations[go_header].isin(go_filter)][gene_header].values))
     return filtered_genes
@@ -17,7 +17,11 @@ def get_genes_from_parent_go_terms(go_annotations, go_terms, go_filter, go_heade
     iter = len(parent_GOs)
     for i in range(iter):
         find_all_children_of_go_term(go_terms, parent_GOs[i], parent_GOs, verbose=verbose)
-    genes = get_genes_from_go_terms(go_annotations, parent_GOs, go_header, gene_header)
+    parent_GOs = list(set(parent_GOs))
+    genes = go2genes(go_annotations=go_annotations,
+                     go_filter=parent_GOs,
+                     go_header=go_header,
+                     gene_header=gene_header)
     return genes
 
 
