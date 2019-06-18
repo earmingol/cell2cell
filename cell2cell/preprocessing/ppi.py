@@ -2,28 +2,38 @@
 
 from __future__ import absolute_import
 
+import numpy as np
 import pandas as pd
+
+from itertools import combinations
 
 
 ### Manipulate PPI networks
-def remove_ppi_bidirectionality(PPI_data, interaction_columns):
+def remove_ppi_bidirectionality(PPI_data, interaction_columns, verbose=True):
     '''
     This function removes duplicate interactions. For example, when P1-P2 and P2-P1 interactions are present in the
     dataset, only one of them will remain.
     '''
-    print('Removing bidirectionality of PPI network')
+    if verbose:
+        print('Removing bidirectionality of PPI network')
     header_interactorA = interaction_columns[0]
     header_interactorB = interaction_columns[1]
     IA = PPI_data[[header_interactorA, header_interactorB]]
     IB = PPI_data[[header_interactorB, header_interactorA]]
     IB.columns = [header_interactorA, header_interactorB]
     repeated_interactions = pd.merge(IA, IB, on=[header_interactorA, header_interactorB])
-    unidirectional_ppi = pd.merge(PPI_data, repeated_interactions, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
+    repeated = list(np.unique(repeated_interactions.values.flatten()))
+    df =  pd.DataFrame(combinations(sorted(repeated), 2), columns=[header_interactorA, header_interactorB])
+    df = df[[header_interactorB, header_interactorA]]   # To keep lexicographically sorted interactions
+    df.columns = [header_interactorA, header_interactorB]
+    unidirectional_ppi = pd.merge(PPI_data, df, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
+    unidirectional_ppi.reset_index(drop=True, inplace=True)
     return unidirectional_ppi
 
 
-def simplify_ppi(ppi_data, interaction_columns, score=None):
-    print('Simplying PPI network')
+def simplify_ppi(ppi_data, interaction_columns, score=None, verbose=True):
+    if verbose:
+        print('Simplying PPI network')
     header_interactorA = interaction_columns[0]
     header_interactorB = interaction_columns[1]
     if score is None:
@@ -43,7 +53,8 @@ def ppi_rnaseq_gene_match(ppi_data, rnaseq_genes):
     return ppi_data
 
 
-def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None, interaction_type='contacts', interaction_columns=['A', 'B']):
+def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
+                       interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
     '''
     :param ppi_data:
     :param interaction_columns:
@@ -65,7 +76,8 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
 
     # Contact-Contact interactions
     contacts = ppi_data.loc[ppi_data[header_interactorA].isin(contact_proteins) & ppi_data[header_interactorB].isin(contact_proteins)]
-    print('Filtering PPI interactions by using a list of genes for {} interactions'.format(interaction_type))
+    if verbose:
+        print('Filtering PPI interactions by using a list of genes for {} interactions'.format(interaction_type))
     if interaction_type == 'contacts':
         new_ppi_data = contacts.drop_duplicates()
     else:
