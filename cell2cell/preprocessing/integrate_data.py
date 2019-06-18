@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 
 import pandas as pd
-from cell2cell.preprocessing import ppi, geneontology
+from cell2cell.preprocessing import ppi, gene_ontology
 
 
 def get_binary_rnaseq(rnaseq_data, cutoffs):
@@ -21,7 +21,7 @@ def get_binary_ppi(ppi_data, binary_rnaseq_data, column='value'):
     return binary_ppi
 
 
-def get_all_ppis(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=['A', 'B']):
+def ppis_from_proteins(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=['A', 'B']):
 
     all_ppis = dict()
     all_ppis['contacts'] = ppi.filter_ppi_network(ppi_data,
@@ -56,33 +56,33 @@ def ppis_from_goterms(ppi_data, go_annotations, go_terms, contact_go_terms, medi
 
 
     if use_children == True:
-        contact_proteins = geneontology.get_genes_from_parent_go_terms(go_annotations,
-                                                                       go_terms,
-                                                                       contact_go_terms,
-                                                                       go_header=go_header,
-                                                                       gene_header=gene_header,
-                                                                       verbose=verbose)
-
-        mediator_proteins = geneontology.get_genes_from_parent_go_terms(go_annotations,
+        contact_proteins = gene_ontology.get_genes_from_parent_go_terms(go_annotations,
                                                                         go_terms,
-                                                                        mediator_go_terms,
+                                                                        contact_go_terms,
                                                                         go_header=go_header,
                                                                         gene_header=gene_header,
                                                                         verbose=verbose)
+
+        mediator_proteins = gene_ontology.get_genes_from_parent_go_terms(go_annotations,
+                                                                         go_terms,
+                                                                         mediator_go_terms,
+                                                                         go_header=go_header,
+                                                                         gene_header=gene_header,
+                                                                         verbose=verbose)
     else:
-        contact_proteins = geneontology.get_genes_from_go_terms(go_annotations,
-                                                                contact_go_terms,
-                                                                go_header=go_header,
-                                                                gene_header=gene_header)
+        contact_proteins = gene_ontology.go2genes(go_annotations,
+                                                  contact_go_terms,
+                                                  go_header=go_header,
+                                                  gene_header=gene_header)
 
-        mediator_proteins = geneontology.get_genes_from_go_terms(go_annotations,
-                                                                 mediator_go_terms,
-                                                                 go_header=go_header,
-                                                                 gene_header=gene_header)
+        mediator_proteins = gene_ontology.go2genes(go_annotations,
+                                                   mediator_go_terms,
+                                                   go_header=go_header,
+                                                   gene_header=gene_header)
 
-    ppi_dict = get_all_ppis(ppi_data,
-                            contact_proteins,
-                            mediator_proteins,
-                            interaction_columns=interaction_columns)
+    ppi_dict = ppis_from_proteins(ppi_data,
+                                  contact_proteins,
+                                  mediator_proteins,
+                                  interaction_columns=interaction_columns)
 
     return ppi_dict
