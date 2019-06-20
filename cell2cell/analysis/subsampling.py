@@ -14,10 +14,10 @@ from multiprocessing import Pool
 class SubsamplingSpace:
 
     def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, subsampling_percentage=0.8,
-                 iterations=1000, n_jobs=1, verbose=True):
+                 iterations=1000, initial_seed=None, n_jobs=1, verbose=True):
 
         if verbose:
-            print("Computing interactions by subsampling a"
+            print("Computing interactions by sub-sampling a"
                   " {}% of cells in each of the {} iterations".format(int(100*subsampling_percentage), iterations))
 
         self.cell_ids = list(rnaseq_data.columns)
@@ -34,18 +34,19 @@ class SubsamplingSpace:
                                                                      gene_cutoffs=gene_cutoffs,
                                                                      subsampling_percentage=subsampling_percentage,
                                                                      iterations=iterations,
+                                                                     initial_seed=initial_seed,
                                                                      n_jobs=n_jobs,
                                                                      verbose=verbose)
 
 
     def subsampling_interactions(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs,
-                                 subsampling_percentage=0.8, iterations=1000, n_jobs=1, verbose=True):
+                                 subsampling_percentage=0.8, iterations=1000, initial_seed=None, n_jobs=1, verbose=True):
         '''
-        This function performs the subsampling method by generating a list of cells to consider in each iteration.
+        This function performs the sub-sampling method by generating a list of cells to consider in each iteration.
         Then, for each list of cells a InteractionSpace is generated to perform the cell2cell analysis and return the
         respective CCI Matrix and clusters.
         '''
-        # Last position for subsampling when shuffling
+        # Last position for sub-sampling when shuffling
         last_item = int(len(self.cell_ids) * subsampling_percentage)
 
         inputs = {'cells' : self.cell_ids,
@@ -58,23 +59,31 @@ class SubsamplingSpace:
                   'verbose' :verbose
                   }
 
-        inputs = [inputs]*iterations
-
+        inputs_list = []
+        for i in range(iterations):
+            inputs_ = inputs.copy()
+            if initial_seed is not None:
+                inputs_['seed'] = initial_seed + i
+            else:
+                inputs_['seed'] = None
+            inputs_list.append(inputs_)
 
         # Parallel computing
         agents = parallel_computing.agents_number(n_jobs)
         chunksize = 1
         with closing(Pool(processes=agents)) as pool:
-            results = pool.map(parallel_computing.parallel_subsampling_interactions, inputs, chunksize)
+            results = pool.map(parallel_computing.parallel_subsampling_interactions, inputs_list, chunksize)
         return results
 
 
 def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs,
-                          cci_matrix_template = None, verbose=True):
+                          cci_matrix_template = None, seed=None, verbose=True):
     '''
-    Functional unit to perform parallel computing in SubsamplingSpace
+    Functional unit to perform parallel computing in Sub-sampling Space
     '''
     cell_ids_ = cell_ids.copy()
+    if seed is not None:
+        random.seed(seed)
     random.shuffle(cell_ids_)
     included_cells = cell_ids_[:last_item]
 

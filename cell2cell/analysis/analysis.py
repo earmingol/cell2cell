@@ -41,15 +41,22 @@ def run_analysis(files, rnaseq_setup, ppi_setup, cutoff_setup, analysis_setup,
                                                 use_children=analysis_setup['go_descendants'],
                                                 verbose=False)
 
-    print("Running analysis with a subsampling percentage of {}% and {} iterations".format(
+    print("Running analysis with a sub-sampling percentage of {}% and {} iterations".format(
           int(100*analysis_setup['subsampling_percentage']), analysis_setup['iterations'])
           )
+
+    if 'initial_seed' not in analysis_setup.keys():
+        initial_seed = None
+    else:
+        initial_seed = analysis_setup['initial_seed']
+
     subsampling_space = subsampling.SubsamplingSpace(rnaseq_data=rnaseq_data,
                                                      ppi_dict=ppi_dict,
                                                      interaction_type=analysis_setup['interaction_type'],
                                                      gene_cutoffs=cutoff_setup,
                                                      subsampling_percentage=analysis_setup['subsampling_percentage'],
                                                      iterations=analysis_setup['iterations'],
+                                                     initial_seed=initial_seed,
                                                      n_jobs=analysis_setup['cpu_cores'],
                                                      verbose=analysis_setup['verbose'])
 
@@ -60,7 +67,11 @@ def run_analysis(files, rnaseq_setup, ppi_setup, cutoff_setup, analysis_setup,
     clustering = cluster_interactions.clustering_interactions(interaction_elements=subsampling_space.subsampled_interactions,
                                                               algorithm=analysis_setup['clustering_algorithm'],
                                                               method=analysis_setup['clustering_method'],
+                                                              seed=None,
+                                                              n_jobs=analysis_setup['cpu_cores'],
                                                               verbose=analysis_setup['verbose'])
 
     subsampling_space.clustering = clustering
+
+    print(clustering['clusters'].sort_values(by='Cluster'))
     return subsampling_space, ppi_dict
