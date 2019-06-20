@@ -12,7 +12,7 @@ from contextlib import closing
 from multiprocessing import Pool
 
 
-def clustering_interactions(interaction_elements, algorithm='louvain', method='raw', n_jobs=1, verbose=True):
+def clustering_interactions(interaction_elements, algorithm='louvain', method='raw', seed=None, n_jobs=1, verbose=True):
 
     clustering = dict()
     clustering['algorithm'] = algorithm
@@ -37,7 +37,7 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
 
         with closing(Pool(processes=agents)) as pool:
             if algorithm == 'louvain':
-                inputs = [{'interaction_elements' : element, 'verbose' : verbose} for element in interaction_elements]
+                inputs = [{'interaction_elements' : element, 'seed' : seed, 'verbose' : verbose} for element in interaction_elements]
                 clustering['raw_clusters'] = pool.map(parallel_computing.parallel_community_detection, inputs, chunksize)
                 clustering['final_cci_matrix'] = compute_clustering_ratio(interaction_elements=interaction_elements,
                                                                           raw_clusters=clustering['raw_clusters'])
@@ -55,7 +55,7 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
     return clustering
 
 # Community algorithms
-def community_detection(cci_matrix, randomize = True, verbose=True):
+def community_detection(cci_matrix, randomize = True, seed = None, verbose=True):
     '''Compute Community Detection clustering (or Louvain method, for more info see https://arxiv.org/abs/0803.0476) and
     then generate the compartments containing cells that belong to the same cluster.
 
@@ -80,7 +80,10 @@ def community_detection(cci_matrix, randomize = True, verbose=True):
                                         package='networkx')
 
     # Compute the best partition
-    partition = community.best_partition(G, randomize = randomize)
+    if seed is not None:
+        randomize = False
+
+    partition = community.best_partition(G, randomize = randomize, random_state = seed)
 
     modularity = np.round(community.modularity(partition, G),4)
 
@@ -94,13 +97,18 @@ def community_detection(cci_matrix, randomize = True, verbose=True):
     return results
 
 
-def community_walktrap(cci_matrix):
+def hierarchical_community(cci_matrix, algorithm='walktrap'):
     G = networks.network_from_adjacency(cci_matrix,
                                         package='igraph')
-
-    hier_community = G.community_walktrap(weights='weight',
-                                          steps=20)
-
+    if algorithm == 'walktrap':
+        hier_community = G.community_walktrap(weights='weight',
+                                              steps=100)
+    elif algorithm == 'betweenness':
+        hier_community = G.community_edge_betweenness()
+    elif algorithm == 'community_fastgreedy':
+        hier_community = G.community_fastgreedy()
+    else:
+        raise NotImplementedError('Algorithm {} is not implemented. Try "walktrap", "betweenness" or "community_fastgreedy".')
     return hier_community
 
 

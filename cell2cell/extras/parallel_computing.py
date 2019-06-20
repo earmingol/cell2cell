@@ -38,6 +38,7 @@ def parallel_subsampling_interactions(inputs):
                                                 interaction_type=inputs['interaction_type'],
                                                 gene_cutoffs=inputs['cutoffs'],
                                                 cci_matrix_template=inputs['cci_matrix'],
+                                                seed=inputs['seed'],
                                                 verbose=inputs['verbose'])
 
     return results
@@ -51,5 +52,6 @@ def parallel_community_detection(inputs):
     cci_matrix = inputs['interaction_elements']['cci_matrix'].loc[included_cells, included_cells]
 
     results = cluster_interactions.community_detection(cci_matrix=cci_matrix,
+                                                       seed=inputs['seed'],
                                                        verbose=inputs['verbose'])
     return results
