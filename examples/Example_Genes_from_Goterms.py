@@ -7,8 +7,8 @@ files = dict()
 # Files
 #files['go_annotations'] = 'http://geneontology.org/gene-associations/goa_human.gaf.gz' # Human
 #files['go_annotations'] = 'http://current.geneontology.org/annotations/mgi.gaf.gz' # Mouse
-files['go_annotations'] = './data/wb.gaf.gz' # C. elegans
-files['go_terms'] = './data/go-basic.obo'
+files['go_annotations'] = '../data/wb.gaf.gz' # C. elegans
+files['go_terms'] = '../data/go-basic.obo'
 
 if __name__ == '__main__':
     go_annotations = c2c.io.load_go_annotations(files['go_annotations'],
