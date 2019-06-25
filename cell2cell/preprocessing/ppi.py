@@ -41,6 +41,7 @@ def simplify_ppi(ppi_data, interaction_columns, score=None, verbose=True):
         simple_ppi = simple_ppi.assign(score = 1.0)
     else:
         simple_ppi = ppi_data[[header_interactorA, header_interactorB, score]]
+        simple_ppi[score] = simple_ppi[score].fillna(np.nanmin(simple_ppi[score].values))
     cols = ['A', 'B', 'score']
     simple_ppi.columns = cols
     return simple_ppi
