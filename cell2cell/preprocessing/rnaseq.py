@@ -13,9 +13,9 @@ def drop_empty_genes(rnaseq_data):
     return data
 
 
-def log10_transformation(rnaseq_data):
+def log10_transformation(rnaseq_data, addition = 0.65):
     ### Apply this only after applying "drop_empty_genes" function
     data = rnaseq_data.copy()
-    data = data.apply(np.log10)
+    data = data.apply(lambda x: np.log10(x + addition))
     data = data.replace([np.inf, -np.inf], np.nan)
     return data
