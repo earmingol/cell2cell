@@ -46,9 +46,9 @@ def simplify_ppi(ppi_data, interaction_columns, score=None, verbose=True):
     return simple_ppi
 
 
-def ppi_rnaseq_gene_match(ppi_data, rnaseq_genes):
-    ppi_data = ppi_data[ppi_data['A'].isin(rnaseq_genes)]
-    ppi_data = ppi_data[ppi_data['B'].isin(rnaseq_genes)]
+def ppi_name_match(ppi_data, names):
+    ppi_data = ppi_data[ppi_data['A'].isin(names)]
+    ppi_data = ppi_data[ppi_data['B'].isin(names)]
     ppi_data = ppi_data.reset_index(drop=True)
     return ppi_data
 
