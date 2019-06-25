@@ -103,24 +103,14 @@ class InteractionSpace():
         cell2 : Cell class
             Cell instance generated from RNAseq data.
 
-        ppi_data: pandas DataFrame object
-            DataFrame containing three columns. The first and second ones are for proteins, where each row is an interaction.
-            The third column is the 'score' or probability for such interaction. This data should be processed before with 'simplify_ppi'
-            in order to reduce the table to the three columns mentioned before.
-
-        product_filter : list or None (default = None)
-            List of gene names to consider based on a previous filter with GO terms or any other common pattern. Only those
-            genes will be considered and the others excluded.
+        verbose : boolean, True by default
+            It shows printings of function if True.
 
         Returns
         -------
         cci_score : float
             Score for a the interaction of the specified pair of cells. This score is computed considering all the inter-cell protein-protein
             interactions of the pair of cells.
-
-        interaction_matrix : pandas DataFrame object
-            Matrix that contains the respective score for the interaction between a pair of proteins (one protein on cell1
-            and the other on cell2).
         '''
 
         if verbose:
@@ -152,6 +142,9 @@ class InteractionSpace():
             cci_score = self.pairwise_interaction(cell1, cell2, verbose=verbose)
             self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_score
             self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_score
+
+        # Remove self interactions
+        #np.fill_diagonal(self.interaction_elements['cci_matrix'].values, 0.0)
 
     def get_genes_for_filter(self):
         genes = []
