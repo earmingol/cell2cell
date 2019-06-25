@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from cell2cell.preprocessing import rnaseq, ppi
 
-def load_table(filename, format='auto', sep='\t', sheet_name=False):
+def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=None):
     '''
     Function to open any table into a pandas dataframe.
     '''
@@ -16,19 +16,25 @@ def load_table(filename, format='auto', sep='\t', sheet_name=False):
         return None
 
     if format == 'auto':
-        if ('.xlsx' in filename) or ('.xls' in filename):
+        if ('.gz' in filename):
+            format = 'csv'
+            sep = '\t'
+            compression='gzip'
+        elif ('.xlsx' in filename) or ('.xls' in filename):
             format = 'excel'
         elif ('.csv' in filename):
             format = 'csv'
             sep = ','
+            compression=None
         elif ('.tsv' in filename) or ('.txt' in filename):
             format = 'csv'
             sep = '\t'
+            compression=None
 
     if format == 'excel':
         table = pd.read_excel(filename, sheet_name=sheet_name)
-    elif format == 'csv' or format == 'txt':
-        table = pd.read_csv(filename, sep=sep)
+    elif (format == 'csv') | (format == 'txt'):
+        table = pd.read_csv(filename, sep=sep, compression=compression)
     else:
         print("Specify a correct format")
         return None
@@ -99,7 +105,7 @@ def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None,  **kw
     unidirectional_ppi = ppi.remove_ppi_bidirectionality(ppi_data, interaction_columns)
     simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score)
     if rnaseq_genes is not None:
-        simplified_ppi = ppi.ppi_rnaseq_gene_match(simplified_ppi, rnaseq_genes)
+        simplified_ppi = ppi.ppi_name_match(simplified_ppi, rnaseq_genes)
     return simplified_ppi
 
 
@@ -116,7 +122,7 @@ def load_go_terms(go_terms_file):
     return go_terms
 
 
-def load_go_annotations(goa_file, experimental_evidence=False):
+def load_go_annotations(goa_file, experimental_evidence=True):
     '''
     Load GO annotation for a given organism.
     Example: goa_file = 'http://current.geneontology.org/annotations/wb.gaf.gz'
