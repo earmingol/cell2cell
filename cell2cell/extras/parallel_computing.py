@@ -37,6 +37,7 @@ def parallel_subsampling_interactions(inputs):
                                                 ppi_dict=inputs['ppi'],
                                                 interaction_type=inputs['interaction_type'],
                                                 gene_cutoffs=inputs['cutoffs'],
+                                                function_type=inputs['function_type'],
                                                 cci_matrix_template=inputs['cci_matrix'],
                                                 seed=inputs['seed'],
                                                 verbose=inputs['verbose'])

@@ -23,14 +23,14 @@ def cci_score_from_binary(cell1, cell2):
     cci_score : float
         Score for the interaction of the of the pair of cells based on the presence of gene/proteins in the ppi network.
     '''
-    c1_A = cell1.binary_ppi['A'].values
-    c1_B = cell1.binary_ppi['B'].values
-    c1_scores = cell1.binary_ppi['score'].values
+    c1_A = cell1.weighted_ppi['A'].values
+    c1_B = cell1.weighted_ppi['B'].values
+    c1_scores = cell1.weighted_ppi['score'].values
 
 
-    c2_A = cell2.binary_ppi['A'].values
-    c2_B = cell2.binary_ppi['B'].values
-    c2_scores = cell2.binary_ppi['score'].values
+    c2_A = cell2.weighted_ppi['A'].values
+    c2_B = cell2.weighted_ppi['B'].values
+    c2_scores = cell2.weighted_ppi['score'].values
 
     #numerator = np.dot(c1_A, c2_B) + np.dot(c1_B, c2_A)
     numerator = np.nansum(c1_A * c2_B * c1_scores * c2_scores) + np.nansum(c1_B * c2_A  * c1_scores * c2_scores)
