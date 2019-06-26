@@ -170,9 +170,9 @@ def compute_average(interaction_elements):
     mean_matrix = pd.DataFrame(mean_matrix,
                                index=interaction_elements[0]['cci_matrix'].index,
                                columns=interaction_elements[0]['cci_matrix'].columns)
-    mean_matrix = mean_matrix.fillna(0)
+    mean_matrix = mean_matrix.fillna(0.0)
     # Remove self interactions
-    #np.fill_diagonal(mean_matrix.values, 0)
+    #np.fill_diagonal(mean_matrix.values, 0.0)
     return mean_matrix
 
 
@@ -203,9 +203,10 @@ def compute_clustering_ratio(interaction_elements, raw_clusters):
         for cluster in cluster_df['Cluster'].unique():
             clustered_cells = cluster_df['Cell'].loc[cluster_df['Cluster'] == cluster].values
             old_pair = pair_clustering.loc[clustered_cells, clustered_cells].values
-            pair_clustering.loc[clustered_cells, clustered_cells] = old_pair + np.ones(old_pair.shape) - np.identity(len(clustered_cells)) # Remove self interactions resulting from parallel clustering
+            pair_clustering.loc[clustered_cells, clustered_cells] = old_pair + np.ones(old_pair.shape)
 
     cci_matrix = pair_clustering / pair_participation
+    np.fill_diagonal(cci_matrix.values, 0.0)  # Remove self interactions - In parallel clustering a cell always will be in te same cluster.
     cci_matrix = cci_matrix.replace(np.inf, np.nan)
-    cci_matrix = cci_matrix.fillna(0)
+    cci_matrix = cci_matrix.fillna(0.0)
     return cci_matrix
