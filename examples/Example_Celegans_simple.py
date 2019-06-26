@@ -26,14 +26,15 @@ ppi_setup['score_col'] = 'RSPGM_Score'   # Name of column for interaction score 
 
 # Cutoff
 cutoff_setup['type'] = 'local_percentile'
-cutoff_setup['parameter'] = 0.8 # In this case is for percentile, representing to compute the 80-th percentile value.
+cutoff_setup['parameter'] = 0.75 # In this case is for percentile, representing to compute the 75-th percentile value.
 
 # Analysis
 analysis_setup['interaction_type'] = 'combined'
+analysis_setup['function_type'] = 'binary'  # Function to get weighted PPIs from RNAseq data and cutoffs
 analysis_setup['subsampling_percentage'] = 0.8
-analysis_setup['iterations'] = 100
+analysis_setup['iterations'] = 5
 analysis_setup['initial_seed'] = None # Turns on using a Seed for randomizing which cells are used in each iteration. Use None instead for not using a seed.
-analysis_setup['goa_experimental_evidence'] = False # True for considering experimental evidence to retrieve genes from GO terms
+analysis_setup['goa_experimental_evidence'] = True # True for considering experimental evidence to retrieve genes from GO terms
 analysis_setup['go_descendants'] = True   # This is for including the descendant GO terms (hierarchically below) to filter PPIs
 analysis_setup['clustering_algorithm'] = 'louvain'
 analysis_setup['clustering_method'] = 'raw'
@@ -51,7 +52,7 @@ if __name__ == '__main__':
                                                                  cutoff_setup,
                                                                  analysis_setup)
 
-    hier_community = c2c.clustering.hierarchical_community(subsampling_space.clustering['final_cci_matrix'], algorithm='community_fastgreedy')
-    print(hier_community)
+    #hier_community = c2c.clustering.hierarchical_community(subsampling_space.clustering['final_cci_matrix'], algorithm='walktrap')
+    #print(hier_community)
     print("It took %.2f seconds" % (time.time() - start))
 

@@ -18,7 +18,7 @@ files['go_terms'] = '../data/go-basic.obo'
 files['output_folder'] = '../outputs/'
 
 # Benchmark setup
-benchmark_setup['cell_number'] = 100
+benchmark_setup['cell_number'] = 3000
 
 # RNA-seq data setup
 rnaseq_setup['gene_col'] = 'gene_id'  # Name of the column containing gene names
@@ -31,7 +31,7 @@ ppi_setup['score_col'] = 'RSPGM_Score'   # Name of column for interaction score 
 
 # Cutoff
 cutoff_setup['type'] = 'local_percentile'
-cutoff_setup['parameter'] = 0.8 # In this case is for percentile, representing to compute the 80-th percentile value.
+cutoff_setup['parameter'] = 0.75 # In this case is for percentile, representing to compute the 75-th percentile value.
 
 # Analysis
 analysis_setup['interaction_type'] = 'combined'
@@ -57,7 +57,5 @@ if __name__ == '__main__':
                                                                 analysis_setup,
                                                                 benchmark_setup)
 
-    hier_community = c2c.clustering.hierarchical_community(subsampling_space.clustering['final_cci_matrix'], algorithm='community_fastgreedy')
-    print(hier_community)
     print("It took %.2f seconds" % (time.time() - start))
 

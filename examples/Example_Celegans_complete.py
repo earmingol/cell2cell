@@ -10,7 +10,8 @@ analysis_setup = dict()
 
 # Files
 files['rnaseq'] = '../data/CElegans_RNASeqData_Cell.xlsx'
-files['ppi'] = '../data/CElegans_PPIs_RSPGM.xlsx'
+#files['ppi'] = '../data/CElegans_PPIs_RSPGM.xlsx'
+files['ppi'] = '../data/CElegans_PPIs_STRING.txt.gz'
 files['go_annotations'] = '../data/wb.gaf.gz'
 files['go_terms'] = '../data/go-basic.obo'
 files['output_folder'] = '../outputs/'
@@ -21,22 +22,25 @@ rnaseq_setup['drop_nangenes'] = True  # Drop genes with all values as nan in the
 rnaseq_setup['log_transform'] = False  # To log transform RNA-seq data
 
 # PPI network setup
-ppi_setup['protein_cols'] = ['WormBase_ID_a', 'WormBase_ID_b']   # Name of columns for interacting proteins.
-ppi_setup['score_col'] = 'RSPGM_Score'   # Name of column for interaction score or probability in the network - Not used in this example.
+#ppi_setup['protein_cols'] = ['WormBase_ID_a', 'WormBase_ID_b']   # Name of columns for interacting proteins.
+#ppi_setup['score_col'] = 'RSPGM_Score'   # Name of column for interaction score or probability in the network. None to not use it.
+ppi_setup['protein_cols'] = ['protein1', 'protein2']
+ppi_setup['score_col'] = 'combined_score'
+#ppi_setup['score_col'] = None
 
 # Cutoff
 cutoff_setup['type'] = 'local_percentile'
-cutoff_setup['parameter'] = 0.8 # In this case is for percentile, representing to compute the 80-th percentile value.
+cutoff_setup['parameter'] = 0.8 # In this case is for percentile as fraction between 0 to 1, representing 0 to 100-th percentile.
 
 # Analysis
-analysis_setup['interaction_type'] = 'combined'
+analysis_setup['interaction_type'] = 'mediated'
 analysis_setup['subsampling_percentage'] = 0.8
 analysis_setup['iterations'] = 100
 analysis_setup['initial_seed'] = None # Turns on using a Seed for randomizing which cells are used in each iteration. Use None instead for not using a seed.
-analysis_setup['goa_experimental_evidence'] = False # True for considering experimental evidence to retrieve genes from GO terms
+analysis_setup['goa_experimental_evidence'] = True # True for considering experimental evidence to retrieve genes from GO terms
 analysis_setup['go_descendants'] = True   # This is for including the descendant GO terms (hierarchically below) to filter PPIs
 analysis_setup['clustering_algorithm'] = 'louvain'
-analysis_setup['clustering_method'] = 'raw'
+analysis_setup['clustering_method'] = 'average'
 analysis_setup['verbose'] = False
 analysis_setup['cpu_cores'] = 7 # To enable parallel computing
 
@@ -70,6 +74,10 @@ if __name__ == '__main__':
                                                    use_children=analysis_setup['go_descendants'],
                                                    verbose=False)
 
+    print("Data preprocessing took %.2f seconds" % (time.time() - start))
+
+    new_start = time.time()
+
     print("Running analysis with a subsampling percentage of {}% and {} iterations".format(
         int(100 * analysis_setup['subsampling_percentage']), analysis_setup['iterations'])
     )
@@ -89,13 +97,12 @@ if __name__ == '__main__':
     clustering = c2c.clustering.clustering_interactions(interaction_elements=subsampling_space.subsampled_interactions,
                                                         algorithm=analysis_setup['clustering_algorithm'],
                                                         method=analysis_setup['clustering_method'],
+                                                        package='networkx',
                                                         verbose=False)
 
     subsampling_space.clustering = clustering
+    print(clustering['clusters'].sort_values(by='Cluster'))
 
-    # Tryng clustering methods
-    hier_community = c2c.clustering.hierarchical_community(subsampling_space.clustering['final_cci_matrix'], algorithm='community_fastgreedy')
-
-    print(hier_community)
-    print("It took %.2f seconds" % (time.time() - start))
+    print("Computing CCI took %.2f seconds" % (time.time() - new_start))
+    print("Total analysis took %.2f seconds" % (time.time() - start))
 
