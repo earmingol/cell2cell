@@ -35,6 +35,7 @@ cutoff_setup['parameter'] = 0.75 # In this case is for percentile, representing 
 
 # Analysis
 analysis_setup['interaction_type'] = 'combined'
+analysis_setup['function_type'] = 'binary'
 analysis_setup['subsampling_percentage'] = 0.8
 analysis_setup['iterations'] = 5
 analysis_setup['initial_seed'] = None # Turns on using a Seed for randomizing which cells are used in each iteration. Use None instead for not using a seed.
