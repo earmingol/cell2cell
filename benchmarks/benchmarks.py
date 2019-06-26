@@ -22,7 +22,10 @@ def run_benchmark(files, rnaseq_setup, ppi_setup, cutoff_setup, analysis_setup, 
                                         log_transformation=rnaseq_setup['log_transform'],
                                         format='auto')
 
-    rnaseq_data = make_data.generate_fake_rnaseq(benchmark_setup['cell_number'], list(rnaseq_data_.index))
+    if 'cell_number' in benchmark_setup.keys():
+        rnaseq_data = make_data.generate_fake_rnaseq(benchmark_setup['cell_number'], list(rnaseq_data_.index))
+    else:
+        rnaseq_data = rnaseq_data_
 
     ppi_data = read_data.load_ppi(ppi_file=files['ppi'],
                                   interaction_columns=ppi_setup['protein_cols'],
