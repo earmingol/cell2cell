@@ -52,8 +52,8 @@ def go_terms_from_keyword(go_terms, keyword):
     Parameters
     ----------
     go_terms : networkx.Graph()
-        NetworkX Graph containing GO terms data from .obo file. It could be loaded with goenrich package or using function
-        cell2cell.io.load_go_terms(filename).
+        NetworkX Graph containing GO terms data from .obo file. It could be loaded using the goenrich package or the
+        function cell2cell.io.load_go_terms(filename).
 
     keyword : str
         Keyword to be included in the names of retrieved GO terms.
