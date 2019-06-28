@@ -36,8 +36,10 @@ def get_binary_ppi(ppi_data, binary_rnaseq_data, column='value'):
     #binary_ppi = pd.DataFrame(columns=ppi_data.columns)
     binary_ppi = ppi_data.copy()
     binary_ppi['A'] = binary_ppi['A'].apply(func=lambda row: binary_rnaseq_data.loc[row, column])
-    binary_ppi['B'] = binary_ppi['B'].apply(func=lambda row: binary_rnaseq_data.loc[row, column])
-    binary_ppi = binary_ppi[['A', 'B', 'score']].reset_index(drop=True)
+    binary_ppi = binary_ppi[['A', 'score']].reset_index(drop=True)
+
+    # binary_ppi['B'] = binary_ppi['B'].apply(func=lambda row: binary_rnaseq_data.loc[row, column])
+    # binary_ppi = binary_ppi[['A', 'B', 'score']].reset_index(drop=True)
     return binary_ppi
 
 
