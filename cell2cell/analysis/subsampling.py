@@ -52,6 +52,8 @@ class SubsamplingSpace:
         '''
         # Last position for sub-sampling when shuffling
         last_item = int(len(self.cell_ids) * subsampling_percentage)
+        if last_item == 0:
+            last_item = 1
 
         inputs = {'cells' : self.cell_ids,
                   'list_end' : last_item,
