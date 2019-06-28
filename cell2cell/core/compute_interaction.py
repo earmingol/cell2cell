@@ -24,18 +24,22 @@ def cci_score_from_binary(cell1, cell2):
         Score for the interaction of the of the pair of cells based on the presence of gene/proteins in the ppi network.
     '''
     c1_A = cell1.weighted_ppi['A'].values
-    c1_B = cell1.weighted_ppi['B'].values
-    c1_scores = cell1.weighted_ppi['score'].values
-
-
     c2_A = cell2.weighted_ppi['A'].values
-    c2_B = cell2.weighted_ppi['B'].values
-    c2_scores = cell2.weighted_ppi['score'].values
 
-    #numerator = np.dot(c1_A, c2_B) + np.dot(c1_B, c2_A)
-    numerator = np.nansum(c1_A * c2_B * c1_scores * c2_scores) + np.nansum(c1_B * c2_A  * c1_scores * c2_scores)
-    denominator = 0.5*(np.nansum(c1_A * c1_scores * c2_scores) + np.nansum(c1_B * c1_scores * c2_scores) +
-                       np.nansum(c2_A * c1_scores * c2_scores) + np.nansum(c2_B * c1_scores * c2_scores))
+    numerator = np.nansum(c1_A) + np.nansum(c2_A)
+    denominator = np.nansum(c1_A) + np.nansum(c2_A) - numerator
+
+
+    # NOT USED WITH BIDIRECTIONAL CCI
+    # c1_B = cell1.weighted_ppi['B'].values
+    # c2_B = cell2.weighted_ppi['B'].values
+
+    # POTENTIAL INTERACTION INDEX USING SCORES OF PROTEIN-PROTEIN INTERACTIONS
+    # c1_scores = cell1.weighted_ppi['score'].values
+    # c2_scores = cell2.weighted_ppi['score'].values
+    # numerator = np.nansum(c1_A * c2_B * c1_scores * c2_scores) + np.nansum(c1_B * c2_A  * c1_scores * c2_scores)
+    # denominator = 0.5*(np.nansum(c1_A * c1_scores * c2_scores) + np.nansum(c1_B * c1_scores * c2_scores) +
+    #                   np.nansum(c2_A * c1_scores * c2_scores) + np.nansum(c2_B * c1_scores * c2_scores))
 
     if denominator == 0:
         return 0.0
