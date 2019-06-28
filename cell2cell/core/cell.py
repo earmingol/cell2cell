@@ -45,7 +45,9 @@ class Cell:
         self.rnaseq_data.columns = ['value']
 
         # Binary ppi data
-        self.weighted_ppi = pd.DataFrame(columns=['A', 'B', 'score'])
+        self.weighted_ppi = pd.DataFrame(columns=['A','score'])
+        # 'B' removed after including bidirectional interactions to use only one column
+        # self.weighted_ppi = pd.DataFrame(columns=['A', 'B', 'score'])
 
         # Object created
         if verbose:
