@@ -13,7 +13,8 @@ from contextlib import closing
 from multiprocessing import Pool
 
 
-def clustering_interactions(interaction_elements, algorithm='louvain', method='raw', seed=None, package='networkx', n_jobs=1, verbose=True):
+def clustering_interactions(interaction_elements, algorithm='louvain', method='raw', seed=None, package='networkx',
+                            n_jobs=1, verbose=True):
 
     clustering = dict()
     clustering['algorithm'] = algorithm
@@ -46,7 +47,10 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
         chunksize = 1
 
         with closing(Pool(processes=agents)) as pool:
-            inputs = [{'interaction_elements' : element, 'seed' : seed, 'package' : package, 'verbose' : verbose} for element in interaction_elements]
+            inputs = [{'interaction_elements' : element,
+                       'seed' : seed,
+                       'package' : package,
+                       'verbose' : verbose} for element in interaction_elements]
 
             if algorithm == 'louvain':
                 clustering['raw_clusters'] = pool.map(parallel_computing.parallel_community_detection, inputs,
@@ -206,7 +210,7 @@ def compute_clustering_ratio(interaction_elements, raw_clusters):
             pair_clustering.loc[clustered_cells, clustered_cells] = old_pair + np.ones(old_pair.shape)
 
     cci_matrix = pair_clustering / pair_participation
-    np.fill_diagonal(cci_matrix.values, 0.0)  # Remove self interactions - In parallel clustering a cell always will be in te same cluster.
+    np.fill_diagonal(cci_matrix.values, 0.0)  # Remove self interactions - In parallel clustering, a cell always will be in the same cluster.
     cci_matrix = cci_matrix.replace(np.inf, np.nan)
     cci_matrix = cci_matrix.fillna(0.0)
     return cci_matrix
