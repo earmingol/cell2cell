@@ -12,9 +12,10 @@ def network_from_adjacency(adjacency_matrix, package='networkx'):
     elif package == 'igraph':
         A = adjacency_matrix.values
         network = igraph.Graph.Weighted_Adjacency((A > 0).tolist(), mode=igraph.ADJ_UNDIRECTED)
+
         # Add edge weights and node labels.
         network.es['weight'] = A[A.nonzero()]
-        network.vs['label'] = list(adjacency_matrix.columns)  # or a.index/a.columns
+        network.vs['label'] = list(adjacency_matrix.columns)
 
         Warning("iGraph functionalities are not completely implemented yet.")
     else:
