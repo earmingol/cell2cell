@@ -20,7 +20,7 @@ def export_variable(variable, filename):
             f_out.write(bytes_out[idx:idx + max_bytes])
 
 
-def network2gephi(cci_matrix, filename, format='excel'):
+def export_network_to_gephi(cci_matrix, filename, format='excel'):
     '''
     Export a CCI matrix into a spreadsheet readable by Gephi.
     '''
