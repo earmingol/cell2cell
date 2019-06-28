@@ -54,6 +54,23 @@ def ppi_name_match(ppi_data, names):
     return ppi_data
 
 
+def ppi_for_interaction_index(ppi_data, interaction_columns=['A', 'B'], verbose=True):
+    if verbose:
+        print("Making bidirectional PPI for CCI.")
+    ppi_A = ppi_data.copy()
+    col1 = ppi_A[[interaction_columns[0]]]
+    col2 = ppi_A[[interaction_columns[1]]]
+    ppi_B = ppi_data.copy()
+    ppi_B[interaction_columns[0]] = col2
+    ppi_B[interaction_columns[1]] = col1
+    if verbose:
+        print("Removing duplicates bidirectional in PPI network.")
+    final_ppi = pd.concat([ppi_A, ppi_B], join="inner")
+    final_ppi = final_ppi.drop_duplicates()
+    final_ppi.reset_index(inplace=True, drop=True)
+    return final_ppi
+
+
 def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
                        interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
     '''
@@ -94,4 +111,7 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
             new_ppi_data = pd.concat([contacts, mediated], ignore_index = True).drop_duplicates()
         else:
             raise NameError('Not valid interaction type to filter the PPI network')
+    new_ppi_data = ppi_for_interaction_index(ppi_data=new_ppi_data,
+                                             interaction_columns=interaction_columns,
+                                             verbose=verbose)
     return new_ppi_data
