@@ -157,7 +157,7 @@ class InteractionSpace():
         ### Compute pairwise physical interactions
         if verbose:
             print("Computing pairwise interactions")
-        for pair in self.interaction_elements['pairs']:  #@Erick, PARALLELIZE THIS FOR?
+        for pair in self.interaction_elements['pairs']:
             cell1 = self.interaction_elements['cells'][pair[0]]
             cell2 = self.interaction_elements['cells'][pair[1]]
             cci_score = self.pairwise_interaction(cell1,
@@ -166,6 +166,3 @@ class InteractionSpace():
                                                   verbose=verbose)
             self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_score
             self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_score
-
-        # Remove self interactions
-        #np.fill_diagonal(self.interaction_elements['cci_matrix'].values, 0.0)
