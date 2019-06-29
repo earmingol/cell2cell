@@ -91,6 +91,9 @@ def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_tran
     if log_transformation:
         cutoff_data = rnaseq.log10_transformation(cutoff_data)
 
+    cols = list(cutoff_data.columns)
+    cols[0] = 'value'
+    cutoff_data.columns = cols
     return cutoff_data
 
 
