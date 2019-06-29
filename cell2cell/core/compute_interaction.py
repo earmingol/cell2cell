@@ -23,35 +23,24 @@ def cci_score_from_binary(cell1, cell2):
     cci_score : float
         Score for the interaction of the of the pair of cells based on the presence of gene/proteins in the ppi network.
     '''
-    c1_A = cell1.weighted_ppi['A'].values
-    c2_A = cell2.weighted_ppi['A'].values
+    c1 = cell1.weighted_ppi['A'].values
+    c2 = cell2.weighted_ppi['B'].values
 
-    numerator = np.nansum(c1_A) + np.nansum(c2_A)
-    denominator = np.nansum(c1_A) + np.nansum(c2_A) - numerator
+    numerator = np.nansum(c1 * c2)
+    denominator = np.nansum(c1) + np.nansum(c2) - numerator
 
-
-    # NOT USED WITH BIDIRECTIONAL CCI
-    # c1_B = cell1.weighted_ppi['B'].values
-    # c2_B = cell2.weighted_ppi['B'].values
-
-    # POTENTIAL INTERACTION INDEX USING SCORES OF PROTEIN-PROTEIN INTERACTIONS
-    # c1_scores = cell1.weighted_ppi['score'].values
-    # c2_scores = cell2.weighted_ppi['score'].values
-    # numerator = np.nansum(c1_A * c2_B * c1_scores * c2_scores) + np.nansum(c1_B * c2_A  * c1_scores * c2_scores)
-    # denominator = 0.5*(np.nansum(c1_A * c1_scores * c2_scores) + np.nansum(c1_B * c1_scores * c2_scores) +
-    #                   np.nansum(c2_A * c1_scores * c2_scores) + np.nansum(c2_B * c1_scores * c2_scores))
-
-    if denominator == 0:
+    if denominator == 0.0:
         return 0.0
 
     cci_score = numerator / denominator
 
     if cci_score is np.nan:
         return 0.0
+
     return cci_score
 
 
-def cci_score_from_expression(cell1, cell2):
+def cci_score_from_sampled_weighted(cell1, cell2):
     '''
     Function that calculates an score for the interaction between two cells based on the interactions of their
     proteins with the proteins of the other cell. This score is based on the amount of each protein (expression level)
@@ -71,6 +60,19 @@ def cci_score_from_expression(cell1, cell2):
         Score for the interaction of the of the pair of cells based on the abundance of gene/proteins in the ppi network.
     '''
 
-    # NOT IMPLEMENTED YET
+    c1 = cell1.weighted_ppi['A'].values
+    c2 = cell2.weighted_ppi['B'].values
 
-    return 0.0
+    # Extended Jaccard similarity
+    numerator = np.nansum(c1 * c2)
+    denominator = np.nansum(c1 * c1) + np.nansum(c2 * c2) - numerator
+
+    if denominator == 0.0:
+        return 0.0
+
+    cci_score = numerator / denominator
+
+    if cci_score is np.nan:
+        return 0.0
+
+    return cci_score
