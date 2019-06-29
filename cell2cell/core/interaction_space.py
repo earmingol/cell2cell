@@ -79,12 +79,15 @@ class InteractionSpace():
 
     def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, function_type='binary',
                  cci_matrix_template=None, verbose=True):
-        if 'type' in gene_cutoffs.keys():
-            cutoff_values = cutoffs.get_cutoffs(rnaseq_data,
-                                                gene_cutoffs,
-                                                verbose=verbose)
+        if function_type == 'binary':
+            if 'type' in gene_cutoffs.keys():
+                cutoff_values = cutoffs.get_cutoffs(rnaseq_data,
+                                                    gene_cutoffs,
+                                                    verbose=verbose)
+            else:
+                raise ValueError("If dataframe is not included in gene_cutoffs, please provide the type of method to obtain them.")
         else:
-            raise ValueError("If dataframe is not included in gene_cutoffs, please provide the type of method to obtain them.")
+            cutoff_values = None
 
         self.interaction_type = interaction_type
         self.ppi_data = ppi_dict[self.interaction_type]
@@ -127,11 +130,13 @@ class InteractionSpace():
         '''
 
         if verbose:
-            print("Computing {} interaction between {} and {}".format(self.interaction_type, cell1.type,cell2.type))
+            print("Computing {} interaction between {} and {}".format(self.interaction_type, cell1.type, cell2.type))
 
         # Calculate cell-cell interaction score
         if function_type == 'binary':
             cci_score = compute_interaction.cci_score_from_binary(cell1, cell2)  # Function to compute cell-cell interaction score
+        elif function_type == 'sample_weighted':
+            cci_score = compute_interaction.cci_score_from_sampled_weighted(cell1, cell2)
         else:
             raise NotImplementedError("Function type {} to compute pairwise cell-interactions is not implemented".format(function_type))
         return cci_score
