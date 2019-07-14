@@ -19,6 +19,7 @@ def export_variable_with_pickle(variable, filename):
     with open(filename, 'wb') as f_out:
         for idx in range(0, len(bytes_out), max_bytes):
             f_out.write(bytes_out[idx:idx + max_bytes])
+    print(filename, ' was correctly saved.')
 
 
 def export_network_to_gephi(cci_matrix, filename, format='excel'):
