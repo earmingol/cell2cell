@@ -6,7 +6,7 @@ import networkx as nx
 import igraph
 
 
-def network_from_adjacency(adjacency_matrix, package='networkx'):
+def generate_network_from_adjacency(adjacency_matrix, package='networkx'):
     if package == 'networkx':
         network = nx.from_pandas_adjacency(adjacency_matrix)
     elif package == 'igraph':

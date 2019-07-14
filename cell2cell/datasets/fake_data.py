@@ -2,16 +2,13 @@
 
 from __future__ import absolute_import
 
-import numpy as np, pandas as pd
+import numpy as np
+import pandas as pd
 
-
-def rnaseq_permutation(rnaseq_data, column='all', seed=None):
-    '''This function performs permutations in a given column or all of them (when column='all').'''
-    pass
 
 def generate_fake_rnaseq(size, row_names, verbose=True):
     '''
-    This function generates a RNA-seq data-set that is genes wise normally distributed, in TPM units (each column).
+    This function generates a RNA-seq datasets-set that is genes wise normally distributed, in TPM units (each column).
     All row values for a given columns sum up to 1 million.
 
     Parameters

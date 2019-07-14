@@ -33,7 +33,7 @@ def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=
 
     if format == 'excel':
         table = pd.read_excel(filename, sheet_name=sheet_name)
-    elif (format == 'csv') | (format == 'txt'):
+    elif (format == 'csv') | (format == 'tsv') | (format == 'txt'):
         table = pd.read_csv(filename, sep=sep, compression=compression)
     else:
         print("Specify a correct format")
@@ -44,17 +44,17 @@ def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=
 
 def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation=False, **kwargs):
     '''
-    Load RNAseq data from table. Genes names are index. Cells/tissues/organs are columns.
+    Load RNAseq datasets from table. Genes names are index. Cells/tissues/organs are columns.
 
 
 
 
 
     '''
-    print("Opening RNAseq data from {}".format(rnaseq_file))
+    print("Opening RNAseq datasets from {}".format(rnaseq_file))
     rnaseq_data = load_table(rnaseq_file, **kwargs)
     rnaseq_data = rnaseq_data.set_index(gene_column)
-    # Keep only numeric data
+    # Keep only numeric datasets
     rnaseq_data = rnaseq_data.select_dtypes([np.number])
 
     if drop_nangenes:
@@ -68,21 +68,21 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation
 
 def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_transformation = False, **kwargs):
     '''
-    Load RNAseq data from table. Genes names are index. Cells/tissues/organs are columns.
+    Load RNAseq datasets from table. Genes names are index. Cells/tissues/organs are columns.
 
 
 
 
 
     '''
-    print("Opening Cutoff data from {}".format(cutoff_file))
+    print("Opening Cutoff datasets from {}".format(cutoff_file))
     cutoff_data = load_table(cutoff_file, **kwargs)
     if gene_column is not None:
         cutoff_data = cutoff_data.set_index(gene_column)
     else:
         cutoff_data = cutoff_data.set_index(cutoff_data.columns[0])
 
-    # Keep only numeric data
+    # Keep only numeric datasets
     cutoff_data = cutoff_data.select_dtypes([np.number])
 
     if drop_nangenes:
@@ -103,12 +103,12 @@ def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None,  **kw
 
 
     '''
-    print("Opening PPI data from {}".format(ppi_file))
+    print("Opening PPI datasets from {}".format(ppi_file))
     ppi_data = load_table(ppi_file,  **kwargs)
     unidirectional_ppi = ppi.remove_ppi_bidirectionality(ppi_data, interaction_columns)
     simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score)
     if rnaseq_genes is not None:
-        simplified_ppi = ppi.ppi_name_match(simplified_ppi, rnaseq_genes)
+        simplified_ppi = ppi.filter_ppi_by_proteins(simplified_ppi, rnaseq_genes)
     return simplified_ppi
 
 
@@ -143,7 +143,7 @@ def load_go_annotations(goa_file, experimental_evidence=True):
     return goa
 
 
-def import_pickle_variable(filename):
+def load_variable_with_pickle(filename):
     '''
     Import a large size variable in a python readable way using pickle.
     '''

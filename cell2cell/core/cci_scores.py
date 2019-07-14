@@ -5,7 +5,7 @@ from __future__ import absolute_import
 import numpy as np
 
 
-def cci_score_from_binary(cell1, cell2):
+def compute_cci_score_from_binary(cell1, cell2):
     '''
     Function that calculates an score for the interaction between two cells based on the interactions of their
     proteins with the proteins of the other cell. This score is based on ........
@@ -40,7 +40,7 @@ def cci_score_from_binary(cell1, cell2):
     return cci_score
 
 
-def cci_score_from_sampled_weighted(cell1, cell2):
+def compute_cci_score_from_weighted(cell1, cell2):
     '''
     Function that calculates an score for the interaction between two cells based on the interactions of their
     proteins with the proteins of the other cell. This score is based on the amount of each protein (expression level)

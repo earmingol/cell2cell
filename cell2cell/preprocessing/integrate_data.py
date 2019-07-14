@@ -6,15 +6,15 @@ import pandas as pd
 import cell2cell.preprocessing as preprocessing
 from cell2cell.preprocessing import ppi, gene_ontology
 
-## RNAseq data
-def get_modified_rnaseq(rnaseq_data, function_type='binary', **kwargs):
-    if function_type == 'binary':
+## RNAseq datasets
+def get_modified_rnaseq(rnaseq_data, score_type='binary', **kwargs):
+    if score_type == 'binary':
         modified_rnaseq = get_binary_rnaseq(rnaseq_data, kwargs['cutoffs'])
-    elif function_type == 'sample_weighted':
+    elif score_type == 'weighted':
         modified_rnaseq = preprocessing.divide_expression_by_max(rnaseq_data, axis=1)
     else:
-        # As other functions are implemented, other elif condition will be included here.
-        raise NotImplementedError("Function type {} to compute pairwise cell-interactions is not implemented".format(function_type))
+        # As other score types are implemented, other elif condition will be included here.
+        raise NotImplementedError("Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
     return modified_rnaseq
 
 
@@ -25,15 +25,16 @@ def get_binary_rnaseq(rnaseq_data, cutoffs):
     return binary_rnaseq_data
 
 
-## PPI data
-def get_weighted_ppi(ppi_data, modified_rnaseq_data, column='value', function_type='binary'):
-    if function_type == 'binary':
+## PPI datasets
+def get_weighted_ppi(ppi_data, modified_rnaseq_data, column='value', score_type='binary'):
+    if score_type == 'binary':
         weighted_ppi = get_binary_ppi(ppi_data, modified_rnaseq_data, column)
-    elif function_type == 'sample_weighted':
+    elif score_type == 'weighted':
         weighted_ppi = get_sample_weighted_ppi(ppi_data, modified_rnaseq_data, column)
     else:
-        # As other functions are implemented, other elif condition will be included here.
-        raise NotImplementedError("Function type {} to compute pairwise cell-interactions is not implemented".format(function_type))
+        # As other score types are implemented, other elif condition will be included here.
+        raise NotImplementedError(
+            "Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
     return weighted_ppi
 
 
@@ -53,60 +54,63 @@ def get_sample_weighted_ppi(ppi_data, modified_rnaseq_data, column='value'):
     return sample_weighted_ppi
 
 
-def ppis_from_proteins(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=['A', 'B']):
+def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=['A', 'B']):
 
-    all_ppis = dict()
-    all_ppis['contacts'] = ppi.filter_ppi_network(ppi_data,
+    ppi_dict = dict()
+    ppi_dict['contacts'] = ppi.filter_ppi_network(ppi_data,
                                               contact_proteins,
                                               mediator_proteins=mediator_proteins,
                                               interaction_type='contacts',
                                               interaction_columns=interaction_columns)
     if mediator_proteins is not None:
-        all_ppis['mediated'] = ppi.filter_ppi_network(ppi_data,
-                                                  contact_proteins,
-                                                  mediator_proteins=mediator_proteins,
-                                                  interaction_type='mediated',
-                                                  interaction_columns=interaction_columns)
+        ppi_dict['mediated'] = ppi.filter_ppi_network(ppi_data,
+                                                      contact_proteins,
+                                                      mediator_proteins=mediator_proteins,
+                                                      interaction_type='mediated',
+                                                      interaction_columns=interaction_columns)
 
-        all_ppis['combined'] = ppi.filter_ppi_network(ppi_data,
-                                                  contact_proteins,
-                                                  mediator_proteins=mediator_proteins,
-                                                  interaction_type='combined',
-                                                  interaction_columns=interaction_columns)
-    return all_ppis
+        ppi_dict['combined'] = ppi.filter_ppi_network(ppi_data,
+                                                      contact_proteins,
+                                                      mediator_proteins=mediator_proteins,
+                                                      interaction_type='combined',
+                                                      interaction_columns=interaction_columns)
+    return ppi_dict
 
 
-def ppis_from_goterms(ppi_data, go_annotations, go_terms, contact_go_terms, mediator_go_terms=None, use_children=True,
-                      go_header='GO', gene_header='Gene', interaction_columns=['A', 'B'], verbose=True):
+def get_ppi_dict_from_go_terms(ppi_data, go_annotations, go_terms, contact_go_terms, mediator_go_terms=None, use_children=True,
+                               go_header='GO', gene_header='Gene', interaction_columns=['A', 'B'], verbose=True):
 
     if use_children == True:
-        contact_proteins = gene_ontology.get_genes_from_parent_go_terms(go_annotations,
-                                                                        go_terms,
-                                                                        contact_go_terms,
-                                                                        go_header=go_header,
-                                                                        gene_header=gene_header,
-                                                                        verbose=verbose)
+        contact_proteins = gene_ontology.get_genes_from_go_hierarchy(go_annotations,
+                                                                     go_terms,
+                                                                     contact_go_terms,
+                                                                     go_header=go_header,
+                                                                     gene_header=gene_header,
+                                                                     verbose=verbose)
 
-        mediator_proteins = gene_ontology.get_genes_from_parent_go_terms(go_annotations,
-                                                                         go_terms,
-                                                                         mediator_go_terms,
-                                                                         go_header=go_header,
-                                                                         gene_header=gene_header,
-                                                                         verbose=verbose)
+        mediator_proteins = gene_ontology.get_genes_from_go_hierarchy(go_annotations,
+                                                                      go_terms,
+                                                                      mediator_go_terms,
+                                                                      go_header=go_header,
+                                                                      gene_header=gene_header,
+                                                                      verbose=verbose)
     else:
-        contact_proteins = gene_ontology.go2genes(go_annotations,
-                                                  contact_go_terms,
-                                                  go_header=go_header,
-                                                  gene_header=gene_header)
+        contact_proteins = gene_ontology.get_genes_from_go_terms(go_annotations,
+                                                                 contact_go_terms,
+                                                                 go_header=go_header,
+                                                                 gene_header=gene_header)
 
-        mediator_proteins = gene_ontology.go2genes(go_annotations,
-                                                   mediator_go_terms,
-                                                   go_header=go_header,
-                                                   gene_header=gene_header)
+        mediator_proteins = gene_ontology.get_genes_from_go_terms(go_annotations,
+                                                                  mediator_go_terms,
+                                                                  go_header=go_header,
+                                                                  gene_header=gene_header)
 
-    ppi_dict = ppis_from_proteins(ppi_data,
-                                  contact_proteins,
-                                  mediator_proteins,
-                                  interaction_columns=interaction_columns)
+    # Avoid same genes in list
+    contact_proteins = list(set(contact_proteins) - set(mediator_proteins))
+
+    ppi_dict = get_ppi_dict_from_proteins(ppi_data,
+                                          contact_proteins,
+                                          mediator_proteins,
+                                          interaction_columns=interaction_columns)
 
     return ppi_dict

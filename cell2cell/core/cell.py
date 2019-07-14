@@ -6,7 +6,7 @@ import pandas as pd
 
 class Cell:
     '''
-    Specific cell/tissue/organ element containing associated RNAseq data.
+    Specific cell/tissue/organ element containing associated RNAseq datasets.
 
     Parameters
     ----------
@@ -22,7 +22,7 @@ class Cell:
         Identifier number of the each instance generated.
 
     type : str
-        Identifier name of the respective cell/tissue/organ that RNAseq data belongs to.
+        Identifier name of the respective cell/tissue/organ that RNAseq datasets belongs to.
 
     rnaseq_data : pandas DataFrame object
         Copy of sc_rnaseq_data.
@@ -40,11 +40,11 @@ class Cell:
 
         self.type = str(sc_rnaseq_data.columns[-1])
 
-        # RNAseq data
+        # RNAseq datasets
         self.rnaseq_data = sc_rnaseq_data.copy()
         self.rnaseq_data.columns = ['value']
 
-        # Binary ppi data
+        # Binary ppi datasets
         self.weighted_ppi = pd.DataFrame(columns=['A','score'])
         # 'B' removed after including bidirectional interactions to use only one column
         # self.weighted_ppi = pd.DataFrame(columns=['A', 'B', 'score'])
@@ -62,9 +62,9 @@ class Cell:
     __repr__ = __str__
 
 
-def cells_from_rnaseq(rnaseq_data, cell_columns=None, verbose=True):
+def get_cells_from_rnaseq(rnaseq_data, cell_columns=None, verbose=True):
     '''
-    Creates new instances of Cells based on the RNAseq data and the cell/tissue/organ types provided.
+    Creates new instances of Cells based on the RNAseq datasets and the cell/tissue/organ types provided.
 
     Parameters
     ----------
@@ -73,7 +73,7 @@ def cells_from_rnaseq(rnaseq_data, cell_columns=None, verbose=True):
         cell/tissue/organ type. Gene ids are the indexes of this DataFrame.
 
     cell columns : array-like
-        List of strings containing the names of cell types in RNAseq data.
+        List of strings containing the names of cell types in RNAseq datasets.
 
     verbose : boolean, True by default
         Value to indicate if stdout will be printed.
@@ -81,11 +81,11 @@ def cells_from_rnaseq(rnaseq_data, cell_columns=None, verbose=True):
     Returns
     -------
     cells : dict
-        Dictionary containing all Cell instances generated from RNAseq data to represent each cell/tissue/organ type.
+        Dictionary containing all Cell instances generated from RNAseq datasets to represent each cell/tissue/organ type.
         The keys of this dictionary are the names of the corresponding Cell instance.
     '''
     if verbose:
-        print("Generating objects according to RNAseq data provided")
+        print("Generating objects according to RNAseq datasets provided")
     cells = dict()
     if cell_columns is None:
         cell_columns = rnaseq_data.columns

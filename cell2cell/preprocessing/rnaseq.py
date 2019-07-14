@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 
-### Pre-process RNAseq data
+### Pre-process RNAseq datasets
 def drop_empty_genes(rnaseq_data):
     data = rnaseq_data.copy()
     data = data.fillna(0)  # Put zeros to all missing values

@@ -6,15 +6,16 @@ import numpy as np
 import pandas as pd
 import random
 
-from cell2cell.clustering import compute_average
+from cell2cell.clustering import compute_avg_cci_matrix
 from cell2cell.core import InteractionSpace
-from cell2cell.extras import parallel_computing
+from cell2cell.utils import parallel_computing
 from contextlib import closing
 from multiprocessing import Pool
 
+
 class SubsamplingSpace:
 
-    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, function_type='binary',
+    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
                  subsampling_percentage=0.8, iterations=1000, initial_seed=None, n_jobs=1, verbose=True):
 
         if verbose:
@@ -33,17 +34,17 @@ class SubsamplingSpace:
                                                                      ppi_dict=ppi_dict,
                                                                      interaction_type=interaction_type,
                                                                      gene_cutoffs=gene_cutoffs,
-                                                                     function_type=function_type,
+                                                                     score_type=score_type,
                                                                      subsampling_percentage=subsampling_percentage,
                                                                      iterations=iterations,
                                                                      initial_seed=initial_seed,
                                                                      n_jobs=n_jobs,
                                                                      verbose=verbose)
 
-        self.average_cci_matrix = compute_average(self.subsampled_interactions)
+        self.average_cci_matrix = compute_avg_cci_matrix(self.subsampled_interactions)
 
 
-    def subsampling_interactions(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, function_type='binary',
+    def subsampling_interactions(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
                                  subsampling_percentage=0.8, iterations=1000, initial_seed=None, n_jobs=1, verbose=True):
         '''
         This function performs the sub-sampling method by generating a list of cells to consider in each iteration.
@@ -61,7 +62,7 @@ class SubsamplingSpace:
                   'ppi' : ppi_dict,
                   'interaction_type' : interaction_type,
                   'cutoffs' : gene_cutoffs,
-                  'function_type' : function_type,
+                  'score_type' : score_type,
                   'cci_matrix' : self.cci_matrix_template,
                   'verbose' :verbose
                   }
@@ -83,7 +84,7 @@ class SubsamplingSpace:
         return results
 
 
-def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, function_type='binary',
+def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
                           cci_matrix_template=None, seed=None, verbose=True):
     '''
     Functional unit to perform parallel computing in Sub-sampling Space
@@ -94,18 +95,26 @@ def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interactio
     random.shuffle(cell_ids_)
     included_cells = cell_ids_[:last_item]
 
-    interaction_space = InteractionSpace(rnaseq_data[included_cells],
-                                         ppi_dict,
-                                         interaction_type,
-                                         gene_cutoffs,
-                                         function_type=function_type,
+    interaction_space = InteractionSpace(rnaseq_data=rnaseq_data[included_cells],
+                                         ppi_dict=ppi_dict,
+                                         interaction_type=interaction_type,
+                                         gene_cutoffs=gene_cutoffs,
+                                         score_type=score_type,
                                          cci_matrix_template=cci_matrix_template,
                                          verbose=verbose)
 
-    interaction_space.compute_pairwise_interactions(function_type=function_type,
+    interaction_space.compute_pairwise_interactions(score_type=score_type,
                                                     verbose=verbose)
 
-    iteration_elements = dict()
-    iteration_elements['cells'] = included_cells
-    iteration_elements['cci_matrix'] = interaction_space.interaction_elements['cci_matrix']
-    return iteration_elements
+    interaction_elements = dict()
+    interaction_elements['cells'] = included_cells
+    interaction_elements['cci_matrix'] = interaction_space.interaction_elements['cci_matrix']
+    interaction_elements['interaction_type'] = interaction_type
+
+    empty_ppi = np.empty(ppi_dict[interaction_type].shape)
+    empty_ppi[:] = np.nan
+    interaction_elements['ppis'] = dict.fromkeys(cell_ids_, pd.DataFrame(empty_ppi, columns=['A', 'B', 'score']))
+
+    for name, cell in interaction_space.interaction_elements['cells'].items():
+        interaction_elements['ppis'][name] = cell.weighted_ppi
+    return interaction_elements

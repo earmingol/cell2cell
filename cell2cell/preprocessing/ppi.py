@@ -47,14 +47,14 @@ def simplify_ppi(ppi_data, interaction_columns, score=None, verbose=True):
     return simple_ppi
 
 
-def ppi_name_match(ppi_data, names):
-    ppi_data = ppi_data[ppi_data['A'].isin(names)]
-    ppi_data = ppi_data[ppi_data['B'].isin(names)]
+def filter_ppi_by_proteins(ppi_data, proteins):
+    ppi_data = ppi_data[ppi_data['A'].isin(proteins)]
+    ppi_data = ppi_data[ppi_data['B'].isin(proteins)]
     ppi_data = ppi_data.reset_index(drop=True)
     return ppi_data
 
 
-def ppi_for_interaction_index(ppi_data, interaction_columns=['A', 'B'], verbose=True):
+def bidirectional_ppi_for_cci(ppi_data, interaction_columns=['A', 'B'], verbose=True):
     if verbose:
         print("Making bidirectional PPI for CCI.")
     ppi_A = ppi_data.copy()
@@ -64,7 +64,7 @@ def ppi_for_interaction_index(ppi_data, interaction_columns=['A', 'B'], verbose=
     ppi_B[interaction_columns[0]] = col2
     ppi_B[interaction_columns[1]] = col1
     if verbose:
-        print("Removing duplicates bidirectional in PPI network.")
+        print("Removing duplicates in bidirectional PPI network.")
     final_ppi = pd.concat([ppi_A, ppi_B], join="inner")
     final_ppi = final_ppi.drop_duplicates()
     final_ppi.reset_index(inplace=True, drop=True)
@@ -111,7 +111,7 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
             new_ppi_data = pd.concat([contacts, mediated], ignore_index = True).drop_duplicates()
         else:
             raise NameError('Not valid interaction type to filter the PPI network')
-    new_ppi_data = ppi_for_interaction_index(ppi_data=new_ppi_data,
+    new_ppi_data = bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
                                              interaction_columns=interaction_columns,
                                              verbose=verbose)
     return new_ppi_data

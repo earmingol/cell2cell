@@ -6,19 +6,43 @@ import community
 import leidenalg
 import numpy as np
 import pandas as pd
+import scipy.cluster.hierarchy as hc
+import scipy.spatial as sp
 
-from cell2cell.core import networks
-from cell2cell.extras import parallel_computing
+
+from cell2cell.utils import parallel_computing, networks
 from contextlib import closing
 from multiprocessing import Pool
 
 
-def clustering_interactions(interaction_elements, algorithm='louvain', method='raw', seed=None, package='networkx',
-                            n_jobs=1, verbose=True):
+# Distance-based algorithms
+def compute_linkage(distance_matrix, method='ward'):
+    return hc.linkage(sp.distance.squareform(distance_matrix), method=method)
+
+
+def get_clusters_from_linkage(df, linkage, k, criterion='maxclust', axis=1):
+    if axis == 0:
+        elements = list(df.index)
+    else:
+        elements = list(df.columns)
+
+    cluster_ids = hc.fcluster(linkage, k, criterion=criterion)
+    clusters = dict()
+    for c in np.unique(cluster_ids):
+        clusters[c] = []
+
+    for i, c in enumerate(cluster_ids):
+        clusters[c].append(elements[i])
+    return clusters
+
+
+# Graph-based algorithms
+def graph_clustering(subsampled_interactions, algorithm='louvain', method='raw', seed=None, package='networkx',
+                     n_jobs=1, verbose=True):
 
     clustering = dict()
     clustering['algorithm'] = algorithm
-    if len(interaction_elements) == 1:
+    if len(subsampled_interactions) == 1:
         print("Clustering method automatically set to 'average' because number of iterations is 1.")
         clustering['method'] = 'average'
     else:
@@ -27,7 +51,7 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
 
 
     if clustering['method'] == 'average':
-        clustering['final_cci_matrix'] = compute_average(interaction_elements)
+        clustering['final_cci_matrix'] = compute_avg_cci_matrix(subsampled_interactions)
         if algorithm == 'louvain':
             clustering.update(community_detection(cci_matrix=clustering['final_cci_matrix'],
                                                   seed=seed,
@@ -47,15 +71,15 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
         chunksize = 1
 
         with closing(Pool(processes=agents)) as pool:
-            inputs = [{'interaction_elements' : element,
+            inputs = [{'subsampled_interactions' : element,
                        'seed' : seed,
                        'package' : package,
-                       'verbose' : verbose} for element in interaction_elements]
+                       'verbose' : verbose} for element in subsampled_interactions]
 
             if algorithm == 'louvain':
                 clustering['raw_clusters'] = pool.map(parallel_computing.parallel_community_detection, inputs,
                                                       chunksize)
-                clustering['final_cci_matrix'] = compute_clustering_ratio(interaction_elements=interaction_elements,
+                clustering['final_cci_matrix'] = compute_clustering_ratio(subsampled_interactions=subsampled_interactions,
                                                                           raw_clusters=clustering['raw_clusters'])
                 clustering.update(community_detection(cci_matrix=clustering['final_cci_matrix'],
                                                       verbose=verbose))
@@ -64,7 +88,7 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
             elif algorithm == 'leiden':
                 clustering['raw_clusters'] = pool.map(parallel_computing.parallel_leiden_community, inputs,
                                                       chunksize)
-                clustering['final_cci_matrix'] = compute_clustering_ratio(interaction_elements=interaction_elements,
+                clustering['final_cci_matrix'] = compute_clustering_ratio(subsampled_interactions=subsampled_interactions,
                                                                           raw_clusters=clustering['raw_clusters'])
                 clustering.update(leiden_community(cci_matrix=clustering['final_cci_matrix'],
                                                    verbose=verbose))
@@ -75,6 +99,7 @@ def clustering_interactions(interaction_elements, algorithm='louvain', method='r
 
 
     return clustering
+
 
 # Community algorithms
 def community_detection(cci_matrix, randomize = True, seed = None, package='networkx', verbose=True):
@@ -98,8 +123,8 @@ def community_detection(cci_matrix, randomize = True, seed = None, package='netw
     if verbose:
         print("Performing Community Detection")
 
-    G = networks.network_from_adjacency(cci_matrix,
-                                        package=package)
+    G = networks.generate_network_from_adjacency(cci_matrix,
+                                                 package=package)
 
     if package == 'networkx':
         # Compute the best partition
@@ -135,8 +160,8 @@ def leiden_community(cci_matrix, verbose = True):
 
     if verbose:
         print("Performing Leiden Algorithm for community.")
-    G = networks.network_from_adjacency(cci_matrix,
-                                        package='igraph')
+    G = networks.generate_network_from_adjacency(cci_matrix,
+                                                 package='igraph')
 
     partition = leidenalg.find_partition(G, leidenalg.ModularityVertexPartition)
 
@@ -152,8 +177,8 @@ def leiden_community(cci_matrix, verbose = True):
 
 
 def hierarchical_community(cci_matrix, algorithm='walktrap'):
-    G = networks.network_from_adjacency(cci_matrix,
-                                        package='igraph')
+    G = networks.generate_network_from_adjacency(cci_matrix,
+                                                 package='igraph')
     if algorithm == 'walktrap':
         hier_community = G.community_walktrap(weights='weight',
                                               steps=100)
@@ -168,25 +193,25 @@ def hierarchical_community(cci_matrix, algorithm='walktrap'):
 
 
 # Algorithms for computing a final CCI matrix from all iterations.
-def compute_average(interaction_elements):
-    matrices = [element['cci_matrix'].values for element in interaction_elements]
+def compute_avg_cci_matrix(subsampled_interactions):
+    matrices = [element['cci_matrix'].values for element in subsampled_interactions]
     mean_matrix = np.nanmean(matrices, axis=0)
     mean_matrix = pd.DataFrame(mean_matrix,
-                               index=interaction_elements[0]['cci_matrix'].index,
-                               columns=interaction_elements[0]['cci_matrix'].columns)
+                               index=subsampled_interactions[0]['cci_matrix'].index,
+                               columns=subsampled_interactions[0]['cci_matrix'].columns)
     mean_matrix = mean_matrix.fillna(0.0)
     # Remove self interactions
     #np.fill_diagonal(mean_matrix.values, 0.0)
     return mean_matrix
 
 
-def compute_clustering_ratio(interaction_elements, raw_clusters):
+def compute_clustering_ratio(subsampled_interactions, raw_clusters):
     '''
     This function computes the ratio of times that each pair of cells that was clustered together.
     '''
 
-    # Initialize matrices to store data
-    total_cells = list(interaction_elements[0]['cci_matrix'].index)
+    # Initialize matrices to store datasets
+    total_cells = list(subsampled_interactions[0]['cci_matrix'].index)
     pair_participation = pd.DataFrame(np.zeros((len(total_cells), len(total_cells))),
                                       columns=total_cells,
                                       index=total_cells)
@@ -194,7 +219,7 @@ def compute_clustering_ratio(interaction_elements, raw_clusters):
     pair_clustering = pair_participation.copy()
 
     # Compute ratios
-    for i, element in enumerate(interaction_elements):
+    for i, element in enumerate(subsampled_interactions):
         included_cells = element['cells']
 
         # Update Total Participation
