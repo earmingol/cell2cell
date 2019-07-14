@@ -1,0 +1,28 @@
+#SampleID	type
+Germline	Sexual cell
+Intestinal/rectal_muscle	Digestive
+Coelomocytes	Immunity
+Ciliated_sensory_neurons	Neuron
+Seam_cells	Body
+Non-seam_hypodermis	Body
+Pharyngeal_epithelia	Digestive
+Touch_receptor_neurons	Neuron
+Body_wall_muscle	Body
+Cholinergic_neurons	Neuron
+Distal_tip_cells	Sexual cell
+Vulval_precursors	Sexual cell
+Other_interneurons	Neuron
+GABAergic_neurons	Neuron
+Am/PH_sheath_cells	Body
+Pharyngeal_muscle	Digestive
+Pharyngeal_neurons	Neuron
+Oxygen_sensory_neurons	Neuron
+Somatic_gonad_precursors	Sexual cell
+flp-1(+)_interneurons	Neuron
+Canal_associated_neurons	Neuron
+Pharyngeal_gland	Digestive
+Sex_myoblasts	Sexual cell
+Excretory_cells	Excretion
+Socket_cells	Body
+Rectum	Digestive
+Intestine	Digestive
