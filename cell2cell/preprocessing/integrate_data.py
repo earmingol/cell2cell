@@ -10,8 +10,8 @@ from cell2cell.preprocessing import ppi, gene_ontology
 def get_modified_rnaseq(rnaseq_data, score_type='binary', **kwargs):
     if score_type == 'binary':
         modified_rnaseq = get_binary_rnaseq(rnaseq_data, kwargs['cutoffs'])
-    elif score_type == 'weighted':
-        modified_rnaseq = preprocessing.divide_expression_by_max(rnaseq_data, axis=1)
+    elif score_type == 'absolute':
+        modified_rnaseq = rnaseq_data.copy()
     else:
         # As other score types are implemented, other elif condition will be included here.
         raise NotImplementedError("Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
@@ -26,32 +26,12 @@ def get_binary_rnaseq(rnaseq_data, cutoffs):
 
 
 ## PPI datasets
-def get_weighted_ppi(ppi_data, modified_rnaseq_data, column='value', score_type='binary'):
-    if score_type == 'binary':
-        weighted_ppi = get_binary_ppi(ppi_data, modified_rnaseq_data, column)
-    elif score_type == 'weighted':
-        weighted_ppi = get_sample_weighted_ppi(ppi_data, modified_rnaseq_data, column)
-    else:
-        # As other score types are implemented, other elif condition will be included here.
-        raise NotImplementedError(
-            "Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
+def get_weighted_ppi(ppi_data, modified_rnaseq_data, column='value'):
+    weighted_ppi = ppi_data.copy()
+    weighted_ppi['A'] = weighted_ppi['A'].apply(func=lambda row: modified_rnaseq_data.loc[row, column])
+    weighted_ppi['B'] = weighted_ppi['B'].apply(func=lambda row: modified_rnaseq_data.loc[row, column])
+    weighted_ppi = weighted_ppi[['A', 'B', 'score']].reset_index(drop=True)
     return weighted_ppi
-
-
-def get_binary_ppi(ppi_data, binary_rnaseq_data, column='value'):
-    binary_ppi = ppi_data.copy()
-    binary_ppi['A'] = binary_ppi['A'].apply(func=lambda row: binary_rnaseq_data.loc[row, column])
-    binary_ppi['B'] = binary_ppi['B'].apply(func=lambda row: binary_rnaseq_data.loc[row, column])
-    binary_ppi = binary_ppi[['A', 'B', 'score']].reset_index(drop=True)
-    return binary_ppi
-
-
-def get_sample_weighted_ppi(ppi_data, modified_rnaseq_data, column='value'):
-    sample_weighted_ppi = ppi_data.copy()
-    sample_weighted_ppi['A'] = sample_weighted_ppi['A'].apply(func=lambda row: modified_rnaseq_data.loc[row, column])
-    sample_weighted_ppi['B'] = sample_weighted_ppi['B'].apply(func=lambda row: modified_rnaseq_data.loc[row, column])
-    sample_weighted_ppi = sample_weighted_ppi[['A', 'B', 'score']].reset_index(drop=True)
-    return sample_weighted_ppi
 
 
 def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=['A', 'B']):
