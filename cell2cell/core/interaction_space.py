@@ -46,8 +46,8 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, interaction_type, c
 
     # Cell-specific binary ppi
     for cell_instance in interaction_space['cells'].values():
-        cell_instance.weighted_ppi = integrate_data.get_weighted_ppi(ppi_data,
-                                                                     cell_instance.rnaseq_data,
+        cell_instance.weighted_ppi = integrate_data.get_weighted_ppi(ppi_data=ppi_data,
+                                                                     modified_rnaseq_data=cell_instance.rnaseq_data,
                                                                      column='value')
 
     # Cell-cell interaction matrix
@@ -77,10 +77,12 @@ class InteractionSpace():
 
     def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
                  cci_matrix_template=None, verbose=True):
-        if score_type == 'binary':
+
+        self.score_type = score_type
+        if self.score_type == 'binary':
             if 'type' in gene_cutoffs.keys():
-                cutoff_values = cutoffs.get_cutoffs(rnaseq_data,
-                                                    gene_cutoffs,
+                cutoff_values = cutoffs.get_cutoffs(rnaseq_data=rnaseq_data,
+                                                    parameters=gene_cutoffs,
                                                     verbose=verbose)
             else:
                 raise ValueError("If dataframe is not included in gene_cutoffs, please provide the type of method to obtain them.")
@@ -90,13 +92,13 @@ class InteractionSpace():
         self.interaction_type = interaction_type
         self.ppi_data = ppi_dict[self.interaction_type]
 
-        self.modified_rnaseq = integrate_data.get_modified_rnaseq(rnaseq_data,
-                                                                  score_type=score_type,
+        self.modified_rnaseq = integrate_data.get_modified_rnaseq(rnaseq_data=rnaseq_data,
+                                                                  score_type=self.score_type,
                                                                   cutoffs=cutoff_values)
 
-        self.interaction_elements = generate_interaction_elements(self.modified_rnaseq,
-                                                                  self.ppi_data,
-                                                                  self.interaction_type,
+        self.interaction_elements = generate_interaction_elements(modified_rnaseq=self.modified_rnaseq,
+                                                                  ppi_data=self.ppi_data,
+                                                                  interaction_type=self.interaction_type,
                                                                   cci_matrix_template=cci_matrix_template,
                                                                   verbose=verbose)
 
