@@ -10,8 +10,7 @@ import numpy as np
 import pandas as pd
 
 
-def generate_interaction_elements(modified_rnaseq, ppi_data, interaction_type, score_type='binary',
-                                  cci_matrix_template=None, verbose=True):
+def generate_interaction_elements(modified_rnaseq, ppi_data, interaction_type, cci_matrix_template=None, verbose=True):
     '''Create all elements of pairwise interactions needed to perform the analyses.
     All these variables are used by the class InteractionSpace.
 
@@ -49,7 +48,6 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, interaction_type, s
     for cell_instance in interaction_space['cells'].values():
         cell_instance.weighted_ppi = integrate_data.get_weighted_ppi(ppi_data,
                                                                      cell_instance.rnaseq_data,
-                                                                     score_type=score_type,
                                                                      column='value')
 
     # Cell-cell interaction matrix
@@ -99,10 +97,8 @@ class InteractionSpace():
         self.interaction_elements = generate_interaction_elements(self.modified_rnaseq,
                                                                   self.ppi_data,
                                                                   self.interaction_type,
-                                                                  score_type=score_type,
                                                                   cci_matrix_template=cci_matrix_template,
                                                                   verbose=verbose)
-
 
     def pairwise_interaction(self, cell1, cell2, score_type='binary', verbose=True):
         '''
@@ -134,9 +130,9 @@ class InteractionSpace():
 
         # Calculate cell-cell interaction score
         if score_type == 'binary':
-            cci_score = cci_scores.compute_cci_score_from_binary(cell1, cell2)  # Function to compute cell-cell interaction score
-        elif score_type == 'sample_weighted':
-            cci_score = cci_scores.compute_cci_score_from_weighted(cell1, cell2)
+            cci_score = cci_scores.compute_jaccard_like_cci_score(cell1, cell2)
+        elif score_type == 'absolute':
+            cci_score = cci_scores.compute_correlation_cci_score(cell1, cell2)
         else:
             raise NotImplementedError("Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
         return cci_score
