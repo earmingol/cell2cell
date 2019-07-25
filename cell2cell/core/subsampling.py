@@ -16,7 +16,7 @@ from multiprocessing import Pool
 class SubsamplingSpace:
 
     def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
-                 subsampling_percentage=0.8, iterations=1000, initial_seed=None, n_jobs=1, verbose=True):
+                 subsampling_percentage=1.0, iterations=1, initial_seed=None, n_jobs=1, verbose=True):
 
         if verbose:
             print("Computing interactions by sub-sampling a"
@@ -45,7 +45,7 @@ class SubsamplingSpace:
 
 
     def subsampling_interactions(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
-                                 subsampling_percentage=0.8, iterations=1000, initial_seed=None, n_jobs=1, verbose=True):
+                                 subsampling_percentage=1.0, iterations=1, initial_seed=None, n_jobs=1, verbose=True):
         '''
         This function performs the sub-sampling method by generating a list of cells to consider in each iteration.
         Then, for each list of cells a InteractionSpace is generated to perform the cell2cell analysis and return the
