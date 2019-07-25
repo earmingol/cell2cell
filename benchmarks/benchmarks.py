@@ -8,7 +8,7 @@ import time
 def timeit(func, *args, **kwargs):
     '''
     This function measures the running time of a given function.
-    Borrowed from George Armstrong (https://github.com/gwarmstrong).
+    Borrowed from George Armstrong's Github repo (https://github.com/gwarmstrong).
     '''
     t0 = time.time()
     output = func(*args, **kwargs)
