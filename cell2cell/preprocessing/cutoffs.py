@@ -8,12 +8,12 @@ import numpy as np
 import pandas as pd
 
 
-def get_local_percentile_cutoffs(rnaseq_data, percentile = 0.8):
+def get_local_percentile_cutoffs(rnaseq_data, percentile = 0.75):
     cutoffs = rnaseq_data.quantile(percentile, axis=1).to_frame()
     cutoffs.columns = ['value']
     return cutoffs
 
-def get_global_percentile_cutoffs(rnaseq_data, percentile = 0.8):
+def get_global_percentile_cutoffs(rnaseq_data, percentile = 0.75):
     cutoffs = pd.DataFrame(index=rnaseq_data.index, columns=['value'])
     cutoffs['value'] = np.quantile(rnaseq_data.values, percentile)
     return cutoffs
