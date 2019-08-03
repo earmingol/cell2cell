@@ -8,14 +8,15 @@ import seaborn as sns
 import matplotlib as mlp
 import matplotlib.pyplot as plt
 
+import scipy.cluster.hierarchy as hc
+import scipy.spatial as sp
+
 import skbio
 
-from cell2cell.clustering import compute_linkage
 
-
-def hierarchical_clustering(distance_matrix, method='ward', title='', filename=None, *args):
+def hierarchical_clustering(distance_matrix, method='ward', title='', filename=None, **kwargs):
     # Compute linkage
-    linkage = compute_linkage(distance_matrix, method=method)
+    linkage = hc.linkage(sp.distance.squareform(distance_matrix), method=method)
 
     # Plot hierarchical clustering
     hier = sns.clustermap(distance_matrix,
@@ -35,6 +36,7 @@ def hierarchical_clustering(distance_matrix, method='ward', title='', filename=N
 
     vmax = np.nanmax(distance_matrix.values[distance_matrix.values != 0])
     vmin = np.nanmin(distance_matrix.values[distance_matrix.values != 0])
+
     # Plot hierarchical clustering (triagular)
     hier = sns.clustermap(distance_matrix,
                           col_linkage=linkage,
@@ -42,7 +44,7 @@ def hierarchical_clustering(distance_matrix, method='ward', title='', filename=N
                           vmin=vmin,
                           vmax=vmax,
                           mask=mask,
-                          *args
+                          **kwargs
                           )
 
     hier.ax_row_dendrogram.set_visible(False)
@@ -51,10 +53,22 @@ def hierarchical_clustering(distance_matrix, method='ward', title='', filename=N
     # Apply offset transform to all x ticklabels.
     yrange = hier.ax_heatmap.get_ylim()[0] - hier.ax_heatmap.get_ylim()[1]
 
+    label_x1 = hier.ax_heatmap.xaxis.get_majorticklabels()[0]
+    label_x2 = hier.ax_heatmap.xaxis.get_majorticklabels()[1]
+
+    scaler_x = abs(label_x1.get_transform().transform(label_x1.get_position()) \
+                   - label_x2.get_transform().transform(label_x2.get_position()))
+
+    label_y1 = hier.ax_heatmap.yaxis.get_majorticklabels()[0]
+    label_y2 = hier.ax_heatmap.yaxis.get_majorticklabels()[1]
+
+    scaler_y = abs(label_y1.get_transform().transform(label_y1.get_position()) \
+                   - label_y2.get_transform().transform(label_y2.get_position()))
+
     for i, label in enumerate(hier.ax_heatmap.xaxis.get_majorticklabels()):
-        scaler = 19. / 72.
-        dx = -0.5 * scaler
-        dy = scaler * (yrange - i - 1.)
+        # scaler = 19./72. 72 is for inches
+        dx = -0.5 * scaler_x[0] / 72.;
+        dy = scaler_y[1] * (yrange - i - .5) / 72.
         offset = mlp.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
         label.set_transform(label.get_transform() + offset)
 
