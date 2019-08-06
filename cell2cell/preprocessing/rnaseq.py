@@ -38,4 +38,15 @@ def divide_expression_by_max(rnaseq_data, axis=1):
     indicates that each gene is divided by its max value across samples.
     '''
     new_data = rnaseq_data.div(rnaseq_data.max(axis=axis), axis=int(not axis))
+    new_data = new_data.fillna(0.0).replace(np.inf, 0.0)
+    return new_data
+
+
+def divide_expression_by_mean(rnaseq_data, axis=1):
+    '''
+    This function divides each gene value given the median value. Axis = 0 is the max of each sample, while axis = 1
+    indicates that each gene is divided by its median value across samples.
+    '''
+    new_data = rnaseq_data.div(rnaseq_data.mean(axis=axis), axis=int(not axis))
+    new_data = new_data.fillna(0.0).replace(np.inf, 0.0)
     return new_data
