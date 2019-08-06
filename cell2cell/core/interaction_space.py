@@ -75,7 +75,7 @@ class InteractionSpace():
 
     '''
 
-    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
+    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary', # Implement score metric -> jaccard. braycurtis...
                  cci_matrix_template=None, verbose=True):
 
         self.score_type = score_type
@@ -132,9 +132,9 @@ class InteractionSpace():
 
         # Calculate cell-cell interaction score
         if score_type == 'binary':
-            cci_score = cci_scores.compute_jaccard_like_cci_score(cell1, cell2)
+            cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2)
         elif score_type == 'absolute':
-            cci_score = cci_scores.compute_correlation_cci_score(cell1, cell2)
+            cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2)
         else:
             raise NotImplementedError("Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
         return cci_score
