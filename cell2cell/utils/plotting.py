@@ -34,23 +34,32 @@ def hierarchical_clustering(distance_matrix, method='ward', title='', filename=N
 
         mask[ind, hier.dendrogram_col.reordered_ind[:i]] = 1
 
-    vmax = np.nanmax(distance_matrix.values[distance_matrix.values != 0])
-    vmin = np.nanmin(distance_matrix.values[distance_matrix.values != 0])
+    # This may not work if we have a perfect interaction between two cells - Intended to avoid diagonal in distance matrix
+    # exclude_diag = distance_matrix.values[distance_matrix.values != 0]
 
-    # Plot hierarchical clustering (triagular)
+    kwargs_ = kwargs.copy()
+
+    # This one does exclude only diagonal
+    exclude_diag = distance_matrix.values[~np.eye(distance_matrix.values.shape[0],dtype=bool)].reshape(distance_matrix.values.shape[0],-1)
+    if 'vmin' not in list(kwargs_.keys()):
+        vmin = np.nanmin(exclude_diag)
+        kwargs_['vmin'] = vmin
+    if 'vmax' not in list(kwargs_.keys()):
+        vmax = np.nanmax(exclude_diag)
+        kwargs_['vmax'] = vmax
+
+    # Plot hierarchical clustering (triangular)
     hier = sns.clustermap(distance_matrix,
                           col_linkage=linkage,
                           row_linkage=linkage,
-                          vmin=vmin,
-                          vmax=vmax,
                           mask=mask,
-                          **kwargs
+                          **kwargs_
                           )
 
     hier.ax_row_dendrogram.set_visible(False)
     hier.ax_heatmap.tick_params(bottom=False)  # Hide xtick line
 
-    # Apply offset transform to all x ticklabels.
+    # Apply offset transform to all xticklabels.
     yrange = hier.ax_heatmap.get_ylim()[0] - hier.ax_heatmap.get_ylim()[1]
 
     label_x1 = hier.ax_heatmap.xaxis.get_majorticklabels()[0]
@@ -67,14 +76,14 @@ def hierarchical_clustering(distance_matrix, method='ward', title='', filename=N
 
     for i, label in enumerate(hier.ax_heatmap.xaxis.get_majorticklabels()):
         # scaler = 19./72. 72 is for inches
-        dx = -0.5 * scaler_x[0] / 72.;
+        dx = -0.5 * scaler_x[0] / 72.
         dy = scaler_y[1] * (yrange - i - .5) / 72.
         offset = mlp.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
         label.set_transform(label.get_transform() + offset)
 
-    hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=9.5)
+    hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(), rotation=45, ha='right')#, fontsize=9.5)
 
-    hier.fig.suptitle(title)
+    hier.fig.suptitle(title, fontsize=16)
     if filename is not None:
         plt.savefig(filename, dpi=300,
                     bbox_inches='tight')
@@ -115,7 +124,7 @@ def pcoa_biplot(distance_matrix, metadata, sample_col='#SampleID', group_col='Gr
     ax.view_init(view_angles[0], view_angles[1])
     lgd = ax.legend(loc='upper right', bbox_to_anchor=(2.4, 0.71),
                     ncol=2, fancybox=True, shadow=True, fontsize=legend_size)
-    plt.title(title)
+    plt.title(title, fontsize=16)
 
     distskbio = skbio.DistanceMatrix(distance_matrix, ids=distance_matrix.index)
     if filename is not None:
