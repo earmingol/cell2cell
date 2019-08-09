@@ -77,10 +77,13 @@ class SubsamplingSpace:
             inputs_list.append(inputs_)
 
         # Parallel computing
-        agents = parallel_computing.agents_number(n_jobs)
-        chunksize = 1
-        with closing(Pool(processes=agents)) as pool:
-            results = pool.map(parallel_computing.parallel_subsampling_interactions, inputs_list, chunksize)
+        if n_jobs == 1:
+            results = list(map(parallel_computing.parallel_subsampling_interactions, inputs_list))
+        else:
+            agents = parallel_computing.agents_number(n_jobs)
+            chunksize = 1
+            with closing(Pool(processes=agents)) as pool:
+                results = pool.map(parallel_computing.parallel_subsampling_interactions, inputs_list, chunksize)
         return results
 
 
