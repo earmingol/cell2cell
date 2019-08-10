@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from itertools import combinations
+from sklearn.utils import resample
 
 
 ### Manipulate PPI networks
@@ -82,6 +83,43 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
     :param contact_proteins: List of genes/proteins consistent with IDs used in PPI
     :return:
     '''
+
+    new_ppi_data = get_filtered_ppi(ppi_data=ppi_data,
+                                    contact_proteins=contact_proteins,
+                                    mediator_proteins=mediator_proteins,
+                                    reference_list=reference_list,
+                                    interaction_type=interaction_type,
+                                    interaction_columns=interaction_columns,
+                                    verbose=verbose)
+    new_ppi_data = bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
+                                             interaction_columns=interaction_columns,
+                                             verbose=verbose)
+    return new_ppi_data
+
+
+def filter_ppi_network_for_null_dist(ppi_data, total_genes, contact_proteins, mediator_proteins=None, reference_list=None,
+                                     interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
+
+    new_ppi_data = get_filtered_ppi(ppi_data=ppi_data,
+                                    contact_proteins=contact_proteins,
+                                    mediator_proteins=mediator_proteins,
+                                    reference_list=reference_list,
+                                    interaction_type=interaction_type,
+                                    interaction_columns=interaction_columns,
+                                    verbose=verbose)
+
+    new_ppi_data[interaction_columns[1]] = resample(total_genes, n_samples=new_ppi_data.shape[0])
+
+
+    new_ppi_data = bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
+                                             interaction_columns=interaction_columns,
+                                             verbose=verbose)
+    return new_ppi_data
+
+
+
+def get_filtered_ppi(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
+                       interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
     if (mediator_proteins is None) and (interaction_type != 'contacts'):
         raise ValueError("mediator_proteins cannot be None when interaction_type is not contacts")
 
@@ -120,7 +158,4 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
             new_ppi_data = pd.concat([contacts, mediated], ignore_index = True).drop_duplicates()
         else:
             raise NameError('Not valid interaction type to filter the PPI network')
-    new_ppi_data = bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
-                                             interaction_columns=interaction_columns,
-                                             verbose=verbose)
     return new_ppi_data
