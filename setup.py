@@ -95,6 +95,8 @@ setup(name='cell2cell',
                         'seaborn >= 0.9.0',
                         'goenrich >= 1.11',
                         'python-louvain >= 0.11',
+                        'leidenalg',
+                        'scikit-bio'
                         ],
       classifiers=classifiers,
       entry_points={},
