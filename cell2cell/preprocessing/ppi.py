@@ -67,12 +67,13 @@ def bidirectional_ppi_for_cci(ppi_data, interaction_columns=['A', 'B'], verbose=
     ppi_B = ppi_data.copy()
     ppi_B[interaction_columns[0]] = col2
     ppi_B[interaction_columns[1]] = col1
+
     if verbose:
         print("Removing duplicates in bidirectional PPI network.")
-    final_ppi = pd.concat([ppi_A, ppi_B], join="inner")
-    final_ppi = final_ppi.drop_duplicates()
-    final_ppi.reset_index(inplace=True, drop=True)
-    return final_ppi
+    new_ppi_data = pd.concat([ppi_A, ppi_B], join="inner")
+    new_ppi_data = new_ppi_data.drop_duplicates()
+    new_ppi_data.reset_index(inplace=True, drop=True)
+    return new_ppi_data
 
 
 def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
@@ -84,32 +85,13 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
     :return:
     '''
 
-    new_ppi_data = get_filtered_ppi(ppi_data=ppi_data,
-                                    contact_proteins=contact_proteins,
-                                    mediator_proteins=mediator_proteins,
-                                    reference_list=reference_list,
-                                    interaction_type=interaction_type,
-                                    interaction_columns=interaction_columns,
-                                    verbose=verbose)
-    new_ppi_data = bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
-                                             interaction_columns=interaction_columns,
-                                             verbose=verbose)
-    return new_ppi_data
-
-
-def filter_ppi_network_for_null_dist(ppi_data, total_genes, contact_proteins, mediator_proteins=None, reference_list=None,
-                                     interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
-
-    new_ppi_data = get_filtered_ppi(ppi_data=ppi_data,
-                                    contact_proteins=contact_proteins,
-                                    mediator_proteins=mediator_proteins,
-                                    reference_list=reference_list,
-                                    interaction_type=interaction_type,
-                                    interaction_columns=interaction_columns,
-                                    verbose=verbose)
-
-    new_ppi_data[interaction_columns[1]] = resample(total_genes, n_samples=new_ppi_data.shape[0])
-
+    new_ppi_data = get_filtered_ppi_network(ppi_data=ppi_data,
+                                            contact_proteins=contact_proteins,
+                                            mediator_proteins=mediator_proteins,
+                                            reference_list=reference_list,
+                                            interaction_type=interaction_type,
+                                            interaction_columns=interaction_columns,
+                                            verbose=verbose)
 
     new_ppi_data = bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
                                              interaction_columns=interaction_columns,
@@ -117,9 +99,8 @@ def filter_ppi_network_for_null_dist(ppi_data, total_genes, contact_proteins, me
     return new_ppi_data
 
 
-
-def get_filtered_ppi(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
-                       interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
+def get_filtered_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
+                             interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
     if (mediator_proteins is None) and (interaction_type != 'contacts'):
         raise ValueError("mediator_proteins cannot be None when interaction_type is not contacts")
 
@@ -129,33 +110,52 @@ def get_filtered_ppi(ppi_data, contact_proteins, mediator_proteins=None, referen
         if mediator_proteins is not None:
             mediator_proteins = list(filter(lambda x: x in reference_list, mediator_proteins))
 
-    # PPI Headers
-    header_interactorA = interaction_columns[0]
-    header_interactorB = interaction_columns[1]
-
     if verbose:
         print('Filtering PPI interactions by using a list of genes for {} interactions'.format(interaction_type))
     if interaction_type == 'contacts':
-        # Contact-Contact interactions
-        contacts = ppi_data.loc[ppi_data[header_interactorA].isin(contact_proteins) & ppi_data[header_interactorB].isin(contact_proteins)]
-        new_ppi_data = contacts.drop_duplicates()
+        new_ppi_data = get_all_to_all_ppi(ppi_data=ppi_data,
+                                          proteins=contact_proteins,
+                                          interaction_columns=interaction_columns)
+
     elif interaction_type == 'complete':
-        total_prots = list(set(contact_proteins + mediator_proteins))
-        complete = ppi_data.loc[ppi_data[header_interactorA].isin(total_prots) & ppi_data[header_interactorB].isin(total_prots)]
-        new_ppi_data = complete.drop_duplicates()
+        total_proteins = list(set(contact_proteins + mediator_proteins))
+
+        new_ppi_data = get_all_to_all_ppi(ppi_data=ppi_data,
+                                          proteins=total_proteins,
+                                          interaction_columns=interaction_columns)
     else:
-        # Contact-Contact interactions
-        contacts = ppi_data.loc[ppi_data[header_interactorA].isin(contact_proteins) & ppi_data[header_interactorB].isin(contact_proteins)]
-        # Extracell-surface interactions
-        mediated1 = ppi_data.loc[ppi_data[header_interactorA].isin(contact_proteins) & ppi_data[header_interactorB].isin(mediator_proteins)]
-        mediated2 = ppi_data.loc[ppi_data[header_interactorA].isin(mediator_proteins) & ppi_data[header_interactorB].isin(contact_proteins)]
-        mediated2.columns = [header_interactorB, header_interactorA, 'score']
-        mediated2 = mediated2[[header_interactorA, header_interactorB, 'score']]
-        mediated = pd.concat([mediated1, mediated2], ignore_index = True).drop_duplicates()
+        # All the following interactions incorporate contacts-mediator interactions
+        mediated = get_one_group_to_other_ppi(ppi_data=ppi_data,
+                                              proteins_a=contact_proteins,
+                                              proteins_b=mediator_proteins,
+                                              interaction_columns=interaction_columns)
         if interaction_type == 'mediated':
             new_ppi_data = mediated
         elif interaction_type == 'combined':
+            contacts = get_all_to_all_ppi(ppi_data=ppi_data,
+                                          proteins=contact_proteins,
+                                          interaction_columns=interaction_columns)
             new_ppi_data = pd.concat([contacts, mediated], ignore_index = True).drop_duplicates()
         else:
             raise NameError('Not valid interaction type to filter the PPI network')
+    new_ppi_data.reset_index(inplace=True, drop=True)
+    return new_ppi_data
+
+
+def get_all_to_all_ppi(ppi_data, proteins, interaction_columns=['A', 'B']):
+    header_interactorA = interaction_columns[0]
+    header_interactorB = interaction_columns[1]
+    new_ppi_data = ppi_data.loc[ppi_data[header_interactorA].isin(proteins) & ppi_data[header_interactorB].isin(proteins)]
+    new_ppi_data = new_ppi_data.drop_duplicates()
+    return new_ppi_data
+
+
+def get_one_group_to_other_ppi(ppi_data, proteins_a, proteins_b, interaction_columns=['A', 'B']):
+    header_interactorA = interaction_columns[0]
+    header_interactorB = interaction_columns[1]
+    direction1 = ppi_data.loc[ppi_data[header_interactorA].isin(proteins_a) & ppi_data[header_interactorB].isin(proteins_b)]
+    direction2 = ppi_data.loc[ppi_data[header_interactorA].isin(proteins_b) & ppi_data[header_interactorB].isin(proteins_a)]
+    direction2.columns = [header_interactorB, header_interactorA, 'score']
+    direction2 = direction2[[header_interactorA, header_interactorB, 'score']]
+    new_ppi_data = pd.concat([direction1, direction2], ignore_index=True).drop_duplicates()
     return new_ppi_data
