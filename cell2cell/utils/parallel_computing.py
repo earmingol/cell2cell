@@ -36,6 +36,7 @@ def parallel_subsampling_interactions(inputs):
                                     interaction_type=inputs['interaction_type'],
                                     gene_cutoffs=inputs['cutoffs'],
                                     score_type=inputs['score_type'],
+                                    score_metric=inputs['score_metric'],
                                     cci_matrix_template=inputs['cci_matrix'],
                                     seed=inputs['seed'],
                                     verbose=inputs['verbose'])
