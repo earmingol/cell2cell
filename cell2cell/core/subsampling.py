@@ -15,7 +15,7 @@ from multiprocessing import Pool
 
 class SubsamplingSpace:
 
-    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
+    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary', score_metric='bray_curtis',
                  subsampling_percentage=1.0, iterations=1, initial_seed=None, n_jobs=1, verbose=True):
 
         if verbose:
@@ -35,6 +35,7 @@ class SubsamplingSpace:
                                                                      interaction_type=interaction_type,
                                                                      gene_cutoffs=gene_cutoffs,
                                                                      score_type=score_type,
+                                                                     score_metric=score_metric,
                                                                      subsampling_percentage=subsampling_percentage,
                                                                      iterations=iterations,
                                                                      initial_seed=initial_seed,
@@ -45,7 +46,8 @@ class SubsamplingSpace:
 
 
     def subsampling_interactions(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
-                                 subsampling_percentage=1.0, iterations=1, initial_seed=None, n_jobs=1, verbose=True):
+                                 score_metric='bray_curtis', subsampling_percentage=1.0, iterations=1, initial_seed=None,
+                                 n_jobs=1, verbose=True):
         '''
         This function performs the sub-sampling method by generating a list of cells to consider in each iteration.
         Then, for each list of cells a InteractionSpace is generated to perform the cell2cell analysis and return the
@@ -63,6 +65,7 @@ class SubsamplingSpace:
                   'interaction_type' : interaction_type,
                   'cutoffs' : gene_cutoffs,
                   'score_type' : score_type,
+                  'score_metric' : score_metric,
                   'cci_matrix' : self.cci_matrix_template,
                   'verbose' :verbose
                   }
@@ -88,7 +91,7 @@ class SubsamplingSpace:
 
 
 def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
-                          cci_matrix_template=None, seed=None, verbose=True):
+                          score_metric='bray_curtis', cci_matrix_template=None, seed=None, verbose=True):
     '''
     Functional unit to perform parallel computing in Sub-sampling Space
     '''
@@ -106,7 +109,7 @@ def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interactio
                                          cci_matrix_template=cci_matrix_template,
                                          verbose=verbose)
 
-    interaction_space.compute_pairwise_interactions(score_type=score_type,
+    interaction_space.compute_pairwise_interactions(score_metric=score_metric,
                                                     verbose=verbose)
 
     interaction_elements = dict()

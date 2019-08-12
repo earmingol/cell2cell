@@ -75,7 +75,7 @@ class InteractionSpace():
 
     '''
 
-    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary', # Implement score metric -> jaccard. braycurtis...
+    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
                  cci_matrix_template=None, verbose=True):
 
         self.score_type = score_type
@@ -102,7 +102,7 @@ class InteractionSpace():
                                                                   cci_matrix_template=cci_matrix_template,
                                                                   verbose=verbose)
 
-    def pairwise_interaction(self, cell1, cell2, score_type='binary', verbose=True):
+    def pairwise_interaction(self, cell1, cell2, score_metric='bray_curtis', verbose=True):
         '''
         Function that performs the interaction analysis of a pair of cells.
 
@@ -131,15 +131,15 @@ class InteractionSpace():
             print("Computing {} interaction between {} and {}".format(self.interaction_type, cell1.type, cell2.type))
 
         # Calculate cell-cell interaction score
-        if score_type == 'binary':
+        if score_metric == 'bray_curtis':
             cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2)
-        elif score_type == 'absolute':
-            cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2)
+        elif score_metric == 'jaccard':
+            cci_score = cci_scores.compute_jaccard_like_cci_score(cell1, cell2)
         else:
-            raise NotImplementedError("Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
+            raise NotImplementedError("Score metric {} to compute pairwise cell-interactions is not implemented".format(score_metric))
         return cci_score
 
-    def compute_pairwise_interactions(self, score_type='binary', verbose=True):
+    def compute_pairwise_interactions(self, score_metric='bray_curtis', verbose=True):
         '''
         Function that computes...
 
@@ -160,7 +160,7 @@ class InteractionSpace():
             cell2 = self.interaction_elements['cells'][pair[1]]
             cci_score = self.pairwise_interaction(cell1,
                                                   cell2,
-                                                  score_type=score_type,
+                                                  score_metric=score_metric,
                                                   verbose=verbose)
             self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_score
             self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_score
