@@ -3,15 +3,15 @@
 from __future__ import absolute_import
 
 import pandas as pd
-import cell2cell.preprocessing as preprocessing
-from cell2cell.preprocessing import ppi, gene_ontology
+from cell2cell.preprocessing import ppi, gene_ontology, rnaseq
 
 ## RNAseq datasets
 def get_modified_rnaseq(rnaseq_data, score_type='binary', **kwargs):
     if score_type == 'binary':
         modified_rnaseq = get_binary_rnaseq(rnaseq_data, kwargs['cutoffs'])
     elif score_type == 'absolute':
-        modified_rnaseq = preprocessing.divide_expression_by_max(rnaseq_data)
+        #modified_rnaseq = rnaseq.divide_expression_by_max(rnaseq_data)
+        modified_rnaseq = rnaseq_data.copy()
     else:
         # As other score types are implemented, other elif condition will be included here.
         raise NotImplementedError("Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
