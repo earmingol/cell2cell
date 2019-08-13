@@ -14,7 +14,7 @@ def drop_empty_genes(rnaseq_data):
     return data
 
 
-def log10_transformation(rnaseq_data, addition = 0.65):
+def log10_transformation(rnaseq_data, addition = 1):
     ### Apply this only after applying "drop_empty_genes" function
     data = rnaseq_data.copy()
     data = data.apply(lambda x: np.log10(x + addition))
@@ -22,14 +22,14 @@ def log10_transformation(rnaseq_data, addition = 0.65):
     return data
 
 
-def sample_scale_rnaseq_data(rnaseq_data, sum=1e6):
+def scale_expression_by_sum(rnaseq_data, axis=0,sum_value=1e6):
     '''
     This function scale all samples to sum up the same value.
     '''
     data = rnaseq_data.values
-    data = sum * np.divide(data, np.sum(data, axis=0))
-    scaled_rnaseq_data = pd.DataFrame(data, index=rnaseq_data.index, columns=rnaseq_data.columns)
-    return scaled_rnaseq_data
+    data = sum_value * np.divide(data, np.sum(data, axis=axis))
+    scaled_data = pd.DataFrame(data, index=rnaseq_data.index, columns=rnaseq_data.columns)
+    return scaled_data
 
 
 def divide_expression_by_max(rnaseq_data, axis=1):
@@ -44,7 +44,7 @@ def divide_expression_by_max(rnaseq_data, axis=1):
 
 def divide_expression_by_mean(rnaseq_data, axis=1):
     '''
-    This function divides each gene value given the median value. Axis = 0 is the max of each sample, while axis = 1
+    This function divides each gene value given the mean value. Axis = 0 is the max of each sample, while axis = 1
     indicates that each gene is divided by its median value across samples.
     '''
     new_data = rnaseq_data.div(rnaseq_data.mean(axis=axis), axis=int(not axis))
