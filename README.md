@@ -3,7 +3,7 @@
 ## Installation
 Create a new conda environment:
 ```
-conda create -n cell2cell python=3.7
+conda create -n cell2cell -y python=3.7 jupyter
 ```
 
 Go into cell2cell directory:
