@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from itertools import combinations
-from sklearn.utils import resample
 
 
 ### Manipulate PPI networks
