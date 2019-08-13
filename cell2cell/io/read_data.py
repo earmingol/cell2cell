@@ -63,6 +63,7 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation
     if log_transformation:
         rnaseq_data = rnaseq.log10_transformation(rnaseq_data)
 
+    rnaseq_data = rnaseq_data.drop_duplicates()
     return rnaseq_data
 
 
