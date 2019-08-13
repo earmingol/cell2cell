@@ -1,4 +1,4 @@
-# Predicting Cell-Cell Interactions with cell2cell
+# Capturing Cell-Cell Interactions with cell2cell
 
 ## Installation
 Create a new conda environment:
@@ -23,3 +23,5 @@ pip install .
 
 
 ## Example
+One example of using and running cell2cell is 
+ [available here for C.elegans](./notebooks/CElegans-CCI-binary-STRINGdb.ipynb).
