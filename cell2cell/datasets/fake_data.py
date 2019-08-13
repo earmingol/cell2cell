@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import numpy as np
 import pandas as pd
+from cell2cell.preprocessing import rnaseq
 
 
 def generate_fake_rnaseq(size, row_names, verbose=True):
@@ -28,15 +29,12 @@ def generate_fake_rnaseq(size, row_names, verbose=True):
         print('Generating fake RNA-seq dataset.')
     columns = list(range(size))
 
-    data = np.random.randn(len(row_names), len(columns))
+    data = np.random.randn(len(row_names), len(columns))    # Normal distribution
     min = np.abs(np.amin(data, axis=1))
     min = min.reshape((len(min), 1))
 
     data = data + min
     if verbose:
         print('Normalizing fake RNA-seq dataset (into TPM)')
-    data = 1e6 * np.divide(data, np.sum(data, axis=0))
-    df = pd.DataFrame(data, index=row_names, columns=columns)
-    df = df.fillna(0)
-    #df = 1e6 * df.div(df.sum(axis=0), axis=1)
+    df = rnaseq.scale_expression_by_sum(data, axis=0, sum_value=1e6)
     return df
