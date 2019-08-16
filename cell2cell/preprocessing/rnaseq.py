@@ -9,12 +9,13 @@ import pandas as pd
 ### Pre-process RNAseq datasets
 def drop_empty_genes(rnaseq_data):
     data = rnaseq_data.copy()
+    data = data.dropna(how='all')
     data = data.fillna(0)  # Put zeros to all missing values
     data = data.loc[data.sum(axis=1) != 0]  # Drop rows will 0 among all cell/tissues
     return data
 
 
-def log10_transformation(rnaseq_data, addition = 1):
+def log10_transformation(rnaseq_data, addition = 1e-6):
     ### Apply this only after applying "drop_empty_genes" function
     data = rnaseq_data.copy()
     data = data.apply(lambda x: np.log10(x + addition))
