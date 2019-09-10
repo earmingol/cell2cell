@@ -53,6 +53,8 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation
     '''
     print("Opening RNAseq datasets from {}".format(rnaseq_file))
     rnaseq_data = load_table(rnaseq_file, **kwargs)
+    if gene_column is None:
+        gene_column = list(rnaseq_data.columns)[0]
     rnaseq_data = rnaseq_data.set_index(gene_column)
     # Keep only numeric datasets
     rnaseq_data = rnaseq_data.select_dtypes([np.number])
