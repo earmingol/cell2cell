@@ -49,15 +49,15 @@ def parallel_community_detection(inputs):
     '''
     Parallel computing in cell2cell2.clustering.clustering_interactions
     '''
-    from cell2cell.clustering import community_detection
+    from cell2cell.clustering import louvain_community
 
     included_cells = inputs['interaction_elements']['cells']
     cci_matrix = inputs['interaction_elements']['cci_matrix'].loc[included_cells, included_cells]
 
-    results = community_detection(cci_matrix=cci_matrix,
-                                  seed=inputs['seed'],
-                                  package=inputs['package'],
-                                  verbose=inputs['verbose'])
+    results = louvain_community(cci_matrix=cci_matrix,
+                                seed=inputs['seed'],
+                                package=inputs['package'],
+                                verbose=inputs['verbose'])
     return results
 
 
