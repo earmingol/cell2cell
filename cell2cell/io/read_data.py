@@ -69,6 +69,16 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation
     return rnaseq_data
 
 
+def load_metadata(metadata_file, rnaseq_data, sample_col=None, **kwargs):
+    meta = load_table(metadata_file, **kwargs)
+    rnaseq_cols = list(rnaseq_data.columns)
+    if sample_col is None:
+        sample_col = list(meta.columns)[0]
+    meta = meta.set_index(sample_col).loc[rnaseq_cols].reset_index()
+    meta.index = [str(i) for i, c in enumerate(rnaseq_data.columns)]
+    return meta
+
+
 def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_transformation = False, **kwargs):
     '''
     Load RNAseq datasets from table. Genes names are index. Cells/tissues/organs are columns.
