@@ -86,7 +86,7 @@ def get_clusters_from_linkage(linkage, threshold, criterion='maxclust', labels=N
 
 
 # Graph-based algorithms
-def get_clusters_from_graph(SubsamplingSpace, algorithm='louvain', method='raw', seed=None, package='networkx',
+def get_clusters_from_graph(subsampling_space, algorithm='louvain', method='raw', seed=None, package='networkx',
                             n_jobs=1, verbose=True):
 
 
@@ -101,7 +101,7 @@ def get_clusters_from_graph(SubsamplingSpace, algorithm='louvain', method='raw',
 
 
     if clustering['method'] == 'average':
-        clustering['final_cci_matrix'] = compute_avg_cci_matrix(SubsamplingSpace.subsampled_interactions)
+        clustering['final_cci_matrix'] = compute_avg_cci_matrix(subsampling_space)
         if algorithm == 'louvain':
             clustering.update(louvain_community(cci_matrix=clustering['final_cci_matrix'],
                                                 seed=seed,
@@ -124,12 +124,12 @@ def get_clusters_from_graph(SubsamplingSpace, algorithm='louvain', method='raw',
             inputs = [{'interaction_elements' : element,
                        'seed' : seed,
                        'package' : package,
-                       'verbose' : verbose} for element in SubsamplingSpace.subsampled_interactions]
+                       'verbose' : verbose} for element in subsampling_space.subsampled_interactions]
 
             if algorithm == 'louvain':
                 clustering['raw_clusters'] = pool.map(parallel_computing.parallel_community_detection, inputs,
                                                       chunksize)
-                clustering['final_cci_matrix'] = compute_clustering_ratio(SubsamplingSpace=SubsamplingSpace,
+                clustering['final_cci_matrix'] = compute_clustering_ratio(subsampling_space=subsampling_space,
                                                                           raw_clusters=clustering['raw_clusters'])
                 clustering.update(louvain_community(cci_matrix=clustering['final_cci_matrix'],
                                                     verbose=verbose))
@@ -138,7 +138,7 @@ def get_clusters_from_graph(SubsamplingSpace, algorithm='louvain', method='raw',
             elif algorithm == 'leiden':
                 clustering['raw_clusters'] = pool.map(parallel_computing.parallel_leiden_community, inputs,
                                                       chunksize)
-                clustering['final_cci_matrix'] = compute_clustering_ratio(SubsamplingSpace=SubsamplingSpace,
+                clustering['final_cci_matrix'] = compute_clustering_ratio(subsampling_space=subsampling_space,
                                                                           raw_clusters=clustering['raw_clusters'])
                 clustering.update(leiden_community(cci_matrix=clustering['final_cci_matrix'],
                                                    verbose=verbose))
@@ -244,24 +244,24 @@ def hierarchical_community(cci_matrix, algorithm='walktrap'):
 
 
 # Algorithms for computing a final CCI matrix from all iterations.
-def compute_avg_cci_matrix(SubsamplingSpace):
-    matrices = [element['cci_matrix'].values for element in SubsamplingSpace.subsampled_interactions]
+def compute_avg_cci_matrix(subsampling_space):
+    matrices = [element['cci_matrix'].values for element in subsampling_space.subsampled_interactions]
     mean_matrix = np.nanmean(matrices, axis=0)
     mean_matrix = pd.DataFrame(mean_matrix,
-                               index=SubsamplingSpace.subsampled_interactions[0]['cci_matrix'].index,
-                               columns=SubsamplingSpace.subsampled_interactions[0]['cci_matrix'].columns)
+                               index=subsampling_space.subsampled_interactions[0]['cci_matrix'].index,
+                               columns=subsampling_space.subsampled_interactions[0]['cci_matrix'].columns)
     mean_matrix = mean_matrix.fillna(0.0)
     # Remove self interactions
     #np.fill_diagonal(mean_matrix.values, 0.0)
     return mean_matrix
 
 
-def compute_clustering_ratio(SubsamplingSpace, raw_clusters):
+def compute_clustering_ratio(subsampling_space, raw_clusters):
     '''
     This function computes the ratio of times that each pair of cells that was clustered together.
     '''
     # Initialize matrices to store datasets
-    total_cells = list(SubsamplingSpace.subsampled_interactions[0]['cci_matrix'].index)
+    total_cells = list(subsampling_space.subsampled_interactions[0]['cci_matrix'].index)
     pair_participation = pd.DataFrame(np.zeros((len(total_cells), len(total_cells))),
                                       columns=total_cells,
                                       index=total_cells)
@@ -269,7 +269,7 @@ def compute_clustering_ratio(SubsamplingSpace, raw_clusters):
     pair_clustering = pair_participation.copy()
 
     # Compute ratios
-    for i, element in enumerate(SubsamplingSpace.subsampled_interactions):
+    for i, element in enumerate(subsampling_space.subsampled_interactions):
         included_cells = element['cells']
 
         # Update Total Participation
