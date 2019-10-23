@@ -2,7 +2,6 @@
 
 from __future__ import absolute_import
 
-import pandas as pd
 from cell2cell.preprocessing import ppi, gene_ontology, rnaseq
 
 ## RNAseq datasets
@@ -22,10 +21,10 @@ def get_binary_rnaseq(rnaseq_data, cutoffs):
     binary_rnaseq_data = rnaseq_data.copy()
     columns = list(cutoffs.columns)
     if (len(columns) == 1) and ('value' in columns):
-        binary_rnaseq_data = binary_rnaseq_data.ge(list(cutoffs.value.values), axis=0)
+        binary_rnaseq_data = binary_rnaseq_data.gt(list(cutoffs.value.values), axis=0)
     elif sorted(columns) == sorted(list(rnaseq_data.columns)):  # Check there is a column for each cell type
         for col in columns:
-            binary_rnaseq_data[col] = binary_rnaseq_data[col].ge(list(cutoffs[col].values), axis=0)
+            binary_rnaseq_data[col] = binary_rnaseq_data[col].gt(list(cutoffs[col].values), axis=0) # ge
     else:
         raise KeyError("The cutoff data provided does not have a 'value' column or does not match the columns in rnaseq_data.")
     binary_rnaseq_data = binary_rnaseq_data.astype(float)

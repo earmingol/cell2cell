@@ -58,12 +58,12 @@ def filter_random_subsample_ppi_network(original_ppi_data, contact_proteins, med
                                            n_samples=new_ppi_data.shape[0],
                                            random_state=random_state)
     else:
-        #new_ppi_data = shuffle_dataframe(df=new_ppi_data,
-        #                                 shuffling_number=1,
-        #                                 axis=0, random_state=random_state)
-        new_ppi_data = subsample_dataframe(df=new_ppi_data,
-                                           n_samples=new_ppi_data.shape[0],
-                                           random_state=random_state)
+        new_ppi_data = shuffle_dataframe(df=new_ppi_data,
+                                         shuffling_number=1,
+                                         axis=0, random_state=random_state)
+        #new_ppi_data = subsample_dataframe(df=new_ppi_data,
+        #                                   n_samples=new_ppi_data.shape[0],
+        #                                   random_state=random_state)
 
     new_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
                                                  interaction_columns=interaction_columns,
@@ -83,9 +83,9 @@ def get_null_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, int
                                               proteins=contact_proteins,
                                               interaction_columns=interaction_columns)
 
-        in_contacts = find_elements_in_dataframe(df=new_ppi_data,
-                                                 elements=contact_proteins,
-                                                 columns=interaction_columns)
+        in_contacts = check_presence_in_dataframe(df=new_ppi_data,
+                                                  elements=contact_proteins,
+                                                  columns=interaction_columns)
 
         new_ppi_data[interaction_columns[randomized_col]] = resample(in_contacts,
                                                                      n_samples=new_ppi_data.shape[0],
@@ -97,9 +97,9 @@ def get_null_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, int
                                               proteins=total_proteins,
                                               interaction_columns=interaction_columns)
 
-        in_total = find_elements_in_dataframe(df=new_ppi_data,
-                                              elements=total_proteins,
-                                              columns=interaction_columns)
+        in_total = check_presence_in_dataframe(df=new_ppi_data,
+                                               elements=total_proteins,
+                                               columns=interaction_columns)
 
         new_ppi_data[interaction_columns[randomized_col]] = resample(in_total,
                                                                      n_samples=new_ppi_data.shape[0],
@@ -112,9 +112,9 @@ def get_null_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, int
                                                   proteins_b=mediator_proteins,
                                                   interaction_columns=interaction_columns)
 
-        in_mediated = find_elements_in_dataframe(df=mediated,
-                                                 elements=mediator_proteins,
-                                                 columns=interaction_columns)
+        in_mediated = check_presence_in_dataframe(df=mediated,
+                                                  elements=mediator_proteins,
+                                                  columns=interaction_columns)
 
         mediated[interaction_columns[randomized_col]] = resample(in_mediated,
                                                                  n_samples=mediated.shape[0],
@@ -127,9 +127,9 @@ def get_null_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, int
                                               proteins=contact_proteins,
                                               interaction_columns=interaction_columns)
 
-            in_contacts = find_elements_in_dataframe(df=contacts,
-                                                     elements=contact_proteins,
-                                                     columns=interaction_columns)
+            in_contacts = check_presence_in_dataframe(df=contacts,
+                                                      elements=contact_proteins,
+                                                      columns=interaction_columns)
 
             contacts[interaction_columns[randomized_col]] = resample(in_contacts,
                                                                      n_samples=contacts.shape[0],
@@ -142,7 +142,7 @@ def get_null_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, int
     return new_ppi_data
 
 
-def find_elements_in_dataframe(df, elements, columns=None):
+def check_presence_in_dataframe(df, elements, columns=None):
     if columns is None:
         columns = list(df.columns)
     df_elements = pd.Series(np.unique(df[columns].values.flatten()))

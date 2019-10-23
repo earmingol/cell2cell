@@ -18,11 +18,8 @@ def ppi_count_operation(pair, subsampled_interactions):
     return matrices
 
 
-def compute_avg_count_for_ppis(subsampled_interactions, clusters, ppi_dict):
-    interaction_type = subsampled_interactions[0]['interaction_type']
-    ppi_network = ppi_dict[interaction_type]
-
-    index = ppi_network.apply(lambda row: tuple(sorted([row[0], row[1]])), axis=1)
+def compute_avg_count_for_ppis(subsampled_interactions, clusters, ppi_data):
+    index = ppi_data.apply(lambda row: tuple(sorted([row[0], row[1]])), axis=1)
     mean_matrix = pd.DataFrame(columns=list(clusters.keys()),
                                index=index)
 
@@ -53,14 +50,11 @@ def compute_avg_count_for_ppis(subsampled_interactions, clusters, ppi_dict):
     return mean_matrix, std_matrix
 
 
-def get_ppi_score_for_cell_pairs(cells, subsampled_interactions, ppi_dict):
-    interaction_type = subsampled_interactions[0]['interaction_type']
-    ppi_network = ppi_dict[interaction_type]
-
+def get_ppi_score_for_cell_pairs(cells, subsampled_interactions, ppi_data):
     cell_pairs = list(itertools.combinations(cells + cells, 2))
     cell_pairs = list(set(cell_pairs))
     col_labels = ['{};{}'.format(pair[0], pair[1]) for pair in cell_pairs]
-    index = ppi_network.apply(lambda row: (row[0], row[1]), axis=1) # tuple(sorted([row[0], row[1]]))
+    index = ppi_data.apply(lambda row: (row[0], row[1]), axis=1) # tuple(sorted([row[0], row[1]]))
     mean_matrix = pd.DataFrame(index=index, columns=col_labels)
     std_matrix = pd.DataFrame(index=index, columns=col_labels)
 

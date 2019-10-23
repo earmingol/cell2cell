@@ -9,8 +9,8 @@ from cell2cell.io import read_data
 from cell2cell.preprocessing import integrate_data
 
 
-def run_heuristic_pipeline(files, rnaseq_setup, ppi_setup, cutoff_setup, go_setup, analysis_setup,
-                           contact_go_terms = None, mediator_go_terms = None):
+def heuristic_pipeline(files, rnaseq_setup, ppi_setup, cutoff_setup, go_setup, analysis_setup,
+                       contact_go_terms = None, mediator_go_terms = None):
     '''
     This function performs the analysis with the default list of GO terms to filter the proteins in the PPI network.
 
@@ -75,7 +75,7 @@ def run_heuristic_pipeline(files, rnaseq_setup, ppi_setup, cutoff_setup, go_setu
 
     go_terms = read_data.load_go_terms(go_terms_file=files['go_terms'])
 
-    default_heuristic_go = heuristic_data.HeuristicGO()
+    default_heuristic_go = heuristic_data.HeuristicGOTerms()
 
     if contact_go_terms is None:
         contact_go_terms = default_heuristic_go.contact_go_terms
@@ -116,12 +116,12 @@ def run_heuristic_pipeline(files, rnaseq_setup, ppi_setup, cutoff_setup, go_setu
     print("Performing clustering with {} algorithm and {} method".format(analysis_setup['clustering_algorithm'],
                                                                          analysis_setup['clustering_method']))
 
-    clustering = cluster_interactions.graph_clustering(subsampled_interactions=subsampling_space.subsampled_interactions,
-                                                       algorithm=analysis_setup['clustering_algorithm'],
-                                                       method=analysis_setup['clustering_method'],
-                                                       seed=None,
-                                                       n_jobs=analysis_setup['cpu_cores'],
-                                                       verbose=analysis_setup['verbose'])
+    clustering = cluster_interactions.get_clusters_from_graph(subsampled_interactions=subsampling_space.subsampled_interactions,
+                                                              algorithm=analysis_setup['clustering_algorithm'],
+                                                              method=analysis_setup['clustering_method'],
+                                                              seed=None,
+                                                              n_jobs=analysis_setup['cpu_cores'],
+                                                              verbose=analysis_setup['verbose'])
 
     subsampling_space.graph_clustering = clustering
 

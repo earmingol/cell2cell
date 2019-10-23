@@ -15,7 +15,7 @@ from multiprocessing import Pool
 
 class SubsamplingSpace:
 
-    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary', score_metric='bray_curtis',
+    def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, score_type='binary', score_metric='bray_curtis',
                  subsampling_percentage=1.0, iterations=1, initial_seed=None, n_jobs=1, verbose=True):
 
         if verbose:
@@ -31,8 +31,7 @@ class SubsamplingSpace:
                                                 index=self.cell_ids)
 
         self.subsampled_interactions = self.subsampling_interactions(rnaseq_data=rnaseq_data,
-                                                                     ppi_dict=ppi_dict,
-                                                                     interaction_type=interaction_type,
+                                                                     ppi_data=ppi_data,
                                                                      gene_cutoffs=gene_cutoffs,
                                                                      score_type=score_type,
                                                                      score_metric=score_metric,
@@ -42,10 +41,10 @@ class SubsamplingSpace:
                                                                      n_jobs=n_jobs,
                                                                      verbose=verbose)
 
-        self.average_cci_matrix = compute_avg_cci_matrix(self.subsampled_interactions)
+        self.average_cci_matrix = compute_avg_cci_matrix(self)
 
 
-    def subsampling_interactions(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
+    def subsampling_interactions(self, rnaseq_data, ppi_data, gene_cutoffs, score_type='binary',
                                  score_metric='bray_curtis', subsampling_percentage=1.0, iterations=1, initial_seed=None,
                                  n_jobs=1, verbose=True):
         '''
@@ -61,8 +60,7 @@ class SubsamplingSpace:
         inputs = {'cells' : self.cell_ids,
                   'list_end' : last_item,
                   'rnaseq' : rnaseq_data,
-                  'ppi' : ppi_dict,
-                  'interaction_type' : interaction_type,
+                  'ppi' : ppi_data,
                   'cutoffs' : gene_cutoffs,
                   'score_type' : score_type,
                   'score_metric' : score_metric,
@@ -90,7 +88,7 @@ class SubsamplingSpace:
         return results
 
 
-def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
+def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_data, gene_cutoffs, score_type='binary',
                           score_metric='bray_curtis', cci_matrix_template=None, seed=None, verbose=True):
     '''
     Functional unit to perform parallel computing in Sub-sampling Space
@@ -102,8 +100,7 @@ def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interactio
     included_cells = cell_ids_[:last_item]
 
     interaction_space = InteractionSpace(rnaseq_data=rnaseq_data[included_cells],
-                                         ppi_dict=ppi_dict,
-                                         interaction_type=interaction_type,
+                                         ppi_data=ppi_data,
                                          gene_cutoffs=gene_cutoffs,
                                          score_type=score_type,
                                          cci_matrix_template=cci_matrix_template,
@@ -115,12 +112,5 @@ def subsampling_operation(cell_ids, last_item, rnaseq_data, ppi_dict, interactio
     interaction_elements = dict()
     interaction_elements['cells'] = included_cells
     interaction_elements['cci_matrix'] = interaction_space.interaction_elements['cci_matrix']
-    interaction_elements['interaction_type'] = interaction_type
-
-    empty_ppi = np.empty(ppi_dict[interaction_type].shape)
-    empty_ppi[:] = np.nan
-    interaction_elements['ppis'] = dict.fromkeys(cell_ids_, pd.DataFrame(empty_ppi, columns=['A', 'B', 'score']))
-
-    for name, cell in interaction_space.interaction_elements['cells'].items():
-        interaction_elements['ppis'][name] = cell.weighted_ppi
+    interaction_elements['ppis'] = interaction_space.interaction_elements['ppis']
     return interaction_elements
