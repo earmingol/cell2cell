@@ -15,6 +15,16 @@ import scipy.spatial as sp
 import skbio
 
 
+def get_colors_from_labels(labels, cmap='gist_rainbow'):
+    NUM_COLORS = 2 * len(labels)
+    cm = plt.get_cmap(cmap)
+
+    colors = dict()
+    for i, label in enumerate(labels):
+        colors[label] = cm(2. * i / NUM_COLORS)
+    return colors
+
+
 def clustermap_distance_matrix(distance_matrix, method='ward', metadata=None, sample_col='#SampleID', group_col='Groups',
                                meta_cmap='gist_rainbow', title='', filename=None, excluded_cells=None, **kwargs):
 
@@ -65,12 +75,7 @@ def clustermap_distance_matrix(distance_matrix, method='ward', metadata=None, sa
             meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
         labels = meta_[group_col].values.tolist()
 
-        NUM_COLORS = 2 * len(labels)
-        cm = plt.get_cmap(meta_cmap)
-
-        colors = dict()
-        for i, label in enumerate(labels):
-            colors[label] = cm(2. * i / NUM_COLORS)
+        colors = get_colors_from_labels(labels, cmap=meta_cmap)
 
         col_colors = pd.DataFrame(labels)[0].map(colors)
         col_colors.index = meta_.index
@@ -149,12 +154,7 @@ def pcoa_biplot(distance_matrix, metadata, sample_col='#SampleID', group_col='Gr
         meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
     labels = meta_[group_col].values.tolist()
 
-    NUM_COLORS = 2 * len(labels)
-    cm = plt.get_cmap(meta_cmap)
-
-    colors = dict()
-    for i, label in enumerate(labels):
-        colors[label] = cm(2. * i / NUM_COLORS)
+    colors = get_colors_from_labels(labels, cmap=meta_cmap)
 
     for i, cell_type in enumerate(sorted(meta_[group_col].unique())):
         cells = list(meta_.loc[meta_[group_col] == cell_type].index)
@@ -231,12 +231,7 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
             meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
         labels = meta_[group_col].values.tolist()
 
-        NUM_COLORS = 2*len(labels)
-        cm = plt.get_cmap(meta_cmap)  # tab20
-
-        colors = dict()
-        for i, label in enumerate(labels):
-            colors[label] = cm(2. * i / NUM_COLORS)
+        colors = get_colors_from_labels(labels, cmap=meta_cmap)
 
         col_colors_L = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata.loc[metadata[sample_col] == x.split(';')[0],
                                                                       group_col].values[0]])
