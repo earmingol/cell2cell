@@ -15,18 +15,25 @@ import scipy.spatial as sp
 import skbio
 
 
-def get_colors_from_labels(labels, cmap='gist_rainbow'):
-    NUM_COLORS = 2 * len(labels)
+def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
+    assert factor >= 1
+
+    factor = int(factor)
+    NUM_COLORS = factor * len(labels)
     cm = plt.get_cmap(cmap)
 
     colors = dict()
     for i, label in enumerate(labels):
-        colors[label] = cm(2. * i / NUM_COLORS)
+        colors[label] = cm((1 + ((factor-1)/factor)) * i / NUM_COLORS)
     return colors
 
 
-def clustermap_distance_matrix(distance_matrix, method='ward', metadata=None, sample_col='#SampleID', group_col='Groups',
-                               meta_cmap='gist_rainbow', title='', filename=None, excluded_cells=None, **kwargs):
+def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='#SampleID', group_col='Groups',
+                   meta_cmap='gist_rainbow', title='', filename=None, excluded_cells=None, colors=None, **kwargs):
+    if hasattr(interaction_space, 'distance_matrix'):
+        distance_matrix = interaction_space.distance_matrix
+    else:
+        raise ValueError('First run InteractionSpace.compute_pairwise_interactions() to generate a distance matrix.')
 
     # Drop excluded cells
     if excluded_cells is not None:
@@ -60,13 +67,17 @@ def clustermap_distance_matrix(distance_matrix, method='ward', metadata=None, sa
     kwargs_ = kwargs.copy()
 
     # This one does exclude only diagonal
-    exclude_diag = df.values[~np.eye(df.values.shape[0], dtype=bool)].reshape(df.values.shape[0], -1)
-    if 'vmin' not in list(kwargs_.keys()):
-        vmin = np.nanmin(exclude_diag)
-        kwargs_['vmin'] = vmin
-    if 'vmax' not in list(kwargs_.keys()):
-        vmax = np.nanmax(exclude_diag)
-        kwargs_['vmax'] = vmax
+    #exclude_diag = df.values[~np.eye(df.values.shape[0], dtype=bool)].reshape(df.values.shape[0], -1)
+    #if 'vmin' not in list(kwargs_.keys()):
+    #    vmin = np.nanmin(exclude_diag)
+    #    kwargs_['vmin'] = vmin
+    #if 'vmax' not in list(kwargs_.keys()):
+    #    vmax = np.nanmax(exclude_diag)
+    #    kwargs_['vmax'] = vmax
+
+    df = interaction_space.interaction_elements['cci_matrix']
+    df = df.loc[~df.index.isin(excluded_cells),
+                ~df.columns.isin(excluded_cells)]
 
     # Colors
     if metadata is not None:
@@ -75,7 +86,10 @@ def clustermap_distance_matrix(distance_matrix, method='ward', metadata=None, sa
             meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
         labels = meta_[group_col].values.tolist()
 
-        colors = get_colors_from_labels(labels, cmap=meta_cmap)
+        if colors is None:
+            colors = get_colors_from_labels(labels, cmap=meta_cmap)
+        else:
+            assert all(elem in colors.keys() for elem in set(labels))
 
         col_colors = pd.DataFrame(labels)[0].map(colors)
         col_colors.index = meta_.index
@@ -125,15 +139,26 @@ def clustermap_distance_matrix(distance_matrix, method='ward', metadata=None, sa
     hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(), rotation=45, ha='right')#, fontsize=9.5)
     hier.ax_heatmap.set_yticklabels(hier.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, ha='left')  # , fontsize=9.5)
     hier.fig.suptitle(title, fontsize=16)
+
+    # Color bar label
+    cbar = hier.ax_heatmap.collections[0].colorbar
+    cbar.ax.set_ylabel('CCI score')
+    cbar.ax.yaxis.set_label_position("left")
+
     if filename is not None:
         plt.savefig(filename, dpi=300,
                     bbox_inches='tight')
     return hier
 
 
-def pcoa_biplot(distance_matrix, metadata, sample_col='#SampleID', group_col='Groups', meta_cmap='gist_rainbow',
+def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='Groups', meta_cmap='gist_rainbow',
                 title='', axis_size=14, legend_size=12, figsize=(6, 5), view_angles=(30, 135), filename=None,
-                excluded_cells=None):
+                colors=None, excluded_cells=None):
+
+    if hasattr(interaction_space, 'distance_matrix'):
+        distance_matrix = interaction_space.distance_matrix
+    else:
+        raise ValueError('First run InteractionSpace.compute_pairwise_interactions() to generate a distance matrix.')
 
     # Drop excluded cells
     if excluded_cells is not None:
@@ -154,7 +179,11 @@ def pcoa_biplot(distance_matrix, metadata, sample_col='#SampleID', group_col='Gr
         meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
     labels = meta_[group_col].values.tolist()
 
-    colors = get_colors_from_labels(labels, cmap=meta_cmap)
+
+    if colors is None:
+        colors = get_colors_from_labels(labels, cmap=meta_cmap)
+    else:
+        assert all(elem in colors.keys() for elem in set(labels))
 
     for i, cell_type in enumerate(sorted(meta_[group_col].unique())):
         cells = list(meta_.loc[meta_[group_col] == cell_type].index)
@@ -194,7 +223,7 @@ def pcoa_biplot(distance_matrix, metadata, sample_col='#SampleID', group_col='Gr
 
 
 def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample_col='#SampleID', group_col='Groups',
-                                 meta_cmap='gist_rainbow', metric='cosine', method='ward', excluded_cells=None,
+                                 meta_cmap='gist_rainbow', colors=None, metric='cosine', method='ward', excluded_cells=None,
                                  title='', filename=None,
                                  **kwargs):
     df_ = ppi_score_for_cell_pairs.copy()
@@ -231,15 +260,18 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
             meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
         labels = meta_[group_col].values.tolist()
 
-        colors = get_colors_from_labels(labels, cmap=meta_cmap)
+        if colors is None:
+            colors = get_colors_from_labels(labels, cmap=meta_cmap)
+        else:
+            assert all(elem in colors.keys() for elem in set(labels))
 
         col_colors_L = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata.loc[metadata[sample_col] == x.split(';')[0],
-                                                                      group_col].values[0]])
+                                                                                           group_col].values[0]])
         col_colors_L.index = included_cells
         col_colors_L.name = 'LEFT-CELL'
 
         col_colors_R = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata.loc[metadata[sample_col] == x.split(';')[1],
-                                                                      group_col].values[0]])
+                                                                                           group_col].values[0]])
         col_colors_R.index = included_cells
         col_colors_R.name = 'RIGHT-CELL'
 
@@ -270,6 +302,11 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
     # Title
     if len(title) > 0:
         fig.fig.suptitle(title, fontsize=16)
+
+    # Color bar label
+    cbar = fig.ax_heatmap.collections[0].colorbar
+    cbar.ax.set_ylabel('Presence')
+    cbar.ax.yaxis.set_label_position("left")
 
     # Save Figure
     if filename is not None:
