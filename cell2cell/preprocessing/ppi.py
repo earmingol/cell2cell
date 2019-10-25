@@ -9,7 +9,7 @@ from itertools import combinations
 
 
 ### Manipulate PPI networks
-def remove_ppi_bidirectionality(PPI_data, interaction_columns, verbose=True):
+def remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=True):
     '''
     This function removes duplicate interactions. For example, when P1-P2 and P2-P1 interactions are present in the
     dataset, only one of them will remain.
@@ -18,15 +18,15 @@ def remove_ppi_bidirectionality(PPI_data, interaction_columns, verbose=True):
         print('Removing bidirectionality of PPI network')
     header_interactorA = interaction_columns[0]
     header_interactorB = interaction_columns[1]
-    IA = PPI_data[[header_interactorA, header_interactorB]]
-    IB = PPI_data[[header_interactorB, header_interactorA]]
+    IA = ppi_data[[header_interactorA, header_interactorB]]
+    IB = ppi_data[[header_interactorB, header_interactorA]]
     IB.columns = [header_interactorA, header_interactorB]
     repeated_interactions = pd.merge(IA, IB, on=[header_interactorA, header_interactorB])
     repeated = list(np.unique(repeated_interactions.values.flatten()))
     df =  pd.DataFrame(combinations(sorted(repeated), 2), columns=[header_interactorA, header_interactorB])
     df = df[[header_interactorB, header_interactorA]]   # To keep lexicographically sorted interactions
     df.columns = [header_interactorA, header_interactorB]
-    unidirectional_ppi = pd.merge(PPI_data, df, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
+    unidirectional_ppi = pd.merge(ppi_data, df, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
     unidirectional_ppi.reset_index(drop=True, inplace=True)
     return unidirectional_ppi
 
