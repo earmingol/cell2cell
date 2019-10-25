@@ -50,7 +50,6 @@ def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='
                           col_linkage=linkage,
                           row_linkage=linkage,
                           )
-    hier.fig.suptitle(title)
     plt.close()
 
     # Triangular matrix
@@ -143,7 +142,10 @@ def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='
 
     hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(), rotation=45, ha='right')#, fontsize=9.5)
     hier.ax_heatmap.set_yticklabels(hier.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, ha='left')  # , fontsize=9.5)
-    hier.fig.suptitle(title, fontsize=16)
+
+    # Title
+    if len(title) > 0:
+        hier.ax_col_dendrogram.set_title(title, fontsize=16)
 
     # Color bar label
     cbar = hier.ax_heatmap.collections[0].colorbar
@@ -309,7 +311,7 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
 
     # Title
     if len(title) > 0:
-        fig.fig.suptitle(title, fontsize=16)
+        fig.ax_col_dendrogram.set_title(title, fontsize=24)
 
     # Color bar label
     cbar = fig.ax_heatmap.collections[0].colorbar
