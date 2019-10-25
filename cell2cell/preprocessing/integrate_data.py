@@ -40,13 +40,15 @@ def get_weighted_ppi(ppi_data, modified_rnaseq_data, column='value'):
     return weighted_ppi
 
 
-def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=['A', 'B'], verbose=True):
+def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=['A', 'B'],
+                               bidirectional=True, verbose=True):
     ppi_dict = dict()
     ppi_dict['contacts'] = ppi.filter_ppi_network(ppi_data=ppi_data,
                                                   contact_proteins=contact_proteins,
                                                   mediator_proteins=mediator_proteins,
                                                   interaction_type='contacts',
                                                   interaction_columns=interaction_columns,
+                                                  bidirectional=bidirectional,
                                                   verbose=verbose)
     if mediator_proteins is not None:
         ppi_dict['mediated'] = ppi.filter_ppi_network(ppi_data=ppi_data,
@@ -54,6 +56,7 @@ def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=Non
                                                       mediator_proteins=mediator_proteins,
                                                       interaction_type='mediated',
                                                       interaction_columns=interaction_columns,
+                                                      bidirectional=bidirectional,
                                                       verbose=verbose)
 
         ppi_dict['combined'] = ppi.filter_ppi_network(ppi_data=ppi_data,
@@ -61,6 +64,7 @@ def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=Non
                                                       mediator_proteins=mediator_proteins,
                                                       interaction_type='combined',
                                                       interaction_columns=interaction_columns,
+                                                      bidirectional=bidirectional,
                                                       verbose=verbose)
 
         ppi_dict['complete'] = ppi.filter_ppi_network(ppi_data=ppi_data,
@@ -68,6 +72,7 @@ def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=Non
                                                       mediator_proteins=mediator_proteins,
                                                       interaction_type='complete',
                                                       interaction_columns=interaction_columns,
+                                                      bidirectional=bidirectional,
                                                       verbose=verbose)
     return ppi_dict
 
