@@ -75,7 +75,7 @@ def bidirectional_ppi_for_cci(ppi_data, interaction_columns=['A', 'B'], verbose=
     return new_ppi_data
 
 
-def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
+def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None, bidirectional=True,
                        interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
     '''
     :param ppi_data:
@@ -92,9 +92,10 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
                                             interaction_columns=interaction_columns,
                                             verbose=verbose)
 
-    new_ppi_data = bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
-                                             interaction_columns=interaction_columns,
-                                             verbose=verbose)
+    if bidirectional:
+        new_ppi_data = bidirectional_ppi_for_cci(ppi_data=new_ppi_data,
+                                                 interaction_columns=interaction_columns,
+                                                 verbose=verbose)
     return new_ppi_data
 
 
