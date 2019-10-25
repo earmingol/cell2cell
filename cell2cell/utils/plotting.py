@@ -80,6 +80,7 @@ def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='
                 ~df.columns.isin(excluded_cells)]
 
     # Colors
+    col_colors = None
     if metadata is not None:
         meta_ = metadata.set_index(sample_col)
         if excluded_cells is not None:
@@ -129,10 +130,14 @@ def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='
     scaler_y = abs(label_y1.get_transform().transform(label_y1.get_position()) \
                    - label_y2.get_transform().transform(label_y2.get_position()))
 
+    if col_colors is not None:
+        y_factor = 0.95
+    else:
+        y_factor = 0.5
     for i, label in enumerate(hier.ax_heatmap.xaxis.get_majorticklabels()):
         # scaler = 19./72. 72 is for inches
         dx = -0.5 * scaler_x[0] / 72.
-        dy = scaler_y[1] * (yrange - i - .5) / 72.
+        dy = scaler_y[1] * (yrange - i - y_factor) / 72.
         offset = mlp.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
         label.set_transform(label.get_transform() + offset)
 
@@ -223,7 +228,7 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
 
 
 def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample_col='#SampleID', group_col='Groups',
-                                 meta_cmap='gist_rainbow', colors=None, metric='cosine', method='ward', excluded_cells=None,
+                                 meta_cmap='gist_rainbow', colors=None, metric='jaccard', method='ward', excluded_cells=None,
                                  title='', filename=None,
                                  **kwargs):
     df_ = ppi_score_for_cell_pairs.copy()
@@ -284,6 +289,9 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
                                          col_colors_R],
                              **kwargs
                              )
+
+        fig.ax_heatmap.set_yticklabels(fig.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, ha='left')
+        fig.ax_heatmap.set_xticklabels(fig.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
 
         fig.ax_col_colors.set_yticks(np.arange(0.5, 2., step=1))
         fig.ax_col_colors.set_yticklabels(['LEFT-CELL', 'RIGHT-CELL'], fontsize=12)
