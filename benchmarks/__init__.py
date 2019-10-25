@@ -2,4 +2,4 @@
 
 from __future__ import absolute_import
 
-from benchmarks.benchmarks import timeit
+from benchmarks.benchmarks import (timeit)
