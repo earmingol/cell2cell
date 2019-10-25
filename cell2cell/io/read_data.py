@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from cell2cell.preprocessing import rnaseq, ppi
 
-def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=None):
+def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=None, verbose=True):
     '''
     Function to open any table into a pandas dataframe.
     '''
@@ -36,13 +36,15 @@ def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=
     elif (format == 'csv') | (format == 'tsv') | (format == 'txt'):
         table = pd.read_csv(filename, sep=sep, compression=compression)
     else:
-        print("Specify a correct format")
+        if verbose:
+            print("Specify a correct format")
         return None
-    print(filename + ' was correctly loaded')
+    if verbose:
+        print(filename + ' was correctly loaded')
     return table
 
 
-def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation=False, **kwargs):
+def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation=False, verbose=True, **kwargs):
     '''
     Load RNAseq datasets from table. Genes names are index. Cells/tissues/organs are columns.
 
@@ -51,8 +53,9 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation
 
 
     '''
-    print("Opening RNAseq datasets from {}".format(rnaseq_file))
-    rnaseq_data = load_table(rnaseq_file, **kwargs)
+    if verbose:
+        print("Opening RNAseq datasets from {}".format(rnaseq_file))
+    rnaseq_data = load_table(rnaseq_file, verbose=verbose, **kwargs)
     if gene_column is None:
         gene_column = list(rnaseq_data.columns)[0]
     rnaseq_data = rnaseq_data.set_index(gene_column)
@@ -79,7 +82,7 @@ def load_metadata(metadata_file, rnaseq_data, sample_col=None, **kwargs):
     return meta
 
 
-def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_transformation = False, **kwargs):
+def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_transformation = False, verbose=True, **kwargs):
     '''
     Load RNAseq datasets from table. Genes names are index. Cells/tissues/organs are columns.
 
@@ -88,8 +91,9 @@ def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_tran
 
 
     '''
-    print("Opening Cutoff datasets from {}".format(cutoff_file))
-    cutoff_data = load_table(cutoff_file, **kwargs)
+    if verbose:
+        print("Opening Cutoff datasets from {}".format(cutoff_file))
+    cutoff_data = load_table(cutoff_file, verbose=verbose, **kwargs)
     if gene_column is not None:
         cutoff_data = cutoff_data.set_index(gene_column)
     else:
@@ -110,16 +114,17 @@ def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_tran
     return cutoff_data
 
 
-def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None,  **kwargs):
+def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None, verbose=True,  **kwargs):
     '''
     Load PPI network from table. Column of Interactor 1 and Interactor 2 must be specified.
 
 
     '''
-    print("Opening PPI datasets from {}".format(ppi_file))
-    ppi_data = load_table(ppi_file,  **kwargs)
-    unidirectional_ppi = ppi.remove_ppi_bidirectionality(ppi_data, interaction_columns)
-    simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score)
+    if verbose:
+        print("Opening PPI datasets from {}".format(ppi_file))
+    ppi_data = load_table(ppi_file, verbose=verbose,  **kwargs)
+    unidirectional_ppi = ppi.remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=verbose)
+    simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score, verbose=verbose)
     if rnaseq_genes is not None:
         simplified_ppi = ppi.filter_ppi_by_proteins(simplified_ppi, rnaseq_genes)
     return simplified_ppi
