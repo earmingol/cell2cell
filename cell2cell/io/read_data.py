@@ -130,34 +130,38 @@ def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None, verbo
     return simplified_ppi
 
 
-def load_go_terms(go_terms_file):
+def load_go_terms(go_terms_file, verbose=True):
     '''
     Load GO terms obo-basic file
     Example: go_terms_file = 'http://purl.obolibrary.org/obo/go/go-basic.obo'
     '''
     import goenrich
 
-    print("Opening GO terms from {}".format(go_terms_file))
+    if verbose:
+        print("Opening GO terms from {}".format(go_terms_file))
     go_terms = goenrich.obo.ontology(go_terms_file)
-    print(go_terms_file + ' was correctly loaded')
+    if verbose:
+        print(go_terms_file + ' was correctly loaded')
     return go_terms
 
 
-def load_go_annotations(goa_file, experimental_evidence=True):
+def load_go_annotations(goa_file, experimental_evidence=True, verbose=True):
     '''
     Load GO annotation for a given organism.
     Example: goa_file = 'http://current.geneontology.org/annotations/wb.gaf.gz'
     '''
     import goenrich
 
-    print("Opening GO annotations from {}".format(goa_file))
+    if verbose:
+        print("Opening GO annotations from {}".format(goa_file))
 
     goa = goenrich.read.goa(goa_file, experimental_evidence)
     goa_cols = list(goa.columns)
     goa = goa[goa_cols[:3] + [goa_cols[4]]]
     new_cols = ['db', 'Gene', 'Name', 'GO']
     goa.columns = new_cols
-    print(goa_file + ' was correctly loaded')
+    if verbose:
+        print(goa_file + ' was correctly loaded')
     return goa
 
 
