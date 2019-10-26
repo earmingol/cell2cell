@@ -92,9 +92,11 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
                                   )
 
     go_annotations = read_data.load_go_annotations(goa_file=files['go_annotations'],
-                                                   experimental_evidence=go_setup['experimental_evidence'])
+                                                   experimental_evidence=go_setup['experimental_evidence'],
+                                                   verbose=verbose)
 
-    go_terms = read_data.load_go_terms(go_terms_file=files['go_terms'])
+    go_terms = read_data.load_go_terms(go_terms_file=files['go_terms'],
+                                       verbose=verbose)
 
     # Filter genes associated to GO terms
     default_heuristic_go = heuristic_data.HeuristicGOTerms()
@@ -126,7 +128,7 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
                                                          verbose=verbose
                                                          )
 
-    bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_dict[interaction_type])
+    bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_dict[interaction_type], verbose=verbose)
 
     interaction_space = ispace.InteractionSpace(rnaseq_data=rnaseq_data,
                                                 ppi_data=bi_ppi_data,

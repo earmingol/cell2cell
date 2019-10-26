@@ -6,8 +6,9 @@ import numpy as np
 import networkx
 
 ### Gene Ontology related functions
-def get_genes_from_go_terms(go_annotations, go_filter, go_header='GO', gene_header='Gene'):
-    print('Filtering genes by using GO terms')
+def get_genes_from_go_terms(go_annotations, go_filter, go_header='GO', gene_header='Gene', verbose=True):
+    if verbose:
+        print('Filtering genes by using GO terms')
     genes = list(np.unique(go_annotations.loc[go_annotations[go_header].isin(go_filter)][gene_header].values))
     return genes
 
@@ -21,7 +22,8 @@ def get_genes_from_go_hierarchy(go_annotations, go_terms, go_filter, go_header='
     genes = get_genes_from_go_terms(go_annotations=go_annotations,
                                     go_filter=go_hierarchy,
                                     go_header=go_header,
-                                    gene_header=gene_header)
+                                    gene_header=gene_header,
+                                    verbose=verbose)
     return genes
 
 

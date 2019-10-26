@@ -98,12 +98,14 @@ def get_ppi_dict_from_go_terms(ppi_data, go_annotations, go_terms, contact_go_te
         contact_proteins = gene_ontology.get_genes_from_go_terms(go_annotations=go_annotations,
                                                                  go_filter=contact_go_terms,
                                                                  go_header=go_header,
-                                                                 gene_header=gene_header)
+                                                                 gene_header=gene_header,
+                                                                 verbose=verbose)
 
         mediator_proteins = gene_ontology.get_genes_from_go_terms(go_annotations=go_annotations,
                                                                   go_filter=mediator_go_terms,
                                                                   go_header=go_header,
-                                                                  gene_header=gene_header)
+                                                                  gene_header=gene_header,
+                                                                  verbose=verbose)
 
     # Avoid same genes in list
     #contact_proteins = list(set(contact_proteins) - set(mediator_proteins))
