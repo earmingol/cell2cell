@@ -110,38 +110,3 @@ def compute_dot_product_score(cell1, cell2):
     if cci_score is np.nan:
         return 0.0
     return cci_score
-
-
-def compute_sigmoid_cci_score(cell1, cell2):
-    '''
-    Function that calculates ...
-
-    Parameters
-    ----------
-    cell1 : Cell class
-        First cell/tissue/organ type to compute interaction between a pair of them.
-
-    cell2 : Cell class
-        Second cell/tissue/organ type to compute interaction between a pair of them.
-
-    Returns
-    -------
-    cci_score : float
-        Score for the interaction of the of the pair of cells based on the abundance of gene/proteins in the ppi network.
-    '''
-
-    def sigmoid(x):
-        return 1.0 / (1.0 + math.exp(-x))
-
-    dot_prod = compute_dot_product_score(cell1, cell2)
-
-    c1 = cell1.weighted_ppi['A'].values
-    c2 = cell2.weighted_ppi['B'].values
-    if (len(c1) == 0) or (len(c2) == 0):
-        return 0.0
-
-    cci_score = sigmoid(dot_prod) / float(len(c1))
-
-    if cci_score is np.nan:
-        return 0.0
-    return cci_score

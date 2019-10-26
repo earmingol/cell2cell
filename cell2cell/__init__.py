@@ -10,4 +10,4 @@ from cell2cell import io
 from cell2cell import preprocessing
 from cell2cell import utils
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

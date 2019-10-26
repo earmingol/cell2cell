@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 
-def get_local_percentile_cutoffs(rnaseq_data, percentile = 0.75):
+def get_local_percentile_cutoffs(rnaseq_data, percentile=0.75):
     '''
     This function obtains the percentile value across all samples for every gene independently.
 
@@ -26,7 +26,7 @@ def get_local_percentile_cutoffs(rnaseq_data, percentile = 0.75):
     return cutoffs
 
 
-def get_global_percentile_cutoffs(rnaseq_data, percentile = 0.75):
+def get_global_percentile_cutoffs(rnaseq_data, percentile=0.75):
     '''
     This function obtains the percentile value across all samples and all genes. The value obtained is used as cutoff
     for all genes.
@@ -48,6 +48,15 @@ def get_global_percentile_cutoffs(rnaseq_data, percentile = 0.75):
 def get_standep_cutoffs(rnaseq_data, k):
     '''Not implemented yet'''
     pass
+
+
+def get_constant_cutoff(rnaseq_data, constant_cutoff=10):
+    '''
+    This function generates a cutoff dataframe for all genes in rnaseq_data assigning a constant value.
+    '''
+    cutoffs = pd.DataFrame(index=rnaseq_data.index)
+    cutoffs['value'] = constant_cutoff
+    return cutoffs
 
 
 def get_cutoffs(rnaseq_data, parameters, verbose=True):
@@ -96,13 +105,15 @@ def get_cutoffs(rnaseq_data, parameters, verbose=True):
     elif type == 'global_percentile':
         cutoffs = get_global_percentile_cutoffs(rnaseq_data, parameter)
         cutoffs.columns = ['value']
+    elif type == 'constant_value':
+        cutoffs = get_constant_cutoff(rnaseq_data, parameter)
+        cutoffs.columns = ['value']
     elif type == 'standep':
         cutoffs = get_standep_cutoffs(rnaseq_data, parameter)
     elif type == 'file':
         cutoffs = read_data.load_cutoffs(parameter,
                                          format='auto')
         cutoffs = cutoffs.loc[rnaseq_data.index]
-
     elif type == 'multi_col_matrix':
         cutoffs = parameter
         cutoffs = cutoffs.loc[rnaseq_data.index]

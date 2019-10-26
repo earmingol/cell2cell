@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 
-def generate_interaction_elements(modified_rnaseq, ppi_data, interaction_type, cci_matrix_template=None, verbose=True):
+def generate_interaction_elements(modified_rnaseq, ppi_data, cci_matrix_template=None, verbose=True):
     '''Create all elements of pairwise interactions needed to perform the analyses.
     All these variables are used by the class InteractionSpace.
 
@@ -29,7 +29,7 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, interaction_type, c
     '''
 
     if verbose:
-        print('Creating ' + interaction_type.capitalize() + ' Interaction Space')
+        print('Creating Interaction Space')
 
     # Cells
     cell_instances = list(modified_rnaseq.columns)  # @Erick, check if position 0 of columns contain index header.
@@ -58,6 +58,14 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, interaction_type, c
     else:
         interaction_space['cci_matrix'] = cci_matrix_template
 
+    # PPIs for each cell
+    empty_ppi = np.empty(ppi_data.shape)
+    empty_ppi[:] = np.nan
+    interaction_space['ppis'] = dict.fromkeys(list(interaction_space['cells'].values()),
+                                              pd.DataFrame(empty_ppi, columns=['A', 'B', 'score']))
+
+    for name, cell_unit in interaction_space['cells'].items():
+        interaction_space['ppis'][name] = cell_unit.weighted_ppi
     return interaction_space
 
 
@@ -75,10 +83,11 @@ class InteractionSpace():
 
     '''
 
-    def __init__(self, rnaseq_data, ppi_dict, interaction_type, gene_cutoffs, score_type='binary',
+    def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, score_type='binary', score_metric='bray_curtis',
                  cci_matrix_template=None, verbose=True):
 
         self.score_type = score_type
+        self.score_metric = score_metric
         if self.score_type == 'binary':
             if 'type' in gene_cutoffs.keys():
                 cutoff_values = cutoffs.get_cutoffs(rnaseq_data=rnaseq_data,
@@ -89,16 +98,15 @@ class InteractionSpace():
         else:
             cutoff_values = None
 
-        self.interaction_type = interaction_type
-        self.ppi_data = ppi_dict[self.interaction_type]
+        self.ppi_data = ppi_data.copy()
 
         self.modified_rnaseq = integrate_data.get_modified_rnaseq(rnaseq_data=rnaseq_data,
                                                                   score_type=self.score_type,
-                                                                  cutoffs=cutoff_values)
+                                                                  cutoffs=cutoff_values
+                                                                  )
 
         self.interaction_elements = generate_interaction_elements(modified_rnaseq=self.modified_rnaseq,
                                                                   ppi_data=self.ppi_data,
-                                                                  interaction_type=self.interaction_type,
                                                                   cci_matrix_template=cci_matrix_template,
                                                                   verbose=verbose)
 
@@ -128,7 +136,7 @@ class InteractionSpace():
         '''
 
         if verbose:
-            print("Computing {} interaction between {} and {}".format(self.interaction_type, cell1.type, cell2.type))
+            print("Computing interaction between {} and {}".format(cell1.type, cell2.type))
 
         # Calculate cell-cell interaction score
         if score_metric == 'bray_curtis':
@@ -139,7 +147,7 @@ class InteractionSpace():
             raise NotImplementedError("Score metric {} to compute pairwise cell-interactions is not implemented".format(score_metric))
         return cci_score
 
-    def compute_pairwise_interactions(self, score_metric='bray_curtis', verbose=True):
+    def compute_pairwise_interactions(self, score_metric=None, verbose=True):
         '''
         Function that computes...
 
@@ -152,9 +160,15 @@ class InteractionSpace():
 
 
         '''
+        if score_metric is None:
+            score_metric = self.score_metric
+        else:
+            assert isinstance(score_metric, str)
+
         ### Compute pairwise physical interactions
         if verbose:
             print("Computing pairwise interactions")
+
         for pair in self.interaction_elements['pairs']:
             cell1 = self.interaction_elements['cells'][pair[0]]
             cell2 = self.interaction_elements['cells'][pair[1]]
@@ -164,3 +178,7 @@ class InteractionSpace():
                                                   verbose=verbose)
             self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_score
             self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_score
+
+        # Generate distance matrix
+        self.distance_matrix = self.interaction_elements['cci_matrix'].apply(lambda x: 1 - x)
+        np.fill_diagonal(self.distance_matrix.values, 0.0)  # Make diagonal zero (delete autocrine-interactions)
