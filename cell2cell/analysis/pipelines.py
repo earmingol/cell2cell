@@ -106,12 +106,14 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
         mediator_go_terms = default_heuristic_go.mediator_go_terms
 
     contact_genes = gene_ontology.get_genes_from_go_hierarchy(go_annotations,
-                                                                  go_terms,
-                                                                  contact_go_terms)
+                                                              go_terms,
+                                                              contact_go_terms,
+                                                              verbose=verbose)
 
     mediator_genes = gene_ontology.get_genes_from_go_hierarchy(go_annotations,
                                                                go_terms,
-                                                               mediator_go_terms)
+                                                               mediator_go_terms,
+                                                               verbose=verbose)
 
     contact_genes = list(set(contact_genes))
     mediator_genes = list(set(mediator_genes))
@@ -161,7 +163,7 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
         cells=list(interaction_space.distance_matrix.columns),
         subsampled_interactions=[interaction_space.interaction_elements],
         ppi_data=bi_ppi_data,
-        ref_ppi_data=ppi_data
+        ref_ppi_data=ppi_dict[interaction_type]
         )
 
     interaction_clustermap = plotting.clustermap_cell_pairs_vs_ppi(interaction_matrix,
