@@ -14,7 +14,7 @@ from cell2cell.utils import plotting
 
 def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup, go_setup, analysis_setup,
                        contact_go_terms = None, mediator_go_terms = None, interaction_type='combined',
-                       excluded_cells=None, verbose=None):
+                       excluded_cells=None, colors=None, verbose=None):
     '''
     This function performs the analysis with the default list of GO terms to filter the proteins in the PPI network.
 
@@ -141,6 +141,7 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
                                          metadata=meta,
                                          sample_col=meta_setup['sample_col'],
                                          group_col=meta_setup['group_col'],
+                                         colors=colors,
                                          title='CCI scores for cell pairs',
                                          filename=files['output_folder'] + 'CCI-Clustermap-CCI-scores.png',
                                          **{'cmap': 'Blues'}
@@ -151,6 +152,7 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
                                 metadata=meta,
                                 sample_col=meta_setup['sample_col'],
                                 group_col=meta_setup['group_col'],
+                                colors=colors,
                                 title='PCoA for cells given their CCI scores',
                                 filename=files['output_folder'] + 'CCI-PCoA-CCI-scores.png',
                                 )
@@ -167,6 +169,7 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
                                                                    metadata=meta,
                                                                    sample_col=meta_setup['sample_col'],
                                                                    group_col=meta_setup['group_col'],
+                                                                   colors=colors,
                                                                    excluded_cells=excluded_cells,
                                                                    title='Active ligand-receptor pairs for interacting cells',
                                                                    filename=files[
@@ -186,7 +189,7 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
 
 
 def ligand_receptor_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup, analysis_setup, excluded_cells=None,
-                             verbose=True):
+                             colors=None, verbose=True):
     if excluded_cells is None:
         excluded_cells = []
 
@@ -234,19 +237,21 @@ def ligand_receptor_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_
                                          metadata=meta,
                                          sample_col=meta_setup['sample_col'],
                                          group_col=meta_setup['group_col'],
+                                         colors=colors,
                                          title='CCI scores for cell pairs',
                                          filename=files['output_folder'] + 'CCI-Clustermap-CCI-scores.png',
                                          **{'cmap': 'Blues'}
                                          )
 
     pcoa = plotting.pcoa_biplot(interaction_space,
-                                 excluded_cells=excluded_cells,
-                                 metadata=meta,
-                                 sample_col=meta_setup['sample_col'],
-                                 group_col=meta_setup['group_col'],
-                                 title='PCoA for cells given their CCI scores',
-                                 filename=files['output_folder'] + 'CCI-PCoA-CCI-scores.png',
-                                 )
+                                excluded_cells=excluded_cells,
+                                metadata=meta,
+                                sample_col=meta_setup['sample_col'],
+                                group_col=meta_setup['group_col'],
+                                colors=colors,
+                                title='PCoA for cells given their CCI scores',
+                                filename=files['output_folder'] + 'CCI-PCoA-CCI-scores.png',
+                                )
 
     interaction_matrix, std_interaction_matrix = ppi_enrichment.get_ppi_score_for_cell_pairs(cells=list(interaction_space.distance_matrix.columns),
                                                                                              subsampled_interactions=[interaction_space.interaction_elements],
@@ -259,6 +264,7 @@ def ligand_receptor_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_
                                                                    metadata=meta,
                                                                    sample_col=meta_setup['sample_col'],
                                                                    group_col=meta_setup['group_col'],
+                                                                   colors=colors,
                                                                    excluded_cells=excluded_cells,
                                                                    title='Active ligand-receptor pairs for interacting cells',
                                                                    filename=files['output_folder'] + 'CCI-Active-LR-pairs.png',
