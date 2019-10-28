@@ -12,6 +12,74 @@ from cell2cell.preprocessing import gene_ontology, integrate_data, ppi
 from cell2cell.utils import plotting
 
 
+def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_setup, analysis_setup, excluded_cells=None,
+                  colors=None, verbose=True):
+    bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_data,
+                                                verbose=verbose)
+
+
+    interaction_space = ispace.InteractionSpace(rnaseq_data=rnaseq_data,
+                                                ppi_data=bi_ppi_data,
+                                                gene_cutoffs=cutoff_setup,
+                                                score_type=analysis_setup['score_type'],
+                                                score_metric=analysis_setup['score_metric'],
+                                                verbose=verbose)
+
+    interaction_space.compute_pairwise_interactions(verbose=verbose)
+
+    clustermap = plotting.clustermap_cci(interaction_space,
+                                         method='ward',
+                                         excluded_cells=excluded_cells,
+                                         metadata=metadata,
+                                         sample_col=meta_setup['sample_col'],
+                                         group_col=meta_setup['group_col'],
+                                         colors=colors,
+                                         title='CCI scores for cell pairs',
+                                         filename=files['output_folder'] + 'CCI-Clustermap-CCI-scores.png',
+                                         **{'cmap': 'Blues'}
+                                         )
+
+    pcoa = plotting.pcoa_biplot(interaction_space,
+                                excluded_cells=excluded_cells,
+                                metadata=metadata,
+                                sample_col=meta_setup['sample_col'],
+                                group_col=meta_setup['group_col'],
+                                colors=colors,
+                                title='PCoA for cells given their CCI scores',
+                                filename=files['output_folder'] + 'CCI-PCoA-CCI-scores.png',
+                                )
+
+    interaction_matrix, std_interaction_matrix = ppi_enrichment.get_ppi_score_for_cell_pairs(
+        cells=list(interaction_space.distance_matrix.columns),
+        subsampled_interactions=[interaction_space.interaction_elements],
+        ppi_data=bi_ppi_data,
+        ref_ppi_data=ppi_data
+    )
+
+    interaction_clustermap = plotting.clustermap_cell_pairs_vs_ppi(interaction_matrix,
+                                                                   metric='jaccard',
+                                                                   metadata=metadata,
+                                                                   sample_col=meta_setup['sample_col'],
+                                                                   group_col=meta_setup['group_col'],
+                                                                   colors=colors,
+                                                                   excluded_cells=excluded_cells,
+                                                                   title='Active ligand-receptor pairs for interacting cells',
+                                                                   filename=files[
+                                                                                'output_folder'] + 'CCI-Active-LR-pairs.png',
+                                                                   **{'figsize': (20, 40)}
+                                                                   )
+
+    interaction_clustermap.data2d.to_csv(files['output_folder'] + 'CCI-Active-LR-pairs.csv')
+
+    outputs = dict()
+    outputs['interaction_space'] = interaction_space
+    outputs['clustermap'] = clustermap
+    outputs['pcoa'] = pcoa
+    outputs['interaction_clustermap'] = interaction_clustermap
+    outputs['LR-pairs'] = interaction_clustermap.data2d
+    return outputs
+
+
 def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup, go_setup, analysis_setup,
                        contact_go_terms = None, mediator_go_terms = None, interaction_type='combined',
                        excluded_cells=None, colors=None, verbose=None):
@@ -128,67 +196,17 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
                                                          verbose=verbose
                                                          )
 
-    bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_dict[interaction_type], verbose=verbose)
 
-    interaction_space = ispace.InteractionSpace(rnaseq_data=rnaseq_data,
-                                                ppi_data=bi_ppi_data,
-                                                gene_cutoffs=cutoff_setup,
-                                                score_type=analysis_setup['score_type'],
-                                                score_metric=analysis_setup['score_metric'],
-                                                verbose=verbose)
-
-    interaction_space.compute_pairwise_interactions(verbose=verbose)
-
-    clustermap = plotting.clustermap_cci(interaction_space,
-                                         method='ward',
-                                         excluded_cells=excluded_cells,
-                                         metadata=meta,
-                                         sample_col=meta_setup['sample_col'],
-                                         group_col=meta_setup['group_col'],
-                                         colors=colors,
-                                         title='CCI scores for cell pairs',
-                                         filename=files['output_folder'] + 'CCI-Clustermap-CCI-scores.png',
-                                         **{'cmap': 'Blues'}
-                                         )
-
-    pcoa = plotting.pcoa_biplot(interaction_space,
-                                excluded_cells=excluded_cells,
-                                metadata=meta,
-                                sample_col=meta_setup['sample_col'],
-                                group_col=meta_setup['group_col'],
-                                colors=colors,
-                                title='PCoA for cells given their CCI scores',
-                                filename=files['output_folder'] + 'CCI-PCoA-CCI-scores.png',
-                                )
-
-    interaction_matrix, std_interaction_matrix = ppi_enrichment.get_ppi_score_for_cell_pairs(
-        cells=list(interaction_space.distance_matrix.columns),
-        subsampled_interactions=[interaction_space.interaction_elements],
-        ppi_data=bi_ppi_data,
-        ref_ppi_data=ppi_dict[interaction_type]
-        )
-
-    interaction_clustermap = plotting.clustermap_cell_pairs_vs_ppi(interaction_matrix,
-                                                                   metric='jaccard',
-                                                                   metadata=meta,
-                                                                   sample_col=meta_setup['sample_col'],
-                                                                   group_col=meta_setup['group_col'],
-                                                                   colors=colors,
-                                                                   excluded_cells=excluded_cells,
-                                                                   title='Active ligand-receptor pairs for interacting cells',
-                                                                   filename=files[
-                                                                                'output_folder'] + 'CCI-Active-LR-pairs.png',
-                                                                   **{'figsize': (20, 40)}
-                                                                   )
-
-    interaction_clustermap.data2d.to_csv(files['output_folder'] + 'CCI-Active-LR-pairs.csv')
-
-    outputs = dict()
-    outputs['interaction_space'] = interaction_space
-    outputs['clustermap'] = clustermap
-    outputs['pcoa'] = pcoa
-    outputs['interaction_clustermap'] = interaction_clustermap
-    outputs['LR-pairs'] = interaction_clustermap.data2d
+    outputs = core_pipeline(files=files,
+                            rnaseq_data=rnaseq_data,
+                            ppi_data=ppi_dict[interaction_type],
+                            metadata=meta,
+                            meta_setup=meta_setup,
+                            cutoff_setup=cutoff_setup,
+                            analysis_setup=analysis_setup,
+                            excluded_cells=excluded_cells,
+                            colors=colors,
+                            verbose=verbose)
     return outputs
 
 
@@ -222,65 +240,14 @@ def ligand_receptor_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_
                                    verbose=verbose)
 
     # Run Analysis
-    bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_data,
-                                                verbose=verbose)
-
-    interaction_space = ispace.InteractionSpace(rnaseq_data=rnaseq_data,
-                                                ppi_data=bi_ppi_data,
-                                                gene_cutoffs=cutoff_setup,
-                                                score_type=analysis_setup['score_type'],
-                                                score_metric=analysis_setup['score_metric'],
-                                                verbose=verbose)
-
-    interaction_space.compute_pairwise_interactions(verbose=verbose)
-
-
-    clustermap = plotting.clustermap_cci(interaction_space,
-                                         method='ward',
-                                         excluded_cells=excluded_cells,
-                                         metadata=meta,
-                                         sample_col=meta_setup['sample_col'],
-                                         group_col=meta_setup['group_col'],
-                                         colors=colors,
-                                         title='CCI scores for cell pairs',
-                                         filename=files['output_folder'] + 'CCI-Clustermap-CCI-scores.png',
-                                         **{'cmap': 'Blues'}
-                                         )
-
-    pcoa = plotting.pcoa_biplot(interaction_space,
-                                excluded_cells=excluded_cells,
-                                metadata=meta,
-                                sample_col=meta_setup['sample_col'],
-                                group_col=meta_setup['group_col'],
-                                colors=colors,
-                                title='PCoA for cells given their CCI scores',
-                                filename=files['output_folder'] + 'CCI-PCoA-CCI-scores.png',
-                                )
-
-    interaction_matrix, std_interaction_matrix = ppi_enrichment.get_ppi_score_for_cell_pairs(cells=list(interaction_space.distance_matrix.columns),
-                                                                                             subsampled_interactions=[interaction_space.interaction_elements],
-                                                                                             ppi_data=bi_ppi_data,
-                                                                                             ref_ppi_data=ppi_data
-                                                                                             )
-
-    interaction_clustermap = plotting.clustermap_cell_pairs_vs_ppi(interaction_matrix,
-                                                                   metric='jaccard',
-                                                                   metadata=meta,
-                                                                   sample_col=meta_setup['sample_col'],
-                                                                   group_col=meta_setup['group_col'],
-                                                                   colors=colors,
-                                                                   excluded_cells=excluded_cells,
-                                                                   title='Active ligand-receptor pairs for interacting cells',
-                                                                   filename=files['output_folder'] + 'CCI-Active-LR-pairs.png',
-                                                                   **{'figsize': (20, 40)}
-                                                                   )
-
-    interaction_clustermap.data2d.to_csv(files['output_folder'] + 'CCI-Active-LR-pairs.csv')
-
-    outputs = dict()
-    outputs['interaction_space'] = interaction_space
-    outputs['clustermap'] = clustermap
-    outputs['pcoa'] = pcoa
-    outputs['interaction_clustermap'] = interaction_clustermap
-    outputs['LR-pairs'] = interaction_clustermap.data2d
+    outputs = core_pipeline(files=files,
+                            rnaseq_data=rnaseq_data,
+                            ppi_data=ppi_data,
+                            metadata=meta,
+                            meta_setup=meta_setup,
+                            cutoff_setup=cutoff_setup,
+                            analysis_setup=analysis_setup,
+                            excluded_cells=excluded_cells,
+                            colors=colors,
+                            verbose=verbose)
     return outputs
