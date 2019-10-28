@@ -13,7 +13,11 @@ from cell2cell.utils import plotting
 
 
 def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_setup, analysis_setup, excluded_cells=None,
-                  colors=None, verbose=True):
+                  colors=None, use_ppi_score=False, verbose=True):
+
+    if excluded_cells is None:
+        excluded_cells = []
+
     bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_data,
                                                 verbose=verbose)
 
@@ -25,7 +29,8 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
                                                 score_metric=analysis_setup['score_metric'],
                                                 verbose=verbose)
 
-    interaction_space.compute_pairwise_interactions(verbose=verbose)
+    interaction_space.compute_pairwise_interactions(use_ppi_score=use_ppi_score,
+                                                    verbose=verbose)
 
     clustermap = plotting.clustermap_cci(interaction_space,
                                          method='ward',
@@ -53,11 +58,16 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
         cells=list(interaction_space.distance_matrix.columns),
         subsampled_interactions=[interaction_space.interaction_elements],
         ppi_data=bi_ppi_data,
-        ref_ppi_data=ppi_data
+        ref_ppi_data=ppi_data,
+        use_ppi_score=use_ppi_score
     )
 
+    if use_ppi_score:
+        metric = 'cosine'
+    else:
+        metric = 'jaccard'
     interaction_clustermap = plotting.clustermap_cell_pairs_vs_ppi(interaction_matrix,
-                                                                   metric='jaccard',
+                                                                   metric=metric,
                                                                    metadata=metadata,
                                                                    sample_col=meta_setup['sample_col'],
                                                                    group_col=meta_setup['group_col'],
@@ -66,7 +76,9 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
                                                                    title='Active ligand-receptor pairs for interacting cells',
                                                                    filename=files[
                                                                                 'output_folder'] + 'CCI-Active-LR-pairs.png',
-                                                                   **{'figsize': (20, 40)}
+                                                                   **{'figsize': (20, 40),
+                                                                      'vmin' : 0.0,
+                                                                      'vmax': 1.0}
                                                                    )
 
     interaction_clustermap.data2d.to_csv(files['output_folder'] + 'CCI-Active-LR-pairs.csv')
@@ -82,7 +94,7 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
 
 def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup, go_setup, analysis_setup,
                        contact_go_terms = None, mediator_go_terms = None, interaction_type='combined',
-                       excluded_cells=None, colors=None, verbose=None):
+                       excluded_cells=None, colors=None,  use_ppi_score=False, verbose=None):
     '''
     This function performs the analysis with the default list of GO terms to filter the proteins in the PPI network.
 
@@ -206,12 +218,13 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
                             analysis_setup=analysis_setup,
                             excluded_cells=excluded_cells,
                             colors=colors,
+                            use_ppi_score=use_ppi_score,
                             verbose=verbose)
     return outputs
 
 
 def ligand_receptor_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup, analysis_setup, excluded_cells=None,
-                             colors=None, verbose=True):
+                             colors=None,  use_ppi_score=False, verbose=True):
     if excluded_cells is None:
         excluded_cells = []
 
@@ -249,5 +262,6 @@ def ligand_receptor_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_
                             analysis_setup=analysis_setup,
                             excluded_cells=excluded_cells,
                             colors=colors,
+                            use_ppi_score=use_ppi_score,
                             verbose=verbose)
     return outputs

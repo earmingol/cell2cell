@@ -8,16 +8,30 @@ import numpy as np
 import pandas as pd
 
 
-def ppi_count_operation(pair, subsampled_interactions, index=None):
+def ppi_count_operation(pair, subsampled_interactions, use_ppi_score=False, index=None):
     cell1 = pair[0]
     cell2 = pair[1]
 
+    if use_ppi_score:
+        assert np.array_equal(subsampled_interactions[0]['ppis'][cell1][['score']].values,
+                              subsampled_interactions[0]['ppis'][cell2][['score']].values)
+
     if index is None:
-        matrices = [np.multiply(element['ppis'][cell1][['A']].values, element['ppis'][cell2][['B']].values)
-                    for element in subsampled_interactions]
+        if use_ppi_score:
+            matrices = [np.multiply(element['ppis'][cell1][['A']].values, element['ppis'][cell2][['B']].values) \
+                        * element['ppis'][cell1][['score']].values for element in subsampled_interactions]
+        else:
+            matrices = [np.multiply(element['ppis'][cell1][['A']].values, element['ppis'][cell2][['B']].values)
+                        for element in subsampled_interactions]
+
     else:
-        matrices = [np.multiply(element['ppis'][cell1][['A']].values[index], element['ppis'][cell2][['B']].values[index])
-                    for element in subsampled_interactions]
+        if use_ppi_score:
+            matrices = [
+                np.multiply(element['ppis'][cell1][['A']].values[index], element['ppis'][cell2][['B']].values[index]) \
+                * element['ppis'][cell1][['score']].values[index] for element in subsampled_interactions]
+        else:
+            matrices = [np.multiply(element['ppis'][cell1][['A']].values[index], element['ppis'][cell2][['B']].values[index])
+                        for element in subsampled_interactions]
     matrices = np.concatenate(matrices, axis=1)
     return matrices
 
@@ -54,7 +68,7 @@ def compute_avg_count_for_ppis(subsampled_interactions, clusters, ppi_data):
     return mean_matrix, std_matrix
 
 
-def get_ppi_score_for_cell_pairs(cells, subsampled_interactions, ppi_data, ref_ppi_data=None):
+def get_ppi_score_for_cell_pairs(cells, subsampled_interactions, ppi_data, use_ppi_score=False, ref_ppi_data=None):
     cell_pairs = list(itertools.combinations(cells + cells, 2))
     cell_pairs = list(set(cell_pairs))
     col_labels = ['{};{}'.format(pair[0], pair[1]) for pair in cell_pairs]
@@ -71,7 +85,11 @@ def get_ppi_score_for_cell_pairs(cells, subsampled_interactions, ppi_data, ref_p
 
 
     for i, pair in enumerate(cell_pairs):
-        matrices = ppi_count_operation(pair=pair, subsampled_interactions=subsampled_interactions, index=keep_index)
+        matrices = ppi_count_operation(pair=pair,
+                                       subsampled_interactions=subsampled_interactions,
+                                       use_ppi_score=use_ppi_score,
+                                       index=keep_index)
+
         mean_column = np.nanmean(matrices, axis=1)
         std_column = np.nanstd(matrices, axis=1)
 

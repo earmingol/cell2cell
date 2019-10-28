@@ -110,7 +110,7 @@ class InteractionSpace():
                                                                   cci_matrix_template=cci_matrix_template,
                                                                   verbose=verbose)
 
-    def pairwise_interaction(self, cell1, cell2, score_metric='bray_curtis', verbose=True):
+    def pairwise_interaction(self, cell1, cell2, score_metric='bray_curtis', use_ppi_score=False, verbose=True):
         '''
         Function that performs the interaction analysis of a pair of cells.
 
@@ -140,14 +140,14 @@ class InteractionSpace():
 
         # Calculate cell-cell interaction score
         if score_metric == 'bray_curtis':
-            cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2)
+            cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2, use_ppi_score=use_ppi_score)
         elif score_metric == 'jaccard':
-            cci_score = cci_scores.compute_jaccard_like_cci_score(cell1, cell2)
+            cci_score = cci_scores.compute_jaccard_like_cci_score(cell1, cell2, use_ppi_score=use_ppi_score)
         else:
             raise NotImplementedError("Score metric {} to compute pairwise cell-interactions is not implemented".format(score_metric))
         return cci_score
 
-    def compute_pairwise_interactions(self, score_metric=None, verbose=True):
+    def compute_pairwise_interactions(self, score_metric=None, use_ppi_score=False, verbose=True):
         '''
         Function that computes...
 
@@ -175,6 +175,7 @@ class InteractionSpace():
             cci_score = self.pairwise_interaction(cell1,
                                                   cell2,
                                                   score_metric=score_metric,
+                                                  use_ppi_score=use_ppi_score,
                                                   verbose=verbose)
             self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_score
             self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_score
