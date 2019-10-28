@@ -46,3 +46,17 @@ def genera_toy_metadata():
 
     metadata = pd.DataFrame(data, columns=['#SampleID', 'Groups'])
     return metadata
+
+
+def generate_toy_distance():
+    data = np.asarray([[0.0, 10.0, 12.0, 5.0, 3.0],
+                       [10.0, 0.0, 15.0, 8.0, 9.0],
+                       [12.0, 15.0, 0.0, 4.5, 7.5],
+                       [5.0, 8.0, 4.5, 0.0, 6.5],
+                       [3.0, 9.0, 7.5, 6.5, 0.0],
+                       ])
+    distance = pd.DataFrame(data,
+                            index=['C1', 'C2', 'C3', 'C4', 'C5'],
+                            columns=['C1', 'C2', 'C3', 'C4', 'C5']
+                            )
+    return distance
