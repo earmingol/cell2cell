@@ -110,6 +110,8 @@ class InteractionSpace():
                                                                   cci_matrix_template=cci_matrix_template,
                                                                   verbose=verbose)
 
+        self.interaction_elements['ppi_score'] = self.ppi_data['score'].values
+
     def pairwise_interaction(self, cell1, cell2, score_metric='bray_curtis', use_ppi_score=False, verbose=True):
         '''
         Function that performs the interaction analysis of a pair of cells.
@@ -138,11 +140,15 @@ class InteractionSpace():
         if verbose:
             print("Computing interaction between {} and {}".format(cell1.type, cell2.type))
 
+        if use_ppi_score:
+            ppi_score = self.ppi_data['score'].values
+        else:
+            ppi_score = None
         # Calculate cell-cell interaction score
         if score_metric == 'bray_curtis':
-            cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2, use_ppi_score=use_ppi_score)
+            cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2, ppi_score=ppi_score)
         elif score_metric == 'jaccard':
-            cci_score = cci_scores.compute_jaccard_like_cci_score(cell1, cell2, use_ppi_score=use_ppi_score)
+            cci_score = cci_scores.compute_jaccard_like_cci_score(cell1, cell2, ppi_score=ppi_score)
         else:
             raise NotImplementedError("Score metric {} to compute pairwise cell-interactions is not implemented".format(score_metric))
         return cci_score
