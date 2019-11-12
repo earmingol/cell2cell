@@ -127,6 +127,7 @@ def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None, verbo
     simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score, verbose=verbose)
     if rnaseq_genes is not None:
         simplified_ppi = ppi.filter_ppi_by_proteins(simplified_ppi, rnaseq_genes)
+    simplified_ppi = simplified_ppi.drop_duplicates().reset_index(drop=True)
     return simplified_ppi
 
 
