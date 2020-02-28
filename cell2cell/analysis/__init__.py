@@ -7,4 +7,5 @@ from cell2cell.analysis.null_distribution import (filter_null_ppi_network, filte
                                                   shuffle_dataframe, subsample_dataframe)
 from cell2cell.analysis.pipelines import (core_pipeline, heuristic_pipeline, ligand_receptor_pipeline)
 from cell2cell.analysis.ppi_enrichment import (compute_avg_count_for_ppis, ppi_count_operation, get_ppi_score_for_cell_pairs)
+from cell2cell.analysis.func_enrichment import *
 
