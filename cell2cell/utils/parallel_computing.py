@@ -41,34 +41,3 @@ def parallel_subsampling_interactions(inputs):
                                     verbose=inputs['verbose'])
 
     return results
-
-
-# CLUSTERING FUNCTIONS
-def parallel_community_detection(inputs):
-    '''
-    Parallel computing in cell2cell2.clustering.clustering_interactions
-    '''
-    from cell2cell.clustering import louvain_community
-
-    included_cells = inputs['interaction_elements']['cells']
-    cci_matrix = inputs['interaction_elements']['cci_matrix'].loc[included_cells, included_cells]
-
-    results = louvain_community(cci_matrix=cci_matrix,
-                                seed=inputs['seed'],
-                                package=inputs['package'],
-                                verbose=inputs['verbose'])
-    return results
-
-
-def parallel_leiden_community(inputs):
-    '''
-    Parallel computing in cell2cell2.clustering.clustering_interactions
-    '''
-    from cell2cell.clustering import leiden_community
-
-    included_cells = inputs['interaction_elements']['cells']
-    cci_matrix = inputs['interaction_elements']['cci_matrix'].loc[included_cells, included_cells]
-
-    results = leiden_community(cci_matrix=cci_matrix,
-                               verbose=inputs['verbose'])
-    return results
