@@ -8,6 +8,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib as mlp
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d, Axes3D
 
 import scipy.cluster.hierarchy as hc
 import scipy.spatial as sp
@@ -19,19 +20,26 @@ def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     assert factor >= 1
 
     factor = int(factor)
-    NUM_COLORS = factor * len(labels)
+    NUM_COLORS = factor * len(set(labels))
     cm = plt.get_cmap(cmap)
 
     colors = dict()
-    for i, label in enumerate(labels):
+    for i, label in enumerate(set(labels)):
         colors[label] = cm((1 + ((factor-1)/factor)) * i / NUM_COLORS)
     return colors
 
 
-def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='#SampleID', group_col='Groups',
-                   meta_cmap='gist_rainbow', title='', filename=None, excluded_cells=None, colors=None, **kwargs):
+def clustermap_cci(interaction_space, method='ward', optimal_leaf =True, metadata=None, sample_col='#SampleID',
+                   group_col='Groups', meta_cmap='gist_rainbow', colors=None, excluded_cells=None, title='',
+                   bar_title='CCI score', cbar_fontsize='12', filename=None, **kwargs):
     if hasattr(interaction_space, 'distance_matrix'):
+        print('Interaction space detected as an InteractionSpace class')
         distance_matrix = interaction_space.distance_matrix
+        space_type = 'class'
+    elif (type(interaction_space) is np.ndarray) or (type(interaction_space) is pd.core.frame.DataFrame):
+        print('Interaction space detected as a distance matrix')
+        distance_matrix = interaction_space
+        space_type = 'matrix'
     else:
         raise ValueError('First run InteractionSpace.compute_pairwise_interactions() to generate a distance matrix.')
 
@@ -43,22 +51,35 @@ def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='
         df = distance_matrix
 
     # Compute linkage
-    linkage = hc.linkage(sp.distance.squareform(df), method=method)
+    D = sp.distance.squareform(df)
+    if 'col_cluster' in kwargs.keys():
+        if kwargs['col_cluster']:
+            linkage = hc.linkage(D, method=method, optimal_ordering=optimal_leaf)
+        else:
+            linkage = None
+    else:
+        linkage = hc.linkage(D, method=method, optimal_ordering=optimal_leaf)
 
     # Plot hierarchical clustering
     hier = sns.clustermap(df,
                           col_linkage=linkage,
                           row_linkage=linkage,
+                          **kwargs
                           )
     plt.close()
 
     # Triangular matrix
     mask = np.zeros((df.shape[0], df.shape[1]))
     order_map = dict()
-    for i, ind in enumerate(hier.dendrogram_col.reordered_ind):
-        order_map[i] = ind
+    if linkage is None:
+        ind_order = range(hier.data2d.shape[0])
+    else:
+        ind_order = hier.dendrogram_col.reordered_ind
 
-        mask[ind, hier.dendrogram_col.reordered_ind[:i]] = 1
+    for i, ind in enumerate(ind_order):
+        order_map[i] = ind
+        filter_list = [order_map[j] for j in range(i)]
+        mask[ind, filter_list] = 1 #hier.dendrogram_col.reordered_ind[:i]
 
     # This may not work if we have a perfect interaction between two cells - Intended to avoid diagonal in distance matrix
     # exclude_diag = distance_matrix.values[distance_matrix.values != 0]
@@ -74,12 +95,17 @@ def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='
     #    vmax = np.nanmax(exclude_diag)
     #    kwargs_['vmax'] = vmax
 
-    df = interaction_space.interaction_elements['cci_matrix']
-    df = df.loc[~df.index.isin(excluded_cells),
-                ~df.columns.isin(excluded_cells)]
+    # PLOT CCI MATRIX
+    if space_type == 'class':
+        df = interaction_space.interaction_elements['cci_matrix']
+    else:
+        df = distance_matrix
+
+    if excluded_cells is not None:
+        df = df.loc[~df.index.isin(excluded_cells),
+                    ~df.columns.isin(excluded_cells)]
 
     # Colors
-    col_colors = None
     if metadata is not None:
         meta_ = metadata.set_index(sample_col)
         if excluded_cells is not None:
@@ -115,28 +141,42 @@ def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='
     hier.ax_heatmap.tick_params(bottom=False)  # Hide xtick line
 
     # Apply offset transform to all xticklabels.
-    yrange = hier.ax_heatmap.get_ylim()[0] - hier.ax_heatmap.get_ylim()[1]
+    labels_x = hier.ax_heatmap.xaxis.get_majorticklabels()
+    labels_y = hier.ax_heatmap.yaxis.get_majorticklabels()
 
-    label_x1 = hier.ax_heatmap.xaxis.get_majorticklabels()[0]
-    label_x2 = hier.ax_heatmap.xaxis.get_majorticklabels()[1]
+    label_x1 = labels_x[0]
+    label_y1 = labels_y[0]
 
-    scaler_x = abs(label_x1.get_transform().transform(label_x1.get_position()) \
-                   - label_x2.get_transform().transform(label_x2.get_position()))
+    pos_x0 = label_x1.get_transform().transform((0., 0.))
+    xlims = hier.ax_heatmap.get_xlim()
+    xrange = abs(xlims[0] - xlims[1])
+    x_cell_width = xrange / len(df.columns)
 
-    label_y1 = hier.ax_heatmap.yaxis.get_majorticklabels()[0]
-    label_y2 = hier.ax_heatmap.yaxis.get_majorticklabels()[1]
+    pos_y1 = label_y1.get_transform().transform(label_y1.get_position())
+    ylims = hier.ax_heatmap.get_ylim()
+    yrange = abs(ylims[0] - ylims[1])
+    y_cell_width = yrange / len(df.index)
 
-    scaler_y = abs(label_y1.get_transform().transform(label_y1.get_position()) \
-                   - label_y2.get_transform().transform(label_y2.get_position()))
+    dpi_x = hier.fig.dpi_scale_trans.to_values()[0]
+    dpi_y = hier.fig.dpi_scale_trans.to_values()[3]
 
-    if col_colors is not None:
-        y_factor = 0.95
-    else:
-        y_factor = 0.5
-    for i, label in enumerate(hier.ax_heatmap.xaxis.get_majorticklabels()):
-        # scaler = 19./72. 72 is for inches
-        dx = -0.5 * scaler_x[0] / 72.
-        dy = scaler_y[1] * (yrange - i - y_factor) / 72.
+    for i, label in enumerate(labels_x):
+        if label.get_position()[0] % x_cell_width == 0:
+            pos_x1 = label.get_transform().transform((aux_scaler_x, aux_scaler_x))
+            scaler_x = abs(pos_x1 - pos_x0)
+        else:
+            pos_x1 = label.get_transform().transform((x_cell_width, x_cell_width))
+            scaler_x = abs(pos_x1 - pos_x0)
+
+        aux_scaler_x = label.get_position()[0] - (label.get_position()[0] // x_cell_width) * x_cell_width
+        aux_scaler_y = label.get_position()[1] - (label.get_position()[1] // y_cell_width) * y_cell_width
+
+        new_pos_x = label.get_position()[0] - aux_scaler_x
+        new_pos_y = new_pos_x * yrange / xrange - yrange + y_cell_width
+
+        new_pos_y = label_y1.get_transform().transform((0, new_pos_y + aux_scaler_y)) - pos_y1
+        dx = -0.5 * scaler_x[0] / dpi_x
+        dy = new_pos_y[1] / dpi_y
         offset = mlp.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
         label.set_transform(label.get_transform() + offset)
 
@@ -149,7 +189,7 @@ def clustermap_cci(interaction_space, method='ward', metadata=None, sample_col='
 
     # Color bar label
     cbar = hier.ax_heatmap.collections[0].colorbar
-    cbar.ax.set_ylabel('CCI score')
+    cbar.ax.set_ylabel(bar_title, fontsize=cbar_fontsize)
     cbar.ax.yaxis.set_label_position("left")
 
     if filename is not None:
@@ -163,7 +203,11 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
                 colors=None, excluded_cells=None):
 
     if hasattr(interaction_space, 'distance_matrix'):
+        print('Interaction space detected as an InteractionSpace class')
         distance_matrix = interaction_space.distance_matrix
+    elif (type(interaction_space) is np.ndarray) or (type(interaction_space) is pd.core.frame.DataFrame):
+        print('Interaction space detected as a distance matrix')
+        distance_matrix = interaction_space
     else:
         raise ValueError('First run InteractionSpace.compute_pairwise_interactions() to generate a distance matrix.')
 
@@ -178,20 +222,23 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
     ordination = skbio.stats.ordination.pcoa(df, method='eigh')
     ordination.samples.index = df.index
 
+    # Biplot
     fig = plt.figure(figsize=figsize)
-    ax = fig.add_subplot(111, projection='3d')
+    #ax = fig.add_subplot(111, projection='3d')
+
+    ax = Axes3D(fig)
 
     meta_ = metadata.set_index(sample_col)
     if excluded_cells is not None:
         meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
     labels = meta_[group_col].values.tolist()
 
-
     if colors is None:
         colors = get_colors_from_labels(labels, cmap=meta_cmap)
     else:
         assert all(elem in colors.keys() for elem in set(labels))
 
+    # Plot each data point with respective color
     for i, cell_type in enumerate(sorted(meta_[group_col].unique())):
         cells = list(meta_.loc[meta_[group_col] == cell_type].index)
         if colors is not None:
@@ -206,6 +253,7 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
                        ordination.samples.loc[cells, 'PC3'],
                        s=50, label=cell_type)
 
+    # Plot texts
     ax.set_xlabel('PC1 ({}%)'.format(np.round(ordination.proportion_explained['PC1'] * 100), 2), fontsize=axis_size)
     ax.set_ylabel('PC2 ({}%)'.format(np.round(ordination.proportion_explained['PC2'] * 100), 2), fontsize=axis_size)
     ax.set_zlabel('PC3 ({}%)'.format(np.round(ordination.proportion_explained['PC3'] * 100), 2), fontsize=axis_size)
@@ -220,6 +268,8 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
     plt.title(title, fontsize=16)
 
     distskbio = skbio.DistanceMatrix(df, ids=df.index)
+
+    # Save plot
     if filename is not None:
         plt.savefig(filename, dpi=300,
                     bbox_inches='tight')
@@ -230,9 +280,9 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
 
 
 def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample_col='#SampleID', group_col='Groups',
-                                 meta_cmap='gist_rainbow', colors=None, metric='jaccard', method='ward', excluded_cells=None,
-                                 title='', filename=None,
-                                 **kwargs):
+                                 meta_cmap='gist_rainbow', colors=None, cell_labels=('LEFT-CELL','RIGHT-CELL'),
+                                 metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
+                                 cbar_fontsize=12, filename=None, **kwargs):
     df_ = ppi_score_for_cell_pairs.copy()
 
     if excluded_cells is not None:
@@ -255,10 +305,10 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
 
     # Clustering
     dm_rows = sp.distance.squareform(sp.distance.pdist(df_.values, metric=metric))
-    row_linkage = hc.linkage(dm_rows, method=method)
+    row_linkage = hc.linkage(dm_rows, method=method, optimal_ordering=optimal_leaf)
 
     dm_cols = sp.distance.squareform(sp.distance.pdist(df_.values.T, metric=metric))
-    col_linkage = hc.linkage(dm_cols, method=method)
+    col_linkage = hc.linkage(dm_cols, method=method, optimal_ordering=optimal_leaf)
 
     # Colors
     if metadata is not None:
@@ -275,12 +325,12 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
         col_colors_L = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata.loc[metadata[sample_col] == x.split(';')[0],
                                                                                            group_col].values[0]])
         col_colors_L.index = included_cells
-        col_colors_L.name = 'LEFT-CELL'
+        col_colors_L.name = cell_labels[0]
 
         col_colors_R = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata.loc[metadata[sample_col] == x.split(';')[1],
                                                                                            group_col].values[0]])
         col_colors_R.index = included_cells
-        col_colors_R.name = 'RIGHT-CELL'
+        col_colors_R.name = cell_labels[1]
 
         # Clustermap
         fig = sns.clustermap(df_,
@@ -296,7 +346,7 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
         fig.ax_heatmap.set_xticklabels(fig.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
 
         fig.ax_col_colors.set_yticks(np.arange(0.5, 2., step=1))
-        fig.ax_col_colors.set_yticklabels(['LEFT-CELL', 'RIGHT-CELL'], fontsize=12)
+        fig.ax_col_colors.set_yticklabels(list(cell_labels), fontsize=12)
         fig.ax_col_colors.yaxis.tick_right()
         plt.setp(fig.ax_col_colors.get_yticklabels(), rotation=0, visible=True)
 
@@ -315,7 +365,7 @@ def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample
 
     # Color bar label
     cbar = fig.ax_heatmap.collections[0].colorbar
-    cbar.ax.set_ylabel('Presence')
+    cbar.ax.set_ylabel('Presence', fontsize=cbar_fontsize)
     cbar.ax.yaxis.set_label_position("left")
 
     # Save Figure
