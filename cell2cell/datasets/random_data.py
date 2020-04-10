@@ -2,12 +2,10 @@
 
 from __future__ import absolute_import
 
-import random
 import numpy as np
 import pandas as pd
 
 from sklearn.utils import resample
-from scipy.special import comb
 
 from cell2cell.preprocessing import rnaseq, ppi
 
@@ -34,6 +32,8 @@ def generate_random_rnaseq(size, row_names, random_state=None, verbose=True):
         print('Generating random RNA-seq dataset.')
     columns = list(range(size))
 
+    if random_state is not None:
+        np.random.seed(random_state)
     data = np.random.randn(len(row_names), len(columns))    # Normal distribution
     min = np.abs(np.amin(data, axis=1))
     min = min.reshape((len(min), 1))
@@ -93,3 +93,18 @@ def generate_random_ppi(max_size, interactors_A, interactors_B=None, random_stat
         ppi_data = ppi_data.loc[list(range(max_size)), :]
     ppi_data.reset_index(inplace=True, drop=True)
     return ppi_data
+
+
+def generate_random_cci_scores(cell_number, labels=None, random_state=None):
+    if labels is not None:
+        assert len(labels) == cell_number
+    else:
+        labels = ['cell_{}'.format(n) for n in range(cell_number)]
+
+    if random_state is not None:
+        np.random.seed(random_state)
+    cci_scores = np.random.random((cell_number, cell_number))
+    cci_scores = (cci_scores + cci_scores.T) / 2
+    cci_matrix = pd.DataFrame(cci_scores, index=labels, columns=labels)
+
+    return cci_matrix
