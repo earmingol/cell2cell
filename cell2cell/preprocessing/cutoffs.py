@@ -45,11 +45,6 @@ def get_global_percentile_cutoffs(rnaseq_data, percentile=0.75):
     return cutoffs
 
 
-def get_standep_cutoffs(rnaseq_data, k):
-    '''Not implemented yet'''
-    pass
-
-
 def get_constant_cutoff(rnaseq_data, constant_cutoff=10):
     '''
     This function generates a cutoff dataframe for all genes in rnaseq_data assigning a constant value.
@@ -79,7 +74,6 @@ def get_cutoffs(rnaseq_data, parameters, verbose=True):
             'global_percentile' : computes the value of a given percentile from all genes and samples simultaneously.
                                   In this case, the parameter corresponds to the percentile to compute, as a float value
                                   between 0 and 1. All genes have the same cutoff.
-            'standep' : Not implemented yet.
             'file' : load a cutoff table from a file. Parameter in this case is the path of that file. It must contain
                      the same genes as index and same samples as columns.
             'multi_col_matrix' : a dataframe must be provided, containing a cutoff for each gene in each sample. This
@@ -108,8 +102,6 @@ def get_cutoffs(rnaseq_data, parameters, verbose=True):
     elif type == 'constant_value':
         cutoffs = get_constant_cutoff(rnaseq_data, parameter)
         cutoffs.columns = ['value']
-    elif type == 'standep':
-        cutoffs = get_standep_cutoffs(rnaseq_data, parameter)
     elif type == 'file':
         cutoffs = read_data.load_cutoffs(parameter,
                                          format='auto')
