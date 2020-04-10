@@ -18,7 +18,6 @@ class HeuristicGOTerms:
                                  'GO:0043113',  # Receptor clustering
                                  'GO:0009897',  # External side of plasma membrane #
                                  'GO:0038023',  # Signaling receptor activity #
-                                 'GO:0005215',  # Transporter activity
                                  ]
 
         self.mediator_go_terms = ['GO:0005615',  # Extracellular space
