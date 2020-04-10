@@ -9,6 +9,7 @@ import pandas as pd
 
 
 def ppi_count_operation(pair, subsampled_interactions, use_ppi_score=False, index=None):
+    # TODO make sure that index from merging ppi_data & ref_ppi_data matches after using .values[index]
     cell1 = pair[0]
     cell2 = pair[1]
 
