@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from cell2cell.preprocessing import rnaseq, ppi
 
-def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=None, verbose=True):
+def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=None, verbose=True, **kwargs):
     '''
     Function to open any table into a pandas dataframe.
     '''
@@ -32,9 +32,9 @@ def load_table(filename, format='auto', sep='\t', sheet_name=False, compression=
             compression=None
 
     if format == 'excel':
-        table = pd.read_excel(filename, sheet_name=sheet_name)
+        table = pd.read_excel(filename, sheet_name=sheet_name, **kwargs)
     elif (format == 'csv') | (format == 'tsv') | (format == 'txt'):
-        table = pd.read_csv(filename, sep=sep, compression=compression)
+        table = pd.read_csv(filename, sep=sep, compression=compression, **kwargs)
     else:
         if verbose:
             print("Specify a correct format")
@@ -56,9 +56,8 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation
     if verbose:
         print("Opening RNAseq datasets from {}".format(rnaseq_file))
     rnaseq_data = load_table(rnaseq_file, verbose=verbose, **kwargs)
-    if gene_column is None:
-        gene_column = list(rnaseq_data.columns)[0]
-    rnaseq_data = rnaseq_data.set_index(gene_column)
+    if gene_column is not None:
+        rnaseq_data = rnaseq_data.set_index(gene_column)
     # Keep only numeric datasets
     rnaseq_data = rnaseq_data.select_dtypes([np.number])
 
