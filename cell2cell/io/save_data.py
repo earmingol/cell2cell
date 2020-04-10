@@ -3,9 +3,6 @@
 from __future__ import absolute_import
 
 import pickle
-import networkx as nx
-
-from cell2cell.utils import networks
 
 
 def export_variable_with_pickle(variable, filename):
@@ -20,24 +17,3 @@ def export_variable_with_pickle(variable, filename):
         for idx in range(0, len(bytes_out), max_bytes):
             f_out.write(bytes_out[idx:idx + max_bytes])
     print(filename, ' was correctly saved.')
-
-
-def export_network_to_gephi(cci_matrix, filename, format='excel'):
-    '''
-    Export a CCI matrix into a spreadsheet readable by Gephi.
-    '''
-    cci_network = networks.generate_network_from_adjacency(cci_matrix,
-                                                           package='networkx')
-
-    gephi_df = nx.to_pandas_edgelist(cci_network)
-    gephi_df = gephi_df.assign(Type='Undirected')
-    gephi_df = gephi_df[['source', 'target', 'Type', 'weight']]
-    gephi_df.columns = ['Source', 'Target', 'Type', 'Weight']
-    if format == 'excel':
-        gephi_df.to_excel(filename, sheet_name='Edges')
-    elif format == 'csv':
-        gephi_df.to_csv(filename, sep=',')
-    elif format == 'tsv':
-        gephi_df.to_csv(filename, sep='\t')
-    else:
-        raise ValueError("Format not supported.")
