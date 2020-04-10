@@ -84,12 +84,12 @@ class InteractionSpace():
 
     '''
 
-    def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, score_type='binary', score_metric='bray_curtis',
-                 cci_matrix_template=None, verbose=True):
+    def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, communication_score='expression_thresholding',
+                 cci_score='bray_curtis', cci_matrix_template=None, verbose=True):
 
-        self.score_type = score_type
-        self.score_metric = score_metric
-        if self.score_type == 'binary':
+        self.communication_score = communication_score
+        self.score_metric = cci_score
+        if self.communication_score == 'expression_thresholding':
             if 'type' in gene_cutoffs.keys():
                 cutoff_values = cutoffs.get_cutoffs(rnaseq_data=rnaseq_data,
                                                     parameters=gene_cutoffs,
@@ -102,7 +102,7 @@ class InteractionSpace():
         self.ppi_data = ppi_data.copy()
 
         self.modified_rnaseq = integrate_data.get_modified_rnaseq(rnaseq_data=rnaseq_data,
-                                                                  score_type=self.score_type,
+                                                                  communication_score=self.communication_score,
                                                                   cutoffs=cutoff_values
                                                                   )
 

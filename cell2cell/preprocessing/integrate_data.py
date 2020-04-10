@@ -5,19 +5,19 @@ from __future__ import absolute_import
 from cell2cell.preprocessing import ppi, gene_ontology, rnaseq
 
 ## RNAseq datasets
-def get_modified_rnaseq(rnaseq_data, score_type='binary', **kwargs):
-    if score_type == 'binary':
-        modified_rnaseq = get_binary_rnaseq(rnaseq_data, kwargs['cutoffs'])
-    elif score_type == 'absolute':
+def get_modified_rnaseq(rnaseq_data, communication_score='expression_thresholding', **kwargs):
+    if communication_score == 'expression_thresholding':
+        modified_rnaseq = get_thresholded_rnaseq(rnaseq_data, kwargs['cutoffs'])
+    elif communication_score == 'absolute':
         #modified_rnaseq = rnaseq.divide_expression_by_max(rnaseq_data)
         modified_rnaseq = rnaseq_data.copy()
     else:
         # As other score types are implemented, other elif condition will be included here.
-        raise NotImplementedError("Score type {} to compute pairwise cell-interactions is not implemented".format(score_type))
+        raise NotImplementedError("Score type {} to compute pairwise cell-interactions is not implemented".format(communication_score))
     return modified_rnaseq
 
 
-def get_binary_rnaseq(rnaseq_data, cutoffs):
+def get_thresholded_rnaseq(rnaseq_data, cutoffs):
     binary_rnaseq_data = rnaseq_data.copy()
     columns = list(cutoffs.columns)
     if (len(columns) == 1) and ('value' in columns):
@@ -51,29 +51,15 @@ def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=Non
                                                   bidirectional=bidirectional,
                                                   verbose=verbose)
     if mediator_proteins is not None:
-        ppi_dict['mediated'] = ppi.filter_ppi_network(ppi_data=ppi_data,
-                                                      contact_proteins=contact_proteins,
-                                                      mediator_proteins=mediator_proteins,
-                                                      interaction_type='mediated',
-                                                      interaction_columns=interaction_columns,
-                                                      bidirectional=bidirectional,
-                                                      verbose=verbose)
+        for interaction_type in ['mediated', 'combined', 'complete']:
+            ppi_dict[interaction_type] = ppi.filter_ppi_network(ppi_data=ppi_data,
+                                                          contact_proteins=contact_proteins,
+                                                          mediator_proteins=mediator_proteins,
+                                                          interaction_type=interaction_type,
+                                                          interaction_columns=interaction_columns,
+                                                          bidirectional=bidirectional,
+                                                          verbose=verbose)
 
-        ppi_dict['combined'] = ppi.filter_ppi_network(ppi_data=ppi_data,
-                                                      contact_proteins=contact_proteins,
-                                                      mediator_proteins=mediator_proteins,
-                                                      interaction_type='combined',
-                                                      interaction_columns=interaction_columns,
-                                                      bidirectional=bidirectional,
-                                                      verbose=verbose)
-
-        ppi_dict['complete'] = ppi.filter_ppi_network(ppi_data=ppi_data,
-                                                      contact_proteins=contact_proteins,
-                                                      mediator_proteins=mediator_proteins,
-                                                      interaction_type='complete',
-                                                      interaction_columns=interaction_columns,
-                                                      bidirectional=bidirectional,
-                                                      verbose=verbose)
     return ppi_dict
 
 
