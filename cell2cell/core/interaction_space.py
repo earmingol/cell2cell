@@ -36,7 +36,8 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_matrix_template
     cell_number = len(cell_instances)
 
     # Generate pairwise interactions
-    pairwise_interactions = list(itertools.combinations(cell_instances + cell_instances, 2))
+    # pairwise_interactions = list(itertools.combinations(cell_instances + cell_instances, 2))
+    pairwise_interactions = list(itertools.combinations(cell_instances, 2)) + [(c, c) for c in cell_instances]
     pairwise_interactions = list(set(pairwise_interactions))  # Remove duplicates
 
     # Interaction elements
