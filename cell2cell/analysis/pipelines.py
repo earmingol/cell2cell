@@ -4,7 +4,6 @@ from __future__ import absolute_import
 
 import os
 
-from cell2cell.analysis import ppi_enrichment
 from cell2cell.core import interaction_space as ispace
 from cell2cell.datasets import heuristic_data
 from cell2cell.io import read_data
@@ -18,8 +17,12 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
     if excluded_cells is None:
         excluded_cells = []
 
-    bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_data,
-                                                verbose=verbose)
+    if analysis_setup['cci_type'] == 'undirected':
+        bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_data, verbose=False)
+        ref_ppi = ppi_data
+    else:
+        bi_ppi_data = ppi_data.copy()
+        ref_ppi = None
 
 
     interaction_space = ispace.InteractionSpace(rnaseq_data=rnaseq_data,
@@ -27,10 +30,15 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
                                                 gene_cutoffs=cutoff_setup,
                                                 communication_score=analysis_setup['communication_score'],
                                                 cci_score=analysis_setup['cci_score'],
+                                                cci_type=analysis_setup['cci_type'],
                                                 verbose=verbose)
 
-    interaction_space.compute_pairwise_interactions(use_ppi_score=use_ppi_score,
-                                                    verbose=verbose)
+    interaction_space.compute_pairwise_cci_scores(use_ppi_score=use_ppi_score,
+                                                  verbose=verbose)
+
+    interaction_space.compute_pairwise_communication_scores(ref_ppi_data=ref_ppi,
+                                                            use_ppi_score=use_ppi_score,
+                                                            verbose=verbose)
 
     clustermap = plotting.clustermap_cci(interaction_space,
                                          method='ward',
@@ -54,25 +62,17 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
                                 filename=files['output_folder'] + 'CCI-PCoA-CCI-scores{}.png'.format(filename_suffix),
                                 )
 
-    interaction_matrix, std_interaction_matrix = ppi_enrichment.get_ppi_score_for_cell_pairs(
-        cells=list(interaction_space.distance_matrix.columns),
-        subsampled_interactions=[interaction_space.interaction_elements],
-        ppi_data=bi_ppi_data,
-        ref_ppi_data=ppi_data,
-        use_ppi_score=use_ppi_score
-    )
-
-    interaction_clustermap = plotting.clustermap_cell_pairs_vs_ppi(interaction_matrix,
-                                                                   metric=metric,
-                                                                   metadata=metadata,
-                                                                   sample_col=meta_setup['sample_col'],
-                                                                   group_col=meta_setup['group_col'],
-                                                                   colors=colors,
-                                                                   excluded_cells=excluded_cells,
-                                                                   title='Active ligand-receptor pairs for interacting cells',
-                                                                   filename=files['output_folder'] + 'CCI-Active-LR-pairs{}.png'.format(filename_suffix),
-                                                                   **{'figsize': (20, 40)}
-                                                                   )
+    interaction_clustermap = plotting.clustermap_ccc(interaction_space,
+                                                     metric=metric,
+                                                     metadata=metadata,
+                                                     sample_col=meta_setup['sample_col'],
+                                                     group_col=meta_setup['group_col'],
+                                                     colors=colors,
+                                                     excluded_cells=excluded_cells,
+                                                     title='Active ligand-receptor pairs for interacting cells',
+                                                     filename=files['output_folder'] + 'CCI-Active-LR-pairs{}.png'.format(filename_suffix),
+                                                     **{'figsize': (20, 40)}
+                                                     )
 
     interaction_clustermap.data2d.to_csv(files['output_folder'] + 'CCI-Active-LR-pairs{}.csv'.format(filename_suffix))
 
@@ -91,8 +91,9 @@ def ligand_receptor_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_
         excluded_cells = []
 
     # Check for output directory
-    if not os.path.exists(files['output_folder']):
-        os.makedirs(files['output_folder'])
+    if 'output_folder' in files.keys():
+        if not os.path.exists(files['output_folder']):
+            os.makedirs(files['output_folder'])
 
     # Load Data
     rnaseq_data = read_data.load_rnaseq(rnaseq_file=files['rnaseq'],
@@ -183,8 +184,9 @@ def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup,
         excluded_cells = []
 
     # Check for output directory
-    if not os.path.exists(files['output_folder']):
-        os.makedirs(files['output_folder'])
+    if 'output_folder' in files.keys():
+        if not os.path.exists(files['output_folder']):
+            os.makedirs(files['output_folder'])
 
     # Load Data
     rnaseq_data = read_data.load_rnaseq(rnaseq_file=files['rnaseq'],
