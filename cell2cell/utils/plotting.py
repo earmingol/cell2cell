@@ -29,7 +29,7 @@ def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     return colors
 
 
-def clustermap_cci(interaction_space, method='ward', optimal_leaf =True, metadata=None, sample_col='#SampleID',
+def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata=None, sample_col='#SampleID',
                    group_col='Groups', meta_cmap='gist_rainbow', colors=None, excluded_cells=None, title='',
                    bar_title='CCI score', cbar_fontsize='12', filename=None, **kwargs):
     if hasattr(interaction_space, 'distance_matrix'):
@@ -50,50 +50,54 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf =True, metadat
     else:
         df = distance_matrix
 
-    # Compute linkage
-    D = sp.distance.squareform(df)
-    if 'col_cluster' in kwargs.keys():
-        if kwargs['col_cluster']:
-            linkage = hc.linkage(D, method=method, optimal_ordering=optimal_leaf)
+    # Check symmetry to run linkage separately
+    symmetric = (df.values.transpose() == df.values).all()
+    if symmetric:
+        # TODO: implement heatmap when distance matrix is not symmetric
+        # Compute linkage
+        D = sp.distance.squareform(df)
+        if 'col_cluster' in kwargs.keys():
+            if kwargs['col_cluster']:
+                linkage = hc.linkage(D, method=method, optimal_ordering=optimal_leaf)
+            else:
+                linkage = None
         else:
-            linkage = None
+            linkage = hc.linkage(D, method=method, optimal_ordering=optimal_leaf)
+
+        # Plot hierarchical clustering
+        hier = sns.clustermap(df,
+                              col_linkage=linkage,
+                              row_linkage=linkage,
+                              **kwargs
+                              )
+        plt.close()
+
+        # Triangular matrix
+        mask = np.zeros((df.shape[0], df.shape[1]))
+        order_map = dict()
+        if linkage is None:
+            ind_order = range(hier.data2d.shape[0])
+        else:
+            ind_order = hier.dendrogram_col.reordered_ind
+
+        for i, ind in enumerate(ind_order):
+            order_map[i] = ind
+            filter_list = [order_map[j] for j in range(i)]
+            mask[ind, filter_list] = 1 #hier.dendrogram_col.reordered_ind[:i]
+
+        kwargs_ = kwargs.copy()
+        # This one does exclude only diagonal
+        #exclude_diag = df.values[~np.eye(df.values.shape[0], dtype=bool)].reshape(df.values.shape[0], -1)
+        #if 'vmin' not in list(kwargs_.keys()):
+        #    vmin = np.nanmin(exclude_diag)
+        #    kwargs_['vmin'] = vmin
+        #if 'vmax' not in list(kwargs_.keys()):
+        #    vmax = np.nanmax(exclude_diag)
+        #    kwargs_['vmax'] = vmax
     else:
-        linkage = hc.linkage(D, method=method, optimal_ordering=optimal_leaf)
-
-    # Plot hierarchical clustering
-    hier = sns.clustermap(df,
-                          col_linkage=linkage,
-                          row_linkage=linkage,
-                          **kwargs
-                          )
-    plt.close()
-
-    # Triangular matrix
-    mask = np.zeros((df.shape[0], df.shape[1]))
-    order_map = dict()
-    if linkage is None:
-        ind_order = range(hier.data2d.shape[0])
-    else:
-        ind_order = hier.dendrogram_col.reordered_ind
-
-    for i, ind in enumerate(ind_order):
-        order_map[i] = ind
-        filter_list = [order_map[j] for j in range(i)]
-        mask[ind, filter_list] = 1 #hier.dendrogram_col.reordered_ind[:i]
-
-    # This may not work if we have a perfect interaction between two cells - Intended to avoid diagonal in distance matrix
-    # exclude_diag = distance_matrix.values[distance_matrix.values != 0]
-
-    kwargs_ = kwargs.copy()
-
-    # This one does exclude only diagonal
-    #exclude_diag = df.values[~np.eye(df.values.shape[0], dtype=bool)].reshape(df.values.shape[0], -1)
-    #if 'vmin' not in list(kwargs_.keys()):
-    #    vmin = np.nanmin(exclude_diag)
-    #    kwargs_['vmin'] = vmin
-    #if 'vmax' not in list(kwargs_.keys()):
-    #    vmax = np.nanmax(exclude_diag)
-    #    kwargs_['vmax'] = vmax
+        linkage = None
+        mask = None
+        kwargs_ = kwargs.copy()
 
     # PLOT CCI MATRIX
     if space_type == 'class':
@@ -121,12 +125,18 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf =True, metadat
         col_colors.index = meta_.index
         col_colors.name = group_col.capitalize()
 
+        if not symmetric:
+            row_colors = col_colors
+        else:
+            row_colors = None
+
         # Plot hierarchical clustering (triangular)
         hier = sns.clustermap(df,
                               col_linkage=linkage,
                               row_linkage=linkage,
                               mask=mask,
                               col_colors=col_colors,
+                              row_colors=row_colors,
                               **kwargs_
                               )
     else:
@@ -137,50 +147,57 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf =True, metadat
                               **kwargs_
                               )
 
-    hier.ax_row_dendrogram.set_visible(False)
-    hier.ax_heatmap.tick_params(bottom=False)  # Hide xtick line
-
     # Apply offset transform to all xticklabels.
-    labels_x = hier.ax_heatmap.xaxis.get_majorticklabels()
-    labels_y = hier.ax_heatmap.yaxis.get_majorticklabels()
+    if symmetric:
+        hier.ax_row_dendrogram.set_visible(False)
+        hier.ax_heatmap.tick_params(bottom=False)  # Hide xtick line
 
-    label_x1 = labels_x[0]
-    label_y1 = labels_y[0]
+        labels_x = hier.ax_heatmap.xaxis.get_majorticklabels()
+        labels_y = hier.ax_heatmap.yaxis.get_majorticklabels()
 
-    pos_x0 = label_x1.get_transform().transform((0., 0.))
-    xlims = hier.ax_heatmap.get_xlim()
-    xrange = abs(xlims[0] - xlims[1])
-    x_cell_width = xrange / len(df.columns)
+        label_x1 = labels_x[0]
+        label_y1 = labels_y[0]
 
-    pos_y1 = label_y1.get_transform().transform(label_y1.get_position())
-    ylims = hier.ax_heatmap.get_ylim()
-    yrange = abs(ylims[0] - ylims[1])
-    y_cell_width = yrange / len(df.index)
+        pos_x0 = label_x1.get_transform().transform((0., 0.))
+        xlims = hier.ax_heatmap.get_xlim()
+        xrange = abs(xlims[0] - xlims[1])
+        x_cell_width = xrange / len(df.columns)
 
-    dpi_x = hier.fig.dpi_scale_trans.to_values()[0]
-    dpi_y = hier.fig.dpi_scale_trans.to_values()[3]
+        pos_y1 = label_y1.get_transform().transform(label_y1.get_position())
+        ylims = hier.ax_heatmap.get_ylim()
+        yrange = abs(ylims[0] - ylims[1])
+        y_cell_width = yrange / len(df.index)
 
-    for i, label in enumerate(labels_x):
-        if label.get_position()[0] % x_cell_width == 0:
-            pos_x1 = label.get_transform().transform((aux_scaler_x, aux_scaler_x))
-            scaler_x = abs(pos_x1 - pos_x0)
-        else:
-            pos_x1 = label.get_transform().transform((x_cell_width, x_cell_width))
-            scaler_x = abs(pos_x1 - pos_x0)
+        dpi_x = hier.fig.dpi_scale_trans.to_values()[0]
+        dpi_y = hier.fig.dpi_scale_trans.to_values()[3]
 
-        aux_scaler_x = label.get_position()[0] - (label.get_position()[0] // x_cell_width) * x_cell_width
-        aux_scaler_y = label.get_position()[1] - (label.get_position()[1] // y_cell_width) * y_cell_width
+        for i, label in enumerate(labels_x):
+            if label.get_position()[0] % x_cell_width == 0:
+                pos_x1 = label.get_transform().transform((aux_scaler_x, aux_scaler_x))
+                scaler_x = abs(pos_x1 - pos_x0)
+            else:
+                pos_x1 = label.get_transform().transform((x_cell_width, x_cell_width))
+                scaler_x = abs(pos_x1 - pos_x0)
 
-        new_pos_x = label.get_position()[0] - aux_scaler_x
-        new_pos_y = new_pos_x * yrange / xrange - yrange + y_cell_width
+            aux_scaler_x = label.get_position()[0] - (label.get_position()[0] // x_cell_width) * x_cell_width
+            aux_scaler_y = label.get_position()[1] - (label.get_position()[1] // y_cell_width) * y_cell_width
 
-        new_pos_y = label_y1.get_transform().transform((0, new_pos_y + aux_scaler_y)) - pos_y1
-        dx = -0.5 * scaler_x[0] / dpi_x
-        dy = new_pos_y[1] / dpi_y
-        offset = mlp.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
-        label.set_transform(label.get_transform() + offset)
+            new_pos_x = label.get_position()[0] - aux_scaler_x
+            new_pos_y = new_pos_x * yrange / xrange - yrange + y_cell_width
 
-    hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(), rotation=45, ha='right')#, fontsize=9.5)
+            new_pos_y = label_y1.get_transform().transform((0, new_pos_y + aux_scaler_y)) - pos_y1
+            dx = -0.5 * scaler_x[0] / dpi_x
+            dy = new_pos_y[1] / dpi_y
+            offset = mlp.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
+            label.set_transform(label.get_transform() + offset)
+
+    if symmetric:
+        rot = 45
+        ha = 'right'
+    else:
+        rot = 90
+        ha = 'center'
+    hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(), rotation=rot, ha=ha)#, fontsize=9.5)
     hier.ax_heatmap.set_yticklabels(hier.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, ha='left')  # , fontsize=9.5)
 
     # Title
@@ -263,7 +280,7 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
     ax.set_zticklabels([])
 
     ax.view_init(view_angles[0], view_angles[1])
-    ax.legend(loc='center left', bbox_to_anchor=(1.15, 0.5),
+    ax.legend(loc='center left', bbox_to_anchor=(1.05, 0.5),
               ncol=2, fancybox=True, shadow=True, fontsize=legend_size)
     plt.title(title, fontsize=16)
 
@@ -278,12 +295,11 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
     return results
 
 
-
-def clustermap_cell_pairs_vs_ppi(ppi_score_for_cell_pairs, metadata=None, sample_col='#SampleID', group_col='Groups',
-                                 meta_cmap='gist_rainbow', colors=None, cell_labels=('LEFT-CELL','RIGHT-CELL'),
-                                 metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
-                                 cbar_fontsize=12, filename=None, **kwargs):
-    df_ = ppi_score_for_cell_pairs.copy()
+def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', group_col='Groups',
+                   meta_cmap='gist_rainbow', colors=None, cell_labels=('SENDER-CELL','RECEIVER-CELL'),
+                   metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
+                   cbar_fontsize=12, filename=None, **kwargs):
+    df_ = interaction_space.communication_matrix.copy()
 
     if excluded_cells is not None:
         included_cells = []
