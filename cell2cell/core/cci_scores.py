@@ -207,3 +207,34 @@ def matmul_count_active(A_scores, B_scores, ppi_score=None):
 
     counts = np.matmul(np.multiply(A_scores, ppi_score).transpose(), B_scores)
     return counts
+
+
+def matmul_cosine(A_scores, B_scores, ppi_score=None):
+    '''All cell-pair scores from two matrices. A_scores contains the communication scores for the partners on the left
+     column of the PPI network and B_score contains the same but for the partners in the right column.
+
+     Parameters
+     __________
+     A_scores : array
+        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+
+    B_scores : array
+        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+
+    Returns
+    -------
+    counts : array
+        Matrix MxM, representing the CCI score for all cell pairs
+    '''
+    if ppi_score is None:
+        ppi_score = np.array([1.0] * A_scores.shape[0])
+    ppi_score = ppi_score.reshape((len(ppi_score), 1))
+
+    numerator = np.matmul(np.multiply(A_scores, ppi_score).transpose(), B_scores)
+
+    A_module = np.sum(np.multiply(np.multiply(A_scores, A_scores), ppi_score), axis=0) ** 0.5
+    B_module = np.sum(np.multiply(np.multiply(B_scores, B_scores), ppi_score), axis=0) ** 0.5
+    denominator = A_module.reshape((A_module.shape[0], 1)) * B_module
+
+    cosine = np.divide(numerator, denominator)
+    return cosine

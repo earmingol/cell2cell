@@ -3,14 +3,25 @@
 from __future__ import absolute_import
 
 from cell2cell.preprocessing import integrate_data, cutoffs
-from cell2cell.core import cell, cci_scores
+from cell2cell.core import cell, cci_scores, communication_scores
 
 import itertools
 import numpy as np
 import pandas as pd
 
 
-def generate_interaction_elements(modified_rnaseq, ppi_data, cci_matrix_template=None, verbose=True):
+def generate_pairs(cells, cci_type):
+    if cci_type == 'directed':
+        pairs = list(itertools.combinations(cells + cells, 2)) # Directed
+    elif cci_type == 'undirected':
+        pairs = list(itertools.combinations(cells, 2)) + [(c, c) for c in cells] # Undirected
+    else:
+        raise NotImplementedError("CCI type has to be directed or undirected")
+    pairs = list(set(pairs))  # Remove duplicates
+    return pairs
+
+
+def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirected', cci_matrix_template=None, verbose=True):
     '''Create all elements of pairwise interactions needed to perform the analyses.
     All these variables are used by the class InteractionSpace.
 
@@ -36,38 +47,32 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_matrix_template
     cell_number = len(cell_instances)
 
     # Generate pairwise interactions
-    # pairwise_interactions = list(itertools.combinations(cell_instances + cell_instances, 2))
-    pairwise_interactions = list(itertools.combinations(cell_instances, 2)) + [(c, c) for c in cell_instances]
-    pairwise_interactions = list(set(pairwise_interactions))  # Remove duplicates
+    pairwise_interactions = generate_pairs(cell_instances, cci_type)
 
     # Interaction elements
-    interaction_space = {}
-    interaction_space['pairs'] = pairwise_interactions
-    interaction_space['cells'] = cell.get_cells_from_rnaseq(modified_rnaseq, verbose=verbose)
+    interaction_elements = {}
+    interaction_elements['cell_names'] = cell_instances
+    interaction_elements['pairs'] = pairwise_interactions
+    interaction_elements['cells'] = cell.get_cells_from_rnaseq(modified_rnaseq, verbose=verbose)
 
     # Cell-specific binary ppi
-    for cell_instance in interaction_space['cells'].values():
+    interaction_elements['A_score'] = np.array([], dtype=np.int64)#.reshape(ppi_data.shape[0],0)
+    interaction_elements['B_score'] = np.array([], dtype=np.int64)#.reshape(ppi_data.shape[0],0)
+    for cell_instance in interaction_elements['cells'].values():
         cell_instance.weighted_ppi = integrate_data.get_weighted_ppi(ppi_data=ppi_data,
                                                                      modified_rnaseq_data=cell_instance.rnaseq_data,
                                                                      column='value')
+        interaction_elements['A_score'] = np.hstack([interaction_elements['A_score'], cell_instance.weighted_ppi['A'].values])
+        interaction_elements['B_score'] = np.hstack([interaction_elements['B_score'], cell_instance.weighted_ppi['B'].values])
 
     # Cell-cell interaction matrix
     if cci_matrix_template is None:
-        interaction_space['cci_matrix'] = pd.DataFrame(np.zeros((cell_number, cell_number)),
+        interaction_elements['cci_matrix'] = pd.DataFrame(np.zeros((cell_number, cell_number)),
                                                        columns=cell_instances,
                                                        index=cell_instances)
     else:
-        interaction_space['cci_matrix'] = cci_matrix_template
-
-    # PPIs for each cell
-    empty_ppi = np.empty(ppi_data.shape)
-    empty_ppi[:] = np.nan
-    interaction_space['ppis'] = dict.fromkeys(list(interaction_space['cells'].values()),
-                                              pd.DataFrame(empty_ppi, columns=['A', 'B', 'score']))
-
-    for name, cell_unit in interaction_space['cells'].items():
-        interaction_space['ppis'][name] = cell_unit.weighted_ppi
-    return interaction_space
+        interaction_elements['cci_matrix'] = cci_matrix_template
+    return interaction_elements
 
 
 class InteractionSpace():
@@ -85,10 +90,12 @@ class InteractionSpace():
     '''
 
     def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, communication_score='expression_thresholding',
-                 cci_score='bray_curtis', cci_matrix_template=None, verbose=True):
+                 cci_score='bray_curtis', cci_type='undirected', cci_matrix_template=None, verbose=True):
 
         self.communication_score = communication_score
-        self.score_metric = cci_score
+        self.cci_score = cci_score
+        self.cci_type = cci_type
+
         if self.communication_score == 'expression_thresholding':
             if 'type' in gene_cutoffs.keys():
                 cutoff_values = cutoffs.get_cutoffs(rnaseq_data=rnaseq_data,
@@ -113,7 +120,7 @@ class InteractionSpace():
 
         self.interaction_elements['ppi_score'] = self.ppi_data['score'].values
 
-    def pairwise_interaction(self, cell1, cell2, score_metric='bray_curtis', use_ppi_score=False, verbose=True):
+    def pair_cci_score(self, cell1, cell2, cci_score='bray_curtis', use_ppi_score=False, verbose=True):
         '''
         Function that performs the interaction analysis of a pair of cells.
 
@@ -139,22 +146,24 @@ class InteractionSpace():
         '''
 
         if verbose:
-            print("Computing interaction between {} and {}".format(cell1.type, cell2.type))
+            print("Computing interaction score between {} and {}".format(cell1.type, cell2.type))
 
         if use_ppi_score:
             ppi_score = self.ppi_data['score'].values
         else:
             ppi_score = None
         # Calculate cell-cell interaction score
-        if score_metric == 'bray_curtis':
-            cci_score = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2, ppi_score=ppi_score)
-        elif score_metric == 'jaccard':
-            cci_score = cci_scores.compute_jaccard_like_cci_score(cell1, cell2, ppi_score=ppi_score)
+        if cci_score == 'bray_curtis':
+            cci_value = cci_scores.compute_braycurtis_like_cci_score(cell1, cell2, ppi_score=ppi_score)
+        elif cci_score == 'jaccard':
+            cci_value = cci_scores.compute_jaccard_like_cci_score(cell1, cell2, ppi_score=ppi_score)
+        elif cci_score == 'count':
+            cci_value = cci_scores.compute_count_score(cell1, cell2, ppi_score=ppi_score)
         else:
-            raise NotImplementedError("Score metric {} to compute pairwise cell-interactions is not implemented".format(score_metric))
-        return cci_score
+            raise NotImplementedError("CCI score {} to compute pairwise cell-interactions is not implemented".format(cci_score))
+        return cci_value
 
-    def compute_pairwise_interactions(self, score_metric=None, use_ppi_score=False, verbose=True):
+    def compute_pairwise_cci_scores(self, cci_score=None, use_ppi_score=False, verbose=True):
         '''
         Function that computes...
 
@@ -167,26 +176,120 @@ class InteractionSpace():
 
 
         '''
-        if score_metric is None:
-            score_metric = self.score_metric
+        if cci_score is None:
+            cci_score = self.cci_score
         else:
-            assert isinstance(score_metric, str)
+            assert isinstance(cci_score, str)
 
         ### Compute pairwise physical interactions
         if verbose:
             print("Computing pairwise interactions")
 
+        # Compute pair by pair
         for pair in self.interaction_elements['pairs']:
             cell1 = self.interaction_elements['cells'][pair[0]]
             cell2 = self.interaction_elements['cells'][pair[1]]
-            cci_score = self.pairwise_interaction(cell1,
-                                                  cell2,
-                                                  score_metric=score_metric,
-                                                  use_ppi_score=use_ppi_score,
-                                                  verbose=verbose)
-            self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_score
-            self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_score
+            cci_value = self.pair_cci_score(cell1,
+                                            cell2,
+                                            cci_score=cci_score,
+                                            use_ppi_score=use_ppi_score,
+                                            verbose=verbose)
+            self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_value
+            if self.cci_type == 'undirected':
+                self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_value
+
+        # Compute using matmul -> Too slow and uses a lot of memory TODO: Try to optimize this
+        # if cci_score == 'bray_curtis':
+        #     cci_matrix = cci_scores.matmul_bray_curtis_like(self.interaction_elements['A_score'],
+        #                                                     self.interaction_elements['B_score'])
+        # self.interaction_elements['cci_matrix'] = pd.DataFrame(cci_matrix,
+        #                                                        index=self.interaction_elements['cell_names'],
+        #                                                        columns=self.interaction_elements['cell_names']
+        #                                                        )
 
         # Generate distance matrix
-        self.distance_matrix = self.interaction_elements['cci_matrix'].apply(lambda x: 1 - x)
+        if cci_score != 'count':
+            self.distance_matrix = self.interaction_elements['cci_matrix'].apply(lambda x: 1 - x)
+        else:
+            self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'].max().max()).apply(lambda x: 1 - x)
         np.fill_diagonal(self.distance_matrix.values, 0.0)  # Make diagonal zero (delete autocrine-interactions)
+
+    def pair_communication_score(self, cell1, cell2, communication_score='expression_thresholding',
+                                 use_ppi_score=False, verbose=True):
+        # TODO: Implement communication scores
+        if verbose:
+            print("Computing communication score between {} and {}".format(cell1.type, cell2.type))
+
+        # Check that new score is the same type as score used to build interaction space (binary or continuous)
+        if (communication_score in ['expression_product', 'coexpression']) \
+                & (self.communication_score in ['expression_thresholding', 'differential_combinations']):
+            raise ValueError('Cannot use {} for this interaction space'.format(communication_score))
+        if (communication_score in ['expression_thresholding', 'differential_combinations']) \
+                & (self.communication_score in ['expression_product', 'expression_correlation']):
+            raise ValueError('Cannot use {} for this interaction space'.format(communication_score))
+
+        if use_ppi_score:
+            ppi_score = self.ppi_data['score'].values
+        else:
+            ppi_score = None
+
+        if (communication_score == 'expression_thresholding') | (communication_score == 'differential_combinations'):
+            communication_value = communication_scores.get_binary_scores(cell1, cell2, ppi_score=ppi_score)
+        elif (communication_score == 'expression_product') | (communication_score == 'expression_correlation'):
+              communication_value = communication_scores.get_continuous_scores(cell1, cell2, ppi_score=ppi_score)
+        else:
+            raise NotImplementedError(
+                "Communication score {} to compute pairwise cell-communication is not implemented".format(communication_score))
+        return communication_value
+
+    def compute_pairwise_communication_scores(self, communication_score=None, use_ppi_score=False, ref_ppi_data=None,
+                                              cells=None, verbose=True):
+        '''
+        Function that computes...
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+
+
+        '''
+        if communication_score is None:
+            communication_score = self.communication_score
+        else:
+            assert isinstance(communication_score, str)
+
+        # Labels:
+        if cells is None:
+            cell_pairs = self.interaction_elements['pairs']
+        else:
+            cell_pairs = generate_pairs(cells, self.cci_type)
+        col_labels = ['{};{}'.format(pair[0], pair[1]) for pair in cell_pairs]
+        if ref_ppi_data is None:
+            ref_index = self.ppi_data.apply(lambda row: (row[0], row[1]), axis=1)
+            keep_index = list(range(self.ppi_data.shape[0]))
+        else:
+            ref_index = list(ref_ppi_data.apply(lambda row: (row[0], row[1]), axis=1).values)
+            keep_index = list(pd.merge(self.ppi_data, ref_ppi_data, how='inner').index)
+
+        # DataFrame to Store values
+        communication_matrix = pd.DataFrame(index=ref_index, columns=col_labels)
+
+        ### Compute pairwise physical interactions
+        if verbose:
+            print("Computing pairwise communication")
+
+        for i, pair in enumerate(cell_pairs):
+            cell1 = self.interaction_elements['cells'][pair[0]]
+            cell2 = self.interaction_elements['cells'][pair[1]]
+
+            comm_score = self.pair_communication_score(cell1,
+                                                       cell2,
+                                                       communication_score=communication_score,
+                                                       use_ppi_score=use_ppi_score,
+                                                       verbose=verbose)
+            communication_matrix[col_labels[i]] = comm_score.flatten()[keep_index]
+
+        self.communication_matrix = communication_matrix
