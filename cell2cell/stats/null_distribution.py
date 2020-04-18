@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import random
 import numpy as np
 import pandas as pd
 
@@ -151,7 +152,14 @@ def check_presence_in_dataframe(df, elements, columns=None):
 
 
 def subsample_dataframe(df, n_samples, random_state=None):
-    subsampled_df = df.sample(n_samples, random_state=random_state).reset_index(drop=True)
+    items = list(df.index)
+    if n_samples > len(items):
+        n_samples = len(items)
+    if isinstance(random_state, int):
+        random.seed(random_state)
+    random.shuffle(items)
+
+    subsampled_df = df.loc[items[:n_samples],:]
     return subsampled_df
 
 
