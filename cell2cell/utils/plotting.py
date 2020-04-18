@@ -53,7 +53,6 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
     # Check symmetry to run linkage separately
     symmetric = (df.values.transpose() == df.values).all()
     if symmetric:
-        # TODO: implement heatmap when distance matrix is not symmetric
         # Compute linkage
         D = sp.distance.squareform(df)
         if 'col_cluster' in kwargs.keys():
