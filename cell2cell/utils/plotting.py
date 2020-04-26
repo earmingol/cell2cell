@@ -298,7 +298,7 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
                    meta_cmap='gist_rainbow', colors=None, cell_labels=('SENDER-CELL','RECEIVER-CELL'),
                    metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
                    cbar_fontsize=12, filename=None, **kwargs):
-    df_ = interaction_space.communication_matrix.copy()
+    df_ = interaction_space.interaction_elements['communication_matrix'].copy()
 
     if excluded_cells is not None:
         included_cells = []
