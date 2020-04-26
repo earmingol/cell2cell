@@ -52,15 +52,19 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
                                          **{'cmap': 'Blues'}
                                          )
 
-    pcoa = plotting.pcoa_biplot(interaction_space,
-                                excluded_cells=excluded_cells,
-                                metadata=metadata,
-                                sample_col=meta_setup['sample_col'],
-                                group_col=meta_setup['group_col'],
-                                colors=colors,
-                                title='PCoA for cells given their CCI scores',
-                                filename=files['output_folder'] + 'CCI-PCoA-CCI-scores{}.png'.format(filename_suffix),
-                                )
+    # Run PCoA only if CCI matrix is symmetric
+    pcoa_state = False
+    if (interaction_space.interaction_elements['cci_matrix'].values.transpose() == interaction_space.interaction_elements['cci_matrix'].values).all():
+        pcoa = plotting.pcoa_biplot(interaction_space,
+                                    excluded_cells=excluded_cells,
+                                    metadata=metadata,
+                                    sample_col=meta_setup['sample_col'],
+                                    group_col=meta_setup['group_col'],
+                                    colors=colors,
+                                    title='PCoA for cells given their CCI scores',
+                                    filename=files['output_folder'] + 'CCI-PCoA-CCI-scores{}.png'.format(filename_suffix),
+                                    )
+        pcoa_state = True
 
     interaction_clustermap = plotting.clustermap_ccc(interaction_space,
                                                      metric=metric,
@@ -79,7 +83,8 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
     outputs = dict()
     outputs['interaction_space'] = interaction_space
     outputs['clustermap'] = clustermap
-    outputs['pcoa'] = pcoa
+    if pcoa_state:
+        outputs['pcoa'] = pcoa
     outputs['interaction_clustermap'] = interaction_clustermap
     outputs['LR-pairs'] = interaction_clustermap.data2d
     return outputs
