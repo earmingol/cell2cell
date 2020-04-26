@@ -243,7 +243,7 @@ class InteractionSpace():
         return communication_value
 
     def compute_pairwise_communication_scores(self, communication_score=None, use_ppi_score=False, ref_ppi_data=None,
-                                              cells=None, verbose=True):
+                                              cells=None, cci_type=None, verbose=True):
         '''
         Function that computes...
 
@@ -261,12 +261,20 @@ class InteractionSpace():
         else:
             assert isinstance(communication_score, str)
 
-        # Labels:
+        # Cells to consider
         if cells is None:
+            cells = self.interaction_elements['cell_names']
+
+        # Labels:
+        if cci_type is None:
             cell_pairs = self.interaction_elements['pairs']
+        elif cci_type != self.cci_type:
+            cell_pairs = generate_pairs(cells, cci_type)
         else:
             cell_pairs = generate_pairs(cells, self.cci_type)
         col_labels = ['{};{}'.format(pair[0], pair[1]) for pair in cell_pairs]
+
+        # Ref PPI data
         if ref_ppi_data is None:
             ref_index = self.ppi_data.apply(lambda row: (row[0], row[1]), axis=1)
             keep_index = list(range(self.ppi_data.shape[0]))
@@ -292,4 +300,4 @@ class InteractionSpace():
                                                        verbose=verbose)
             communication_matrix[col_labels[i]] = comm_score.flatten()[keep_index]
 
-        self.communication_matrix = communication_matrix
+        self.interaction_elements['communication_matrix'] = communication_matrix
