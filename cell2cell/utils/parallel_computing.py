@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 from multiprocessing import cpu_count
 
+
 # GENERAL
 def agents_number(n_jobs):
     '''
@@ -23,21 +24,16 @@ def agents_number(n_jobs):
         agents = n_jobs
     return agents
 
-# CORE FUNCTIONS
-def parallel_subsampling_interactions(inputs):
-    '''
-    Parallel computing in cell2cell2.subsampling.SubsamplingSpace
-    '''
-    from cell2cell.core import subsampling_operation
-    results = subsampling_operation(cell_ids=inputs['cells'],
-                                    last_item= inputs['list_end'],
-                                    rnaseq_data=inputs['rnaseq'],
-                                    ppi_data=inputs['ppi'],
-                                    gene_cutoffs=inputs['cutoffs'],
-                                    score_type=inputs['score_type'],
-                                    score_metric=inputs['score_metric'],
-                                    cci_matrix_template=inputs['cci_matrix'],
-                                    seed=inputs['seed'],
-                                    verbose=inputs['verbose'])
 
-    return results
+# CORE FUNCTIONS
+def parallel_spatial_ccis(inputs):
+    '''
+    Parallel computing in cell2cell2.spatial_interactions.SpatialCCIs
+    '''
+    # TODO: Implement this for enabling spatial analysis and compute interactions in parallel
+
+    # from cell2cell.core import spatial_operation
+    #results = spatial_operation()
+
+    # return results
+    pass
