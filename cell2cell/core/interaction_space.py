@@ -116,6 +116,7 @@ class InteractionSpace():
         self.interaction_elements = generate_interaction_elements(modified_rnaseq=self.modified_rnaseq,
                                                                   ppi_data=self.ppi_data,
                                                                   cci_matrix_template=cci_matrix_template,
+                                                                  cci_type=self.cci_type,
                                                                   verbose=verbose)
 
         self.interaction_elements['ppi_score'] = self.ppi_data['score'].values
