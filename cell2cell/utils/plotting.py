@@ -113,7 +113,7 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
         meta_ = metadata.set_index(sample_col)
         if excluded_cells is not None:
             meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
-        labels = meta_[group_col].values.tolist()
+        labels = list(set(meta_[group_col].values).intersection(set(df.columns)))
 
         if colors is None:
             colors = get_colors_from_labels(labels, cmap=meta_cmap)
@@ -162,6 +162,7 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
         xrange = abs(xlims[0] - xlims[1])
         x_cell_width = xrange / len(df.columns)
 
+        pos_y0 = label_y1.get_transform().transform((0., 0.))
         pos_y1 = label_y1.get_transform().transform(label_y1.get_position())
         ylims = hier.ax_heatmap.get_ylim()
         yrange = abs(ylims[0] - ylims[1])
@@ -184,7 +185,7 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
             new_pos_x = label.get_position()[0] - aux_scaler_x
             new_pos_y = new_pos_x * yrange / xrange - yrange + y_cell_width
 
-            new_pos_y = label_y1.get_transform().transform((0, new_pos_y + aux_scaler_y)) - pos_y1
+            new_pos_y = label_y1.get_transform().transform((0, new_pos_y + aux_scaler_y)) - pos_y0
             dx = -0.5 * scaler_x[0] / dpi_x
             dy = new_pos_y[1] / dpi_y
             offset = mlp.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
@@ -349,7 +350,7 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
 
         # Clustermap
         fig = sns.clustermap(df_,
-                             cmap=sns.dark_palette('red'),
+                             cmap=sns.dark_palette('red'), #plt.get_cmap('YlGnBu_r'),
                              col_linkage=col_linkage,
                              row_linkage=row_linkage,
                              col_colors=[col_colors_L,
