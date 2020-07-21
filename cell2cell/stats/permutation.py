@@ -11,7 +11,27 @@ import seaborn as sns
 from sklearn.utils import shuffle
 
 
-def pvalue_from_dist(obs_value, dist, label='', comparison='upper'):
+def compute_pvalue_from_dist(obs_value, dist, consider_size=False, comparison='upper'):
+    if comparison == 'lower':
+        pval = scipy.stats.percentileofscore(dist, obs_value) / 100.0
+    elif comparison == 'upper':
+        pval = 1.0 - scipy.stats.percentileofscore(dist, obs_value) / 100.0
+    elif comparison == 'different':
+        percentile = scipy.stats.percentileofscore(dist, obs_value) / 100.0
+        if percentile <= 0.5:
+            pval = 2.0 * percentile
+        else:
+            pval = 2.0 * (1.0 - percentile)
+    else:
+        raise NotImplementedError('Comparison {} is not implemented'.format(comparison))
+
+    if (consider_size) & (pval == 0.):
+        pval = 1./(len(dist) + 1e-6)
+
+    return pval
+
+
+def pvalue_from_dist(obs_value, dist, label='', consider_size=False, comparison='upper'):
     '''
     This function computes a p-value for an observed value given a simulated or empirical distribution.
     It plots the distribution and prints the p-value.
@@ -27,6 +47,9 @@ def pvalue_from_dist(obs_value, dist, label='', comparison='upper'):
     label : str, '' by default
         Label used for the histogram plot.
 
+    consider_size : boolean, False by default
+        Consider size of distribution for limiting the p-value to be as minimal as the reciprocal of the size.
+
     comparison : str, 'upper' by default
         Type of comparison used to get the p-value. It could be 'lower', 'upper' or 'different'.
         Lower and upper correspond to one-tailed analysis, while different is for a two-tailed analysis.
@@ -39,18 +62,11 @@ def pvalue_from_dist(obs_value, dist, label='', comparison='upper'):
     pval : float
         P-value obtained from both observed value and pre-computed distribution.
     '''
-    if comparison == 'lower':
-        pval = scipy.stats.percentileofscore(dist, obs_value) / 100.0
-    elif comparison == 'upper':
-        pval = 1.0 - scipy.stats.percentileofscore(dist, obs_value) / 100.0
-    elif comparison == 'different':
-        percentile = scipy.stats.percentileofscore(dist, obs_value) / 100.0
-        if percentile <= 0.5:
-            pval = 2.0 * percentile
-        else:
-            pval = 2.0 * (1.0 - percentile)
-    else:
-        raise NotImplementedError('Comparison {} is not implemented'.format(comparison))
+    pval = compute_pvalue_from_dist(obs_value=obs_value,
+                                    dist=dist,
+                                    consider_size=consider_size,
+                                    comparison=comparison
+                                    )
 
     print('P-value is: {}'.format(pval))
 

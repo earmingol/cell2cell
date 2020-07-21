@@ -28,6 +28,19 @@ def shuffle_cols_in_df(df, columns, shuffling_number=1, random_state=None):
     return df_
 
 
+def shuffle_rows_in_df(df, rows, shuffling_number=1, random_state=None):
+    df_ = df.copy().T
+    if isinstance(rows, str):
+        rows = [rows]
+
+    for row in rows:
+        for i in range(shuffling_number):
+            if random_state is not None:
+                np.random.seed(random_state + i)
+            df_[row] = np.random.permutation(df_[row].values)
+    return df_.T
+
+
 def shuffle_dataframe(df, shuffling_number=1, axis=0, random_state=None):
     df_ = df.copy()
     axis = int(not axis)  # pandas.DataFrame is always 2D
