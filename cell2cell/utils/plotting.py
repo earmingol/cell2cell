@@ -113,12 +113,14 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
         meta_ = metadata.set_index(sample_col)
         if excluded_cells is not None:
             meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
-        labels = list(set(meta_[group_col].values).intersection(set(df.columns)))
 
+        assert (set(meta_.index) & set(df.columns)) == set(df.columns), "Metadata is not provided for all cells in interaction space"
+
+        labels = meta_[group_col].values.tolist()
         if colors is None:
             colors = get_colors_from_labels(labels, cmap=meta_cmap)
         else:
-            assert all(elem in colors.keys() for elem in set(labels))
+            assert all(elem in colors.keys() for elem in set(labels)), "Colors are not provided for all groups in metadata"
 
         col_colors = pd.DataFrame(labels)[0].map(colors)
         col_colors.index = meta_.index
