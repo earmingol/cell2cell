@@ -53,6 +53,10 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
     # Check symmetry to run linkage separately
     symmetric = (df.values.transpose() == df.values).all()
     if symmetric:
+        # Remove diagonal
+        df_diag = np.diag(df.values)
+        np.fill_diagonal(df.values, 0.0)
+
         # Compute linkage
         D = sp.distance.squareform(df)
         if 'col_cluster' in kwargs.keys():
@@ -63,6 +67,7 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
         else:
             linkage = hc.linkage(D, method=method, optimal_ordering=optimal_leaf)
 
+        df = df + np.diag(df_diag)
         # Plot hierarchical clustering
         hier = sns.clustermap(df,
                               col_linkage=linkage,
