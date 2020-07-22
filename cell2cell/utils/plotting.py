@@ -31,7 +31,7 @@ def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
 
 def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata=None, sample_col='#SampleID',
                    group_col='Groups', meta_cmap='gist_rainbow', colors=None, excluded_cells=None, title='',
-                   bar_title='CCI score', cbar_fontsize='12', filename=None, **kwargs):
+                   cbar_title='CCI score', cbar_fontsize='12', filename=None, **kwargs):
     if hasattr(interaction_space, 'distance_matrix'):
         print('Interaction space detected as an InteractionSpace class')
         distance_matrix = interaction_space.distance_matrix
@@ -213,7 +213,7 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
 
     # Color bar label
     cbar = hier.ax_heatmap.collections[0].colorbar
-    cbar.ax.set_ylabel(bar_title, fontsize=cbar_fontsize)
+    cbar.ax.set_ylabel(cbar_title, fontsize=cbar_fontsize)
     cbar.ax.yaxis.set_label_position("left")
 
     if filename is not None:
@@ -305,7 +305,7 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
 def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', group_col='Groups',
                    meta_cmap='gist_rainbow', colors=None, cell_labels=('SENDER-CELL','RECEIVER-CELL'),
                    metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
-                   cbar_fontsize=12, filename=None, **kwargs):
+                   cbar_title='Presence', cbar_fontsize=12, filename=None, **kwargs):
     df_ = interaction_space.interaction_elements['communication_matrix'].copy()
 
     if excluded_cells is not None:
@@ -388,7 +388,7 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
 
     # Color bar label
     cbar = fig.ax_heatmap.collections[0].colorbar
-    cbar.ax.set_ylabel('Presence', fontsize=cbar_fontsize)
+    cbar.ax.set_ylabel(cbar_title, fontsize=cbar_fontsize)
     cbar.ax.yaxis.set_label_position("left")
 
     # Save Figure
