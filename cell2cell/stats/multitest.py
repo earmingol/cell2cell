@@ -29,3 +29,27 @@ def compute_fdrcorrection_symmetric_matrix(X, alpha=0.1):
     if pandas:
         adj_X = pd.DataFrame(adj_X, index=index, columns=columns)
     return adj_X
+
+
+def compute_fdrcorrection_asymmetric_matrix(X, alpha=0.1):
+    pandas = False
+    a = X.copy()
+
+    if isinstance(X, pd.DataFrame):
+        pandas = True
+        a = X.values
+        index = X.index
+        columns = X.columns
+
+    # Original data
+    pvals = a.flatten()
+
+    # New data
+    rej, adj_pvals = fdrcorrection(pvals, alpha=alpha)
+
+    # Reorder_data
+    adj_X = adj_pvals.reshape(-1, a.shape[1])
+
+    if pandas:
+        adj_X = pd.DataFrame(adj_X, index=index, columns=columns)
+    return adj_X
