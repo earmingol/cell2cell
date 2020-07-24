@@ -306,7 +306,15 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
                    meta_cmap='gist_rainbow', colors=None, cell_labels=('SENDER-CELL','RECEIVER-CELL'),
                    metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
                    cbar_title='Presence', cbar_fontsize=12, filename=None, **kwargs):
-    df_ = interaction_space.interaction_elements['communication_matrix'].copy()
+
+    if hasattr(interaction_space, 'interaction_elements'):
+        print('Interaction space detected as an InteractionSpace class')
+        df_ = interaction_space.interaction_elements['communication_matrix'].copy()
+    elif (type(interaction_space) is np.ndarray) or (type(interaction_space) is pd.core.frame.DataFrame):
+        print('Interaction space detected as a communication matrix')
+        df_ = interaction_space
+    else:
+        raise ValueError('First run InteractionSpace.compute_pairwise_communication_scores() to generate a communication matrix.')
 
     if excluded_cells is not None:
         included_cells = []
