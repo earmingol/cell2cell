@@ -305,7 +305,7 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
 def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', group_col='Groups',
                    meta_cmap='gist_rainbow', colors=None, cell_labels=('SENDER-CELL','RECEIVER-CELL'),
                    metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
-                   cbar_title='Presence', cbar_fontsize=12, filename=None, **kwargs):
+                   only_used_lr=True, cbar_title='Presence', cbar_fontsize=12, filename=None, **kwargs):
 
     if hasattr(interaction_space, 'interaction_elements'):
         print('Interaction space detected as an InteractionSpace class')
@@ -332,7 +332,8 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
     df_ = df_.dropna(how='all', axis=0)
     df_ = df_.dropna(how='all', axis=1)
     df_ = df_.fillna(0)
-    df_ = df_[(df_.T != 0).any()]
+    if only_used_lr:
+        df_ = df_[(df_.T != 0).any()]
 
     # Clustering
     dm_rows = sp.distance.squareform(sp.distance.pdist(df_.values, metric=metric))
