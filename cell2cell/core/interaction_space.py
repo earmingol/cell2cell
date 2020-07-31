@@ -10,14 +10,30 @@ import numpy as np
 import pandas as pd
 
 
-def generate_pairs(cells, cci_type):
-    if cci_type == 'directed':
-        pairs = list(itertools.combinations(cells + cells, 2)) # Directed
-    elif cci_type == 'undirected':
-        pairs = list(itertools.combinations(cells, 2)) + [(c, c) for c in cells] # Undirected
+def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=True):
+    if self_interaction:
+        if cci_type == 'directed':
+            pairs = list(itertools.product(cells, cells))
+            #pairs = list(itertools.combinations(cells + cells, 2)) # Directed
+        elif cci_type == 'undirected':
+            pairs = list(itertools.combinations(cells, 2)) + [(c, c) for c in cells] # Undirected
+        else:
+            raise NotImplementedError("CCI type has to be directed or undirected")
     else:
-        raise NotImplementedError("CCI type has to be directed or undirected")
-    pairs = list(set(pairs))  # Remove duplicates
+        if cci_type == 'directed':
+            pairs_ = list(itertools.product(cells, cells))
+            pairs = []
+            for p in pairs_:
+                if p[0] == p[1]:
+                    continue
+                else:
+                    pairs.append(p)
+        elif cci_type == 'undirected':
+            pairs = list(itertools.combinations(cells, 2))
+        else:
+            raise NotImplementedError("CCI type has to be directed or undirected")
+    if remove_duplicates:
+        pairs = list(set(pairs))  # Remove duplicates
     return pairs
 
 
