@@ -113,7 +113,7 @@ def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_tran
     return cutoff_data
 
 
-def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None, verbose=True,  **kwargs):
+def load_ppi(ppi_file, interaction_columns, sort_values=None, score=None, rnaseq_genes=None, verbose=True,  **kwargs):
     '''
     Load PPI network from table. Column of Interactor 1 and Interactor 2 must be specified.
 
@@ -122,6 +122,8 @@ def load_ppi(ppi_file, interaction_columns, score=None, rnaseq_genes=None, verbo
     if verbose:
         print("Opening PPI datasets from {}".format(ppi_file))
     ppi_data = load_table(ppi_file, verbose=verbose,  **kwargs)
+    if sort_values is not None:
+        ppi_data = ppi_data.sort_values(by=sort_values)
     unidirectional_ppi = ppi.remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=verbose)
     simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score, verbose=verbose)
     if rnaseq_genes is not None:
