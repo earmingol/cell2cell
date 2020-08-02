@@ -211,9 +211,9 @@ class InteractionSpace():
                                             cci_score=cci_score,
                                             use_ppi_score=use_ppi_score,
                                             verbose=verbose)
-            self.interaction_elements['cci_matrix'].loc[pair[0], pair[1]] = cci_value
+            self.interaction_elements['cci_matrix'].at[pair[0], pair[1]] = cci_value
             if self.cci_type == 'undirected':
-                self.interaction_elements['cci_matrix'].loc[pair[1], pair[0]] = cci_value
+                self.interaction_elements['cci_matrix'].at[pair[1], pair[0]] = cci_value
 
         # Compute using matmul -> Too slow and uses a lot of memory TODO: Try to optimize this
         # if cci_score == 'bray_curtis':
