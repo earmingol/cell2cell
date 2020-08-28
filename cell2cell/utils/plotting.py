@@ -19,12 +19,13 @@ import skbio
 def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     assert factor >= 1
 
+    colors = dict.fromkeys(labels, ())
+
     factor = int(factor)
-    NUM_COLORS = factor * len(set(labels))
+    NUM_COLORS = factor * len(colors)
     cm = plt.get_cmap(cmap)
 
-    colors = dict()
-    for i, label in enumerate(set(labels)):
+    for i, label in enumerate(colors.keys()):
         colors[label] = cm((1 + ((factor-1)/factor)) * i / NUM_COLORS)
     return colors
 
@@ -305,7 +306,7 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
 def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', group_col='Groups',
                    meta_cmap='gist_rainbow', colors=None, cell_labels=('SENDER-CELL','RECEIVER-CELL'),
                    metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
-                   only_used_lr=True, cbar_title='Presence', cbar_fontsize=12, filename=None, **kwargs):
+                   only_used_lr=True, cbar_title='Presence', cbar_fontsize=12, row_fontsize=8, filename=None, **kwargs):
 
     if hasattr(interaction_space, 'interaction_elements'):
         print('Interaction space detected as an InteractionSpace class')
@@ -378,7 +379,7 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
         fig.ax_heatmap.set_xticklabels(fig.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
 
         fig.ax_col_colors.set_yticks(np.arange(0.5, 2., step=1))
-        fig.ax_col_colors.set_yticklabels(list(cell_labels), fontsize=12)
+        fig.ax_col_colors.set_yticklabels(list(cell_labels), fontsize=row_fontsize)
         fig.ax_col_colors.yaxis.tick_right()
         plt.setp(fig.ax_col_colors.get_yticklabels(), rotation=0, visible=True)
 
