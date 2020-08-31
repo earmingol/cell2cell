@@ -4,12 +4,16 @@ from __future__ import absolute_import
 
 import scipy
 import numpy as np
+import pandas as pd
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.utils import shuffle
+from cell2cell.analysis import basic_pipeline
+from cell2cell.preprocessing import shuffle_rows_in_df
 
+from sklearn.utils import shuffle
+from tqdm.auto import tqdm
 
 def compute_pvalue_from_dist(obs_value, dist, consider_size=False, comparison='upper'):
     if comparison == 'lower':
@@ -122,3 +126,115 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
         ppi_data_[B] = ppi_data_[B].apply(lambda x: mapper[x])
     else: raise ValueError('Not valid option')
     return ppi_data_
+
+
+def run_cellwise_permutation(rnaseq_data, ppi_data, genes, cutoff_setup, analysis_setup, permutations=10000, shuffle_type='gene_labels',
+                             excluded_cells=None, use_ppi_score=False, consider_size=True, verbose = False):
+    '''
+    shuffle_type : 'genes, gene_labels, cell_labels
+    '''
+    # Placeholders
+    scores = np.array([])
+    diag = np.array([])
+
+    # Info to use
+    if genes is None:
+        genes = list(rnaseq_data.index)
+
+    if excluded_cells is not None:
+        included_cells = sorted(list(set(rnaseq_data.columns) - set(excluded_cells)))
+    else:
+        included_cells = sorted(list(set(rnaseq_data.columns)))
+
+    rnaseq_data_ = rnaseq_data.loc[genes, included_cells]
+
+    # Permutations
+    for i in tqdm(range(permutations)):
+
+        if shuffle_type == 'genes':
+            # Shuffle genes
+            shuffled_rnaseq_data = shuffle_rows_in_df(df=rnaseq_data_,
+                                                      rows=genes)
+        elif shuffle_type == 'cell_labels':
+            # Shuffle cell labels
+            shuffled_rnaseq_data = rnaseq_data_.copy()
+            shuffled_cells = shuffle(list(shuffled_rnaseq_data.columns))
+            shuffled_rnaseq_data.columns = shuffled_cells
+
+        elif shuffle_type == 'gene_labels':
+            # Shuffle gene labels
+            shuffled_rnaseq_data = rnaseq_data.copy()
+            shuffled_genes = shuffle(list(shuffled_rnaseq_data.index))
+            shuffled_rnaseq_data.index = shuffled_genes
+        else:
+            raise ValueError('Not a valid shuffle_type.')
+
+        interaction_space = basic_pipeline(rnaseq_data=shuffled_rnaseq_data.loc[genes, included_cells],
+                                           ppi_data=ppi_data,
+                                           cutoff_setup=cutoff_setup,
+                                           analysis_setup=analysis_setup,
+                                           excluded_cells=excluded_cells,
+                                           use_ppi_score=use_ppi_score,
+                                           verbose=verbose)
+
+        # Keep scores
+        cci = interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
+        cci_diag = np.diag(cci).copy()
+        np.fill_diagonal(cci.values, 0.0)
+
+        iter_scores = scipy.spatial.distance.squareform(cci)
+        iter_scores = np.reshape(iter_scores, (len(iter_scores), 1)).T
+
+        iter_diag = np.reshape(cci_diag, (len(cci_diag), 1)).T
+
+        if scores.shape == (0,):
+            scores = iter_scores
+        else:
+            scores = np.concatenate([scores, iter_scores], axis=0)
+
+        if diag.shape == (0,):
+            diag = iter_diag
+        else:
+            diag = np.concatenate([diag, iter_diag], axis=0)
+
+    # Base CCI scores
+    base_interaction_space = basic_pipeline(rnaseq_data=rnaseq_data_,
+                                            ppi_data=ppi_data,
+                                            cutoff_setup=cutoff_setup,
+                                            analysis_setup=analysis_setup,
+                                            excluded_cells=excluded_cells,
+                                            use_ppi_score=use_ppi_score,
+                                            verbose=verbose)
+
+    # Keep scores
+    base_cci = base_interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
+    base_cci_diag = np.diag(base_cci).copy()
+    np.fill_diagonal(base_cci.values, 0.0)
+
+    base_scores = scipy.spatial.distance.squareform(base_cci)
+
+    # P-values
+    pvals = np.zeros((scores.shape[1], 1))
+    diag_pvals = np.zeros((diag.shape[1], 1))
+
+    for i in range(scores.shape[1]):
+        pvals[i] = compute_pvalue_from_dist(base_scores[i],
+                                            scores[:, i],
+                                            consider_size=consider_size,
+                                            comparison='different'
+                                            )
+
+    for i in range(diag.shape[1]):
+        diag_pvals[i] = compute_pvalue_from_dist(base_cci_diag[i],
+                                                 diag[:, i],
+                                                 consider_size=consider_size,
+                                                 comparison='different'
+                                                 )
+
+    # DataFrame
+    cci_pvals = scipy.spatial.distance.squareform(pvals.reshape((len(pvals),)))
+    for i, v in enumerate(diag_pvals.flatten()):
+        cci_pvals[i, i] = v
+    cci_pvals = pd.DataFrame(cci_pvals, index=base_cci.index, columns=base_cci.columns)
+
+    return cci_pvals
