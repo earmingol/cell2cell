@@ -271,12 +271,16 @@ def pcoa_biplot(interaction_space, metadata, sample_col='#SampleID', group_col='
                        ordination.samples.loc[cells, 'PC2'],
                        ordination.samples.loc[cells, 'PC3'],
                        color=colors[cell_type],
-                       s=50, label=cell_type)
+                       s=50,
+                       edgecolors='k',
+                       label=cell_type)
         else:
             ax.scatter(ordination.samples.loc[cells, 'PC1'],
                        ordination.samples.loc[cells, 'PC2'],
                        ordination.samples.loc[cells, 'PC3'],
-                       s=50, label=cell_type)
+                       s=50,
+                       edgecolors='k',
+                       label=cell_type)
 
     # Plot texts
     ax.set_xlabel('PC1 ({}%)'.format(np.round(ordination.proportion_explained['PC1'] * 100), 2), fontsize=axis_size)
