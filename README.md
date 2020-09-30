@@ -1,4 +1,4 @@
-# Capturing Cell-Cell Interactions with cell2cell
+# Inferring cell-cell interactions from transcriptomes with cell2cell
 
 ## Installation
 Create a new conda environment:
