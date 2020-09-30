@@ -6,22 +6,7 @@ Create a new conda environment:
 conda create -n cell2cell -y python=3.7 jupyter
 ```
 
-Go into cell2cell directory:
-```
-cd cell2cell
-```
-
 Then, install cell2cell:
 ```
-pip install .
+pip install cell2cell
 ```
-
-## Compatible Data and Formats
-
-
-## Functions
-
-
-## Example
-One example of using and running cell2cell is 
- [available here for C.elegans](./notebooks/CElegans-CCI-binary-STRINGdb.ipynb).
