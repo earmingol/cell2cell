@@ -69,7 +69,7 @@ def generate_random_ppi(max_size, interactors_A, interactors_B=None, random_stat
         ppi_data['B'] = col_B
         ppi_data.assign(score=1.0)
 
-        ppi_data = ppi.remove_ppi_bidirectionality(ppi_data, ['A', 'B'], verbose=verbose)
+        ppi_data = ppi.remove_ppi_bidirectionality(ppi_data, ('A', 'B'), verbose=verbose)
         ppi_data = ppi_data.drop_duplicates()
         ppi_data.reset_index(inplace=True, drop=True)
         return ppi_data
@@ -83,7 +83,7 @@ def generate_random_ppi(max_size, interactors_A, interactors_B=None, random_stat
     #     b = small_block_ppi(size, interactors_A, interactors_B, random_state)
     #     print(b)
     #     ppi_data = pd.concat([ppi_data, b])
-    #     ppi_data = ppi.remove_ppi_bidirectionality(ppi_data, ['A', 'B'], verbose=verbose)
+    #     ppi_data = ppi.remove_ppi_bidirectionality(ppi_data, ('A', 'B'), verbose=verbose)
     #     ppi_data = ppi_data.drop_duplicates()
     #     ppi_data.dropna()
     #     ppi_data.reset_index(inplace=True, drop=True)

@@ -32,6 +32,9 @@ def remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=True):
 
 
 def simplify_ppi(ppi_data, interaction_columns, score=None, verbose=True):
+    '''
+    This functions reduces the PPI dataframe into a simpler version with only three columns (A, B and score).
+    '''
     if verbose:
         print('Simplying PPI network')
     header_interactorA = interaction_columns[0]
@@ -47,14 +50,18 @@ def simplify_ppi(ppi_data, interaction_columns, score=None, verbose=True):
     return simple_ppi
 
 
-def filter_ppi_by_proteins(ppi_data, proteins):
-    ppi_data = ppi_data[ppi_data['A'].isin(proteins)]
-    ppi_data = ppi_data[ppi_data['B'].isin(proteins)]
+def filter_ppi_by_proteins(ppi_data, proteins, protein_complex=False, interaction_columns=('A', 'B')):
+    col_a = interaction_columns[0]
+    col_b = interaction_columns[1]
+    if protein_complex:
+        pass
+    else:
+        ppi_data = ppi_data[(ppi_data[col_a].isin(proteins)) & (ppi_data[col_b].isin(proteins))]
     ppi_data = ppi_data.reset_index(drop=True)
     return ppi_data
 
 
-def bidirectional_ppi_for_cci(ppi_data, interaction_columns=['A', 'B'], verbose=True):
+def bidirectional_ppi_for_cci(ppi_data, interaction_columns=('A', 'B'), verbose=True):
     if verbose:
         print("Making bidirectional PPI for CCI.")
     if ppi_data.shape[0] == 0:
@@ -76,7 +83,7 @@ def bidirectional_ppi_for_cci(ppi_data, interaction_columns=['A', 'B'], verbose=
 
 
 def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None, bidirectional=True,
-                       interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
+                       interaction_type='contacts', interaction_columns=('A', 'B'), verbose=True):
     '''
     :param ppi_data:
     :param interaction_columns:
@@ -99,8 +106,85 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
     return new_ppi_data
 
 
+def get_genes_from_complexes(ppi_data, complex_sep='&', interaction_columns=('A', 'B')):
+    col_a = interaction_columns[0]
+    col_b = interaction_columns[1]
+
+    col_a_genes = set()
+    col_b_genes = set()
+
+    complexes = dict()
+    complex_a = set()
+    complex_b = set()
+    for idx, row in ppi_data.iterrows():
+        prot_a = row[col_a]
+        prot_b = row[col_b]
+
+        if complex_sep in prot_a:
+            comp = set([l for l in prot_a.split(complex_sep)])
+            complexes[prot_a] = comp
+            complex_a = complex_a.union(comp)
+        else:
+            col_a_genes.add(prot_a)
+
+        if complex_sep in prot_b:
+            comp = set([r for r in prot_b.split(complex_sep)])
+            complexes[prot_b] = comp
+            complex_b = complex_b.union(comp)
+        else:
+            col_b_genes.add(prot_b)
+
+    return col_a_genes, complex_a, col_b_genes, complex_b, complexes
+
+
+def filter_complex_ppi_by_proteins(ppi_data, proteins, complex_sep='&', upper_letter_comparison=True,
+                                   interaction_columns=('A', 'B')):
+    col_a = interaction_columns[0]
+    col_b = interaction_columns[1]
+
+    integrated_ppi = ppi_data.copy()
+
+    if upper_letter_comparison:
+        integrated_ppi[col_a] = integrated_ppi[col_a].apply(lambda x: str(x).upper())
+        integrated_ppi[col_b] = integrated_ppi[col_b].apply(lambda x: str(x).upper())
+        prots = set([str(p).upper() for p in proteins])
+    else:
+        prots = set(proteins)
+
+    col_a_genes, complex_a, col_b_genes, complex_b, complexes = get_genes_from_complexes(ppi_data=integrated_ppi,
+                                                                                         complex_sep=complex_sep,
+                                                                                         interaction_columns=interaction_columns
+                                                                                         )
+
+    shared_a_genes = set(col_a_genes & prots)
+    shared_b_genes = set(col_b_genes & prots)
+
+    shared_a_complexes = set(complex_a & prots)
+    shared_b_complexes = set(complex_b & prots)
+
+    integrated_a_complexes = set()
+    integrated_b_complexes = set()
+    for k, v in complexes.items():
+        if all(p in shared_a_complexes for p in v):
+            integrated_a_complexes.add(k)
+        elif all(p in shared_b_complexes for p in v):
+            integrated_b_complexes.add(k)
+
+    integrated_a = shared_a_genes.union(integrated_a_complexes)
+    integrated_b = shared_b_genes.union(integrated_b_complexes)
+
+    filter = (integrated_ppi[col_a].isin(integrated_a)) & (integrated_ppi[col_b].isin(integrated_b))
+    integrated_ppi = ppi_data.loc[filter].reset_index(drop=True)
+
+    return integrated_ppi
+
+
+
+
+
+### These functions below are useful for filtering PPI networks based on GO terms
 def get_filtered_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
-                             interaction_type='contacts', interaction_columns=['A', 'B'], verbose=True):
+                             interaction_type='contacts', interaction_columns=('A', 'B'), verbose=True):
     if (mediator_proteins is None) and (interaction_type != 'contacts'):
         raise ValueError("mediator_proteins cannot be None when interaction_type is not contacts")
 
@@ -142,7 +226,7 @@ def get_filtered_ppi_network(ppi_data, contact_proteins, mediator_proteins=None,
     return new_ppi_data
 
 
-def get_all_to_all_ppi(ppi_data, proteins, interaction_columns=['A', 'B']):
+def get_all_to_all_ppi(ppi_data, proteins, interaction_columns=('A', 'B')):
     header_interactorA = interaction_columns[0]
     header_interactorB = interaction_columns[1]
     new_ppi_data = ppi_data.loc[ppi_data[header_interactorA].isin(proteins) & ppi_data[header_interactorB].isin(proteins)]
@@ -150,7 +234,7 @@ def get_all_to_all_ppi(ppi_data, proteins, interaction_columns=['A', 'B']):
     return new_ppi_data
 
 
-def get_one_group_to_other_ppi(ppi_data, proteins_a, proteins_b, interaction_columns=['A', 'B']):
+def get_one_group_to_other_ppi(ppi_data, proteins_a, proteins_b, interaction_columns=('A', 'B')):
     header_interactorA = interaction_columns[0]
     header_interactorB = interaction_columns[1]
     direction1 = ppi_data.loc[ppi_data[header_interactorA].isin(proteins_a) & ppi_data[header_interactorB].isin(proteins_b)]

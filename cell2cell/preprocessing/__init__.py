@@ -12,6 +12,7 @@ from cell2cell.preprocessing.manipulate_dataframes import (check_presence_in_dat
                                                            shuffle_dataframe, subsample_dataframe)
 from cell2cell.preprocessing.ppi import (bidirectional_ppi_for_cci, filter_ppi_by_proteins, filter_ppi_network,
                                          get_all_to_all_ppi, get_filtered_ppi_network, get_one_group_to_other_ppi,
-                                         remove_ppi_bidirectionality, simplify_ppi)
+                                         remove_ppi_bidirectionality, simplify_ppi, filter_complex_ppi_by_proteins,
+                                         get_genes_from_complexes)
 from cell2cell.preprocessing.rnaseq import (divide_expression_by_max, divide_expression_by_mean, drop_empty_genes,
                                             log10_transformation, scale_expression_by_sum)

@@ -19,18 +19,31 @@ def generate_toy_rnaseq():
     return rnaseq
 
 
-def generate_toy_ppi():
-    data = np.asarray([['Protein-A', 'Protein-B'],
-                       ['Protein-B', 'Protein-C'],
-                       ['Protein-C', 'Protein-A'],
-                       ['Protein-B', 'Protein-B'],
-                       ['Protein-B', 'Protein-A'],
-                       ['Protein-E', 'Protein-F'],
-                       ['Protein-F', 'Protein-F'],
-                       ['Protein-C', 'Protein-F'],
-                       ['Protein-B', 'Protein-E'],
-                       ['Protein-A', 'Protein-F'],
-                       ])
+def generate_toy_ppi(prot_complex=False):
+    if prot_complex:
+        data = np.asarray([['Protein-A', 'Protein-B'],
+                           ['Protein-B', 'Protein-C'],
+                           ['Protein-C', 'Protein-A'],
+                           ['Protein-B', 'Protein-B'],
+                           ['Protein-B', 'Protein-A'],
+                           ['Protein-E', 'Protein-F'],
+                           ['Protein-F', 'Protein-F'],
+                           ['Protein-C&Protein-E', 'Protein-F'],
+                           ['Protein-B', 'Protein-E'],
+                           ['Protein-A&Protein-B', 'Protein-F'],
+                           ])
+    else:
+        data = np.asarray([['Protein-A', 'Protein-B'],
+                           ['Protein-B', 'Protein-C'],
+                           ['Protein-C', 'Protein-A'],
+                           ['Protein-B', 'Protein-B'],
+                           ['Protein-B', 'Protein-A'],
+                           ['Protein-E', 'Protein-F'],
+                           ['Protein-F', 'Protein-F'],
+                           ['Protein-C', 'Protein-F'],
+                           ['Protein-B', 'Protein-E'],
+                           ['Protein-A', 'Protein-F'],
+                           ])
     ppi = pd.DataFrame(data, columns=['A', 'B'])
     ppi = ppi.assign(score=1.0)
     return ppi

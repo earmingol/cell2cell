@@ -98,32 +98,32 @@ def pvalue_from_dist(obs_value, dist, label='', consider_size=False, comparison=
     return fig, pval
 
 
-def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interaction_columns=['A', 'B'], column='both'):
+def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interaction_columns=('A', 'B'), column='both'):
     ppi_data_ = ppi_data.copy()
-    A = interaction_columns[0]
-    B = interaction_columns[1]
+    prot_a = interaction_columns[0]
+    prot_b = interaction_columns[1]
     if column == 'both':
         if genes is None:
             genes = list(np.unique(ppi_data_[interaction_columns].values.flatten()))
         else:
             genes = list(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
-        ppi_data_[A] = ppi_data_[A].apply(lambda x: mapper[x])
-        ppi_data_[B] = ppi_data_[B].apply(lambda x: mapper[x])
+        ppi_data_[prot_a] = ppi_data_[prot_a].apply(lambda x: mapper[x])
+        ppi_data_[prot_b] = ppi_data_[prot_b].apply(lambda x: mapper[x])
     elif column == 'first':
         if genes is None:
-            genes = list(np.unique(ppi_data_[A].values.flatten()))
+            genes = list(np.unique(ppi_data_[prot_a].values.flatten()))
         else:
             genes = list(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
-        ppi_data_[A] = ppi_data_[A].apply(lambda x: mapper[x])
+        ppi_data_[prot_a] = ppi_data_[prot_a].apply(lambda x: mapper[x])
     elif column == 'second':
         if genes is None:
-            genes = list(np.unique(ppi_data_[B].values.flatten()))
+            genes = list(np.unique(ppi_data_[prot_b].values.flatten()))
         else:
             genes = list(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
-        ppi_data_[B] = ppi_data_[B].apply(lambda x: mapper[x])
+        ppi_data_[prot_b] = ppi_data_[prot_b].apply(lambda x: mapper[x])
     else: raise ValueError('Not valid option')
     return ppi_data_
 

@@ -31,15 +31,45 @@ def get_thresholded_rnaseq(rnaseq_data, cutoffs):
 
 
 ## PPI datasets
-def get_weighted_ppi(ppi_data, modified_rnaseq_data, column='value'):
+def get_weighted_ppi(ppi_data, modified_rnaseq_data, column='value', complex_sep=None, interaction_columns=('A', 'B')):
+    prot_a = interaction_columns[0]
+    prot_b = interaction_columns[1]
     weighted_ppi = ppi_data.copy()
-    weighted_ppi['A'] = weighted_ppi['A'].apply(func=lambda row: modified_rnaseq_data.loc[row, column])
-    weighted_ppi['B'] = weighted_ppi['B'].apply(func=lambda row: modified_rnaseq_data.loc[row, column])
-    weighted_ppi = weighted_ppi[['A', 'B', 'score']].reset_index(drop=True).fillna(0.0)
+    if complex_sep is None:
+        weighted_ppi[prot_a] = weighted_ppi[prot_a].apply(func=lambda row: modified_rnaseq_data.at[row, column]) # Replaced .loc by .at
+        weighted_ppi[prot_b] = weighted_ppi[prot_b].apply(func=lambda row: modified_rnaseq_data.at[row, column])
+    else:
+        # Iterate over rows and look for complexes
+        weighted_a = []
+        weighted_b = []
+        for idx, row in weighted_ppi.iterrows():
+            interactor_a = row[prot_a]
+            interactor_b = row[prot_b]
+            if complex_sep in interactor_a:
+                prots = interactor_a.split(complex_sep)
+                expression = modified_rnaseq_data.loc[prots, column]
+                exp_a = expression.min()
+            else:
+                exp_a = modified_rnaseq_data.at[interactor_a, column]
+
+            if complex_sep in interactor_b:
+                prots = interactor_b.split(complex_sep)
+                expression = modified_rnaseq_data.loc[prots, column]
+                exp_b = expression.min()
+            else:
+                exp_b = modified_rnaseq_data.at[interactor_b, column]
+
+            weighted_a.append(exp_a)
+            weighted_b.append(exp_b)
+
+        weighted_ppi[prot_a] = weighted_a
+        weighted_ppi[prot_b] = weighted_b
+
+    weighted_ppi = weighted_ppi[[prot_a, prot_b, 'score']].reset_index(drop=True).fillna(0.0)
     return weighted_ppi
 
 
-def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=['A', 'B'],
+def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=None, interaction_columns=('A', 'B'),
                                bidirectional=True, verbose=True):
     ppi_dict = dict()
     ppi_dict['contacts'] = ppi.filter_ppi_network(ppi_data=ppi_data,
@@ -63,7 +93,7 @@ def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=Non
 
 
 def get_ppi_dict_from_go_terms(ppi_data, go_annotations, go_terms, contact_go_terms, mediator_go_terms=None, use_children=True,
-                               go_header='GO', gene_header='Gene', interaction_columns=['A', 'B'], verbose=True):
+                               go_header='GO', gene_header='Gene', interaction_columns=('A', 'B'), verbose=True):
 
     if use_children == True:
         contact_proteins = gene_ontology.get_genes_from_go_hierarchy(go_annotations=go_annotations,

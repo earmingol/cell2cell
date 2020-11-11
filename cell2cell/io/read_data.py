@@ -113,8 +113,8 @@ def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_tran
     return cutoff_data
 
 
-def load_ppi(ppi_file, interaction_columns, sort_values=None, score=None, rnaseq_genes=None, verbose=True, dropna=False,
-             strna='', **kwargs):
+def load_ppi(ppi_file, interaction_columns, sort_values=None, score=None, rnaseq_genes=None, complex_sep=None,
+             dropna=False, strna='', verbose=True, **kwargs):
     '''
     Load PPI network from table. Column of Interactor 1 and Interactor 2 must be specified.
 
@@ -133,7 +133,14 @@ def load_ppi(ppi_file, interaction_columns, sort_values=None, score=None, rnaseq
     unidirectional_ppi = ppi.remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=verbose)
     simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score, verbose=verbose)
     if rnaseq_genes is not None:
-        simplified_ppi = ppi.filter_ppi_by_proteins(simplified_ppi, rnaseq_genes)
+        if complex_sep is None:
+            simplified_ppi = ppi.filter_ppi_by_proteins(simplified_ppi, rnaseq_genes)
+        else:
+            simplified_ppi = ppi.filter_complex_ppi_by_proteins(ppi_data=simplified_ppi,
+                                                                proteins=rnaseq_genes,
+                                                                complex_sep=complex_sep,
+                                                                interaction_columns=interaction_columns
+                                                                )
     simplified_ppi = simplified_ppi.drop_duplicates().reset_index(drop=True)
     return simplified_ppi
 

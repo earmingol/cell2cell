@@ -37,7 +37,8 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
     return pairs
 
 
-def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirected', cci_matrix_template=None, verbose=True):
+def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirected', cci_matrix_template=None,
+                                  complex_sep=None, verbose=True):
     '''Create all elements of pairwise interactions needed to perform the analyses.
     All these variables are used by the class InteractionSpace.
 
@@ -71,21 +72,27 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
     interaction_elements['pairs'] = pairwise_interactions
     interaction_elements['cells'] = cell.get_cells_from_rnaseq(modified_rnaseq, verbose=verbose)
 
-    # Cell-specific binary ppi
-    interaction_elements['A_score'] = np.array([], dtype=np.int64)#.reshape(ppi_data.shape[0],0)
-    interaction_elements['B_score'] = np.array([], dtype=np.int64)#.reshape(ppi_data.shape[0],0)
+    # Cell-specific scores in PPIs
+
+    # For matmul functions
+    #interaction_elements['A_score'] = np.array([], dtype=np.int64)#.reshape(ppi_data.shape[0],0)
+    #interaction_elements['B_score'] = np.array([], dtype=np.int64)#.reshape(ppi_data.shape[0],0)
+
+    # For 'for' loop
     for cell_instance in interaction_elements['cells'].values():
         cell_instance.weighted_ppi = integrate_data.get_weighted_ppi(ppi_data=ppi_data,
                                                                      modified_rnaseq_data=cell_instance.rnaseq_data,
-                                                                     column='value')
-        interaction_elements['A_score'] = np.hstack([interaction_elements['A_score'], cell_instance.weighted_ppi['A'].values])
-        interaction_elements['B_score'] = np.hstack([interaction_elements['B_score'], cell_instance.weighted_ppi['B'].values])
+                                                                     column='value', # value is in each cell
+                                                                     complex_sep=complex_sep
+                                                                     )
+        #interaction_elements['A_score'] = np.hstack([interaction_elements['A_score'], cell_instance.weighted_ppi['A'].values])
+        #interaction_elements['B_score'] = np.hstack([interaction_elements['B_score'], cell_instance.weighted_ppi['B'].values])
 
     # Cell-cell interaction matrix
     if cci_matrix_template is None:
         interaction_elements['cci_matrix'] = pd.DataFrame(np.zeros((cell_number, cell_number)),
-                                                       columns=cell_instances,
-                                                       index=cell_instances)
+                                                          columns=cell_instances,
+                                                          index=cell_instances)
     else:
         interaction_elements['cci_matrix'] = cci_matrix_template
     return interaction_elements
@@ -106,7 +113,8 @@ class InteractionSpace():
     '''
 
     def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, communication_score='expression_thresholding',
-                 cci_score='bray_curtis', cci_type='undirected', cci_matrix_template=None, verbose=True):
+                 cci_score='bray_curtis', cci_type='undirected', cci_matrix_template=None, complex_sep=None,
+                 interaction_columns=('A', 'B'), verbose=True):
 
         self.communication_score = communication_score
         self.cci_score = cci_score
@@ -122,7 +130,14 @@ class InteractionSpace():
         else:
             cutoff_values = None
 
+        prot_a = interaction_columns[0]
+        prot_b = interaction_columns[1]
         self.ppi_data = ppi_data.copy()
+        if ('A' in self.ppi_data.columns) & (prot_a != 'A'):
+            self.ppi_data = self.ppi_data.drop(columns='A')
+        if ('B' in self.ppi_data.columns) & (prot_b != 'B'):
+            self.ppi_data = self.ppi_data.drop(columns='B')
+        self.ppi_data = self.ppi_data.rename(columns={prot_a : 'A', prot_b : 'B'})
 
         self.modified_rnaseq = integrate_data.get_modified_rnaseq(rnaseq_data=rnaseq_data,
                                                                   communication_score=self.communication_score,
@@ -133,6 +148,7 @@ class InteractionSpace():
                                                                   ppi_data=self.ppi_data,
                                                                   cci_matrix_template=cci_matrix_template,
                                                                   cci_type=self.cci_type,
+                                                                  complex_sep=complex_sep,
                                                                   verbose=verbose)
 
         self.interaction_elements['ppi_score'] = self.ppi_data['score'].values
@@ -288,7 +304,8 @@ class InteractionSpace():
         elif cci_type != self.cci_type:
             cell_pairs = generate_pairs(cells, cci_type)
         else:
-            cell_pairs = generate_pairs(cells, self.cci_type)
+            #cell_pairs = generate_pairs(cells, self.cci_type) # Think about other scenarios that may need this line
+            cell_pairs = self.interaction_elements['pairs']
         col_labels = ['{};{}'.format(pair[0], pair[1]) for pair in cell_pairs]
 
         # Ref PPI data
