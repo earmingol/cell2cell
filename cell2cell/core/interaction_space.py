@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import
 
-from cell2cell.preprocessing import integrate_data, cutoffs
+from cell2cell.preprocessing import integrate_data, cutoffs, get_genes_from_complexes, add_complexes_to_expression
 from cell2cell.core import cell, cci_scores, communication_scores
 
 import itertools
@@ -38,7 +38,7 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
 
 
 def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirected', cci_matrix_template=None,
-                                  complex_sep=None, verbose=True):
+                                  complex_sep=None, interaction_columns=('A', 'B'), verbose=True):
     '''Create all elements of pairwise interactions needed to perform the analyses.
     All these variables are used by the class InteractionSpace.
 
@@ -58,6 +58,14 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
 
     if verbose:
         print('Creating Interaction Space')
+
+    # Include complex expression
+    if complex_sep is not None:
+        col_a_genes, complex_a, col_b_genes, complex_b, complexes = get_genes_from_complexes(ppi_data=ppi_data,
+                                                                                             complex_sep=complex_sep,
+                                                                                             interaction_columns=interaction_columns
+                                                                                             )
+        modified_rnaseq = add_complexes_to_expression(modified_rnaseq, complexes)
 
     # Cells
     cell_instances = list(modified_rnaseq.columns)  # @Erick, check if position 0 of columns contain index header.
@@ -83,7 +91,6 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
         cell_instance.weighted_ppi = integrate_data.get_weighted_ppi(ppi_data=ppi_data,
                                                                      modified_rnaseq_data=cell_instance.rnaseq_data,
                                                                      column='value', # value is in each cell
-                                                                     complex_sep=complex_sep
                                                                      )
         #interaction_elements['A_score'] = np.hstack([interaction_elements['A_score'], cell_instance.weighted_ppi['A'].values])
         #interaction_elements['B_score'] = np.hstack([interaction_elements['B_score'], cell_instance.weighted_ppi['B'].values])

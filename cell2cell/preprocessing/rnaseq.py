@@ -51,3 +51,14 @@ def divide_expression_by_mean(rnaseq_data, axis=1):
     new_data = rnaseq_data.div(rnaseq_data.mean(axis=axis), axis=int(not axis))
     new_data = new_data.fillna(0.0).replace(np.inf, 0.0)
     return new_data
+
+
+def add_complexes_to_expression(rnaseq_data, complexes):
+    tmp_rna = rnaseq_data.copy()
+    for k, v in complexes.items():
+        if all(g in tmp_rna.index for g in v):
+            df = tmp_rna.loc[v, :]
+            tmp_rna.loc[k] = df.min().values.tolist()
+        else:
+            tmp_rna.loc[k] = [0] * tmp_rna.shape[1]
+    return tmp_rna
