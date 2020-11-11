@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-
+#TODO @Erick: Change format of functions and integrate with standard pipeline of cell2cell - Unusable for now. Include mygene as a requirement.
 def initialize_go(background_id, obo_path = '/home/hsher/GO/go-basic.obo', gaf_path = '/home/hsher/GO/goa_human.gaf',gene2go_path = '/home/hsher/GO/gene2go'):
     '''
     a function to intiailize GO enrichement analysis with background gene sets
