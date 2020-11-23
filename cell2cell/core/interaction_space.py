@@ -283,7 +283,7 @@ class InteractionSpace():
         return communication_value
 
     def compute_pairwise_communication_scores(self, communication_score=None, use_ppi_score=False, ref_ppi_data=None,
-                                              cells=None, cci_type=None, verbose=True):
+                                              interaction_columns=('A', 'B'), cells=None, cci_type=None, verbose=True):
         '''
         Function that computes...
 
@@ -320,8 +320,16 @@ class InteractionSpace():
             ref_index = self.ppi_data.apply(lambda row: (row[0], row[1]), axis=1)
             keep_index = list(range(self.ppi_data.shape[0]))
         else:
-            ref_index = list(ref_ppi_data.apply(lambda row: (row[0], row[1]), axis=1).values)
-            keep_index = list(pd.merge(self.ppi_data, ref_ppi_data, how='inner').index)
+            ref_ppi = ref_ppi_data.copy()
+            prot_a = interaction_columns[0]
+            prot_b = interaction_columns[1]
+            if ('A' in ref_ppi.columns) & (prot_a != 'A'):
+                ref_ppi = ref_ppi.drop(columns='A')
+            if ('B' in ref_ppi.columns) & (prot_b != 'B'):
+                ref_ppi = ref_ppi.drop(columns='B')
+            ref_ppi = ref_ppi.rename(columns={prot_a: 'A', prot_b: 'B'})
+            ref_index = list(ref_ppi.apply(lambda row: (row['A'], row['B']), axis=1).values)
+            keep_index = list(pd.merge(self.ppi_data, ref_ppi, how='inner').index)
 
         # DataFrame to Store values
         communication_matrix = pd.DataFrame(index=ref_index, columns=col_labels)
@@ -339,6 +347,7 @@ class InteractionSpace():
                                                        communication_score=communication_score,
                                                        use_ppi_score=use_ppi_score,
                                                        verbose=verbose)
-            communication_matrix[col_labels[i]] = comm_score.flatten()[keep_index]
+            kept_values = comm_score.flatten()[keep_index]
+            communication_matrix[col_labels[i]] = kept_values
 
         self.interaction_elements['communication_matrix'] = communication_matrix
