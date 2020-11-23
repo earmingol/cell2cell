@@ -16,3 +16,8 @@ Then, install cell2cell:
 ```
 pip install cell2cell
 ```
+
+## Examples
+
+- [An example of using *cell2cell* to infer cell-cell interactions across the whole
+body of *C. elegans* is available here](https://github.com/LewisLabUCSD/Celegans-cell2cell)
