@@ -30,6 +30,7 @@ def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     return colors
 
 
+# TODO: @Erick, modify rotation with anchor. Also, create separe function for clustermap without clustering
 def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata=None, sample_col='#SampleID',
                    group_col='Groups', meta_cmap='gist_rainbow', colors=None, excluded_cells=None, title='',
                    cbar_title='CCI score', cbar_fontsize='12', filename=None, **kwargs):
@@ -61,6 +62,7 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
         # Compute linkage
         D = sp.distance.squareform(df)
         if 'col_cluster' in kwargs.keys():
+            kwargs['row_cluster'] = kwargs['col_cluster']
             if kwargs['col_cluster']:
                 linkage = hc.linkage(D, method=method, optimal_ordering=optimal_leaf)
             else:
@@ -78,17 +80,20 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
         plt.close()
 
         # Triangular matrix
-        mask = np.zeros((df.shape[0], df.shape[1]))
         order_map = dict()
         if linkage is None:
-            ind_order = range(hier.data2d.shape[0])
+            #ind_order = range(hier.data2d.shape[0])
+            mask = np.ones((df.shape[0], df.shape[1]))
+            for i in range(mask.shape[0]):
+                for j in range(i, mask.shape[1]):
+                    mask[i, j] = 0
         else:
             ind_order = hier.dendrogram_col.reordered_ind
-
-        for i, ind in enumerate(ind_order):
-            order_map[i] = ind
-            filter_list = [order_map[j] for j in range(i)]
-            mask[ind, filter_list] = 1 #hier.dendrogram_col.reordered_ind[:i]
+            mask = np.zeros((df.shape[0], df.shape[1]))
+            for i, ind in enumerate(ind_order):
+                order_map[i] = ind
+                filter_list = [order_map[j] for j in range(i)]
+                mask[ind, filter_list] = 1 #hier.dendrogram_col.reordered_ind[:i]
 
         kwargs_ = kwargs.copy()
         # This one does exclude only diagonal
