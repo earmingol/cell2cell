@@ -30,7 +30,7 @@ def generate_random_rnaseq(size, row_names, random_state=None, verbose=True):
     '''
     if verbose:
         print('Generating random RNA-seq dataset.')
-    columns = list(range(size))
+    columns = ['Cell-{}'.format(c) for c in range(1, size+1)]
 
     if random_state is not None:
         np.random.seed(random_state)
@@ -39,9 +39,10 @@ def generate_random_rnaseq(size, row_names, random_state=None, verbose=True):
     min = min.reshape((len(min), 1))
 
     data = data + min
+    df = pd.DataFrame(data, index=row_names, columns=columns)
     if verbose:
         print('Normalizing random RNA-seq dataset (into TPM)')
-    df = rnaseq.scale_expression_by_sum(data, axis=0, sum_value=1e6)
+    df = rnaseq.scale_expression_by_sum(df, axis=0, sum_value=1e6)
     return df
 
 
@@ -99,7 +100,7 @@ def generate_random_cci_scores(cell_number, labels=None, random_state=None):
     if labels is not None:
         assert len(labels) == cell_number
     else:
-        labels = ['cell_{}'.format(n) for n in range(cell_number)]
+        labels = ['Cell-{}'.format(n) for n in range(1, cell_number+1)]
 
     if random_state is not None:
         np.random.seed(random_state)
