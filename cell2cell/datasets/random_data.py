@@ -116,5 +116,5 @@ def generate_random_metadata(cell_labels, group_number):
     metadata['Cell'] = cell_labels
 
     groups = list(range(1, group_number+1))
-    metadata['Group'] = metadata['Cell'].apply(lambda x: np.random.choice(groups, 1))
+    metadata['Group'] = metadata['Cell'].apply(lambda x: np.random.choice(groups, 1)[0])
     return metadata
