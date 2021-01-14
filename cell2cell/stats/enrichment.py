@@ -72,7 +72,7 @@ def fisher_representation(sample_size, class_in_sample, population_size, class_i
     nonclass_in_sample = sample_size - class_in_sample
     nonclass_in_population = population_size - class_in_population
 
-    # Remaining cards in deck after sampling
+    # Remaining elements in population after sampling
     rem_class = class_in_population - class_in_sample
     rem_nonclass = nonclass_in_population - nonclass_in_sample
 
