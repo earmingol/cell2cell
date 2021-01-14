@@ -52,7 +52,7 @@ def compute_linkage(distance_matrix, method='ward', optimal_ordering=True):
         data = distance_matrix.values
     else:
         data = distance_matrix.copy()
-    if ~(data.transpose() == data.values).all():
+    if ~(data.transpose() == data).all():
         raise ValueError('The matrix is not symmetric')
 
     np.fill_diagonal(data, 0.0)
