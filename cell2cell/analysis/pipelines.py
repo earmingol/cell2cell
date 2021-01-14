@@ -4,11 +4,13 @@ from __future__ import absolute_import
 
 import os
 
+import cell2cell.plotting.ccc_plot
+import cell2cell.plotting.cci_plot
+import cell2cell.plotting.pcoa_plot
 from cell2cell.core import interaction_space as ispace
 from cell2cell.datasets import heuristic_data
 from cell2cell.io import read_data
 from cell2cell.preprocessing import gene_ontology, integrate_data, ppi
-from cell2cell.utils import plotting
 
 
 def basic_pipeline(rnaseq_data, ppi_data, cutoff_setup, analysis_setup, excluded_cells=None,
@@ -68,43 +70,43 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
 
     # Plots section
     if make_plots:
-        clustermap = plotting.clustermap_cci(interaction_space,
-                                             method='ward',
-                                             excluded_cells=excluded_cells,
-                                             metadata=metadata,
-                                             sample_col=meta_setup['sample_col'],
-                                             group_col=meta_setup['group_col'],
-                                             colors=colors,
-                                             title='CCI scores for cell pairs',
-                                             filename=files['output_folder'] + 'CCI-Clustermap-CCI-scores{}.png'.format(filename_suffix),
-                                             **{'cmap': 'Blues'}
-                                             )
+        clustermap = cell2cell.plotting.cci_plot.clustermap_cci(interaction_space,
+                                                                method='ward',
+                                                                excluded_cells=excluded_cells,
+                                                                metadata=metadata,
+                                                                sample_col=meta_setup['sample_col'],
+                                                                group_col=meta_setup['group_col'],
+                                                                colors=colors,
+                                                                title='CCI scores for cell pairs',
+                                                                filename=files['output_folder'] + 'CCI-Clustermap-CCI-scores{}.png'.format(filename_suffix),
+                                                                **{'cmap': 'Blues'}
+                                                                )
 
         # Run PCoA only if CCI matrix is symmetric
         pcoa_state = False
         if (interaction_space.interaction_elements['cci_matrix'].values.transpose() == interaction_space.interaction_elements['cci_matrix'].values).all():
-            pcoa = plotting.pcoa_biplot(interaction_space,
-                                        excluded_cells=excluded_cells,
-                                        metadata=metadata,
-                                        sample_col=meta_setup['sample_col'],
-                                        group_col=meta_setup['group_col'],
-                                        colors=colors,
-                                        title='PCoA for cells given their CCI scores',
-                                        filename=files['output_folder'] + 'CCI-PCoA-CCI-scores{}.png'.format(filename_suffix),
-                                        )
+            pcoa = cell2cell.plotting.pcoa_plot.pcoa_3dplot(interaction_space,
+                                                            excluded_cells=excluded_cells,
+                                                            metadata=metadata,
+                                                            sample_col=meta_setup['sample_col'],
+                                                            group_col=meta_setup['group_col'],
+                                                            colors=colors,
+                                                            title='PCoA for cells given their CCI scores',
+                                                            filename=files['output_folder'] + 'CCI-PCoA-CCI-scores{}.png'.format(filename_suffix),
+                                                            )
             pcoa_state = True
 
-        interaction_clustermap = plotting.clustermap_ccc(interaction_space,
-                                                         metric=ccc_clustermap_metric,
-                                                         metadata=metadata,
-                                                         sample_col=meta_setup['sample_col'],
-                                                         group_col=meta_setup['group_col'],
-                                                         colors=colors,
-                                                         excluded_cells=excluded_cells,
-                                                         title='Active ligand-receptor pairs for interacting cells',
-                                                         filename=files['output_folder'] + 'CCI-Active-LR-pairs{}.png'.format(filename_suffix),
-                                                         **{'figsize': (20, 40)}
-                                                         )
+        interaction_clustermap = cell2cell.plotting.ccc_plot.clustermap_ccc(interaction_space,
+                                                                            metric=ccc_clustermap_metric,
+                                                                            metadata=metadata,
+                                                                            sample_col=meta_setup['sample_col'],
+                                                                            group_col=meta_setup['group_col'],
+                                                                            colors=colors,
+                                                                            excluded_cells=excluded_cells,
+                                                                            title='Active ligand-receptor pairs for interacting cells',
+                                                                            filename=files['output_folder'] + 'CCI-Active-LR-pairs{}.png'.format(filename_suffix),
+                                                                            **{'figsize': (20, 40)}
+                                                                            )
 
         interaction_clustermap.data2d.to_csv(files['output_folder'] + 'CCI-Active-LR-pairs{}.csv'.format(filename_suffix))
 
