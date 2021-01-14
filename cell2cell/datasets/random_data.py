@@ -109,3 +109,12 @@ def generate_random_cci_scores(cell_number, labels=None, random_state=None):
     cci_matrix = pd.DataFrame(cci_scores, index=labels, columns=labels)
 
     return cci_matrix
+
+
+def generate_random_metadata(cell_labels, group_number):
+    metadata = pd.DataFrame()
+    metadata['Cell'] = cell_labels
+
+    groups = list(range(1, group_number+1))
+    metadata['Group'] = metadata['Cell'].apply(lambda x: np.random.choice(groups, 1))
+    return metadata
