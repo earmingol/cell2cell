@@ -6,7 +6,7 @@
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 
-# COPIED HERE TO AVOID ERRORS WITH INSTALLING SKBIO, AS HAPPEN BEFORE
+# COPIED HERE TO AVOID ERRORS WITH INSTALLING SKBIO, AS HAPPENED BEFORE
 
 import numpy as np
 import pandas as pd
