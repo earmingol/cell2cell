@@ -76,7 +76,7 @@ def generate_random_ppi(max_size, interactors_A, interactors_B=None, random_stat
 
     ppi_data = small_block_ppi(max_size*2, interactors_A, interactors_B, random_state)
 
-    # This part need to be fixed, it does not converge to the max_size -> len((set(A)) * len(set(B) - set(A)))
+    # TODO: This part need to be fixed, it does not converge to the max_size -> len((set(A)) * len(set(B) - set(A)))
     # while ppi_data.shape[0] < size:
     #     if random_state is not None:
     #         random_state += 2
