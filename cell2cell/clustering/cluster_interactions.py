@@ -3,11 +3,13 @@
 from __future__ import absolute_import
 
 import numpy as np
+import pandas as pd
 import scipy.cluster.hierarchy as hc
 import scipy.spatial as sp
 
+
 # Distance-based algorithms
-def compute_linkage(distance_matrix, method='ward'):
+def compute_linkage(distance_matrix, method='ward', optimal_ordering=True):
     '''
     This function returns a linkage for a given distance matrix using a specific method.
 
@@ -32,7 +34,18 @@ def compute_linkage(distance_matrix, method='ward'):
     Z : numpy.ndarray
         The hierarchical clustering encoded as a linkage matrix.
     '''
-    Z = hc.linkage(sp.distance.squareform(distance_matrix), method=method)
+    if (type(distance_matrix) is pd.core.frame.DataFrame):
+        matrix_data = distance_matrix.values
+    else:
+        matrix_data = distance_matrix.copy()
+    if ~(matrix_data.transpose() == matrix_data.values).all():
+        raise ValueError('The matrix is not symmetric')
+
+    np.fill_diagonal(matrix_data, 0.0)
+
+    # Compute linkage
+    D = sp.distance.squareform(matrix_data)
+    Z = hc.linkage(D, method=method, optimal_ordering=optimal_ordering)
     return Z
 
 
