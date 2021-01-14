@@ -62,3 +62,18 @@ def subsample_dataframe(df, n_samples, random_state=None):
 
     subsampled_df = df.loc[items[:n_samples],:]
     return subsampled_df
+
+
+def check_symmetry(df):
+    return (df.values.transpose() == df.values).all()
+
+
+def convert_to_distance_matrix(df):
+    if check_symmetry(df):
+        df_ = df.copy()
+        if np.trace(df_.values,) != 0.0:
+            raise Warning("Diagonal elements are not zero. Automatically replaced by zeros")
+        np.fill_diagonal(df_.values, 0.0)
+    else:
+        raise ValueError('The DataFrame is not symmetric')
+    return df_
