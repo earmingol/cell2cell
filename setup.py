@@ -94,7 +94,6 @@ setup(name='cell2cell',
                         'matplotlib == 3.1.2',
                         'seaborn == 0.10.0',
                         'goenrich >= 1.11',
-                        'scikit-bio',
                         'scikit-learn',
                         'tqdm',
                         'statsmodels'
