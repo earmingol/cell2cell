@@ -168,48 +168,9 @@ def _plot_triangular_clustermap(df, symmetric=None, linkage=None, mask=None, col
                           **kwargs
                           )
 
-    # Apply offset transform to all xticklabels.
-    if symmetric:
-        hier.ax_row_dendrogram.set_visible(False)
-        hier.ax_heatmap.tick_params(bottom=False)  # Hide xtick line
-
-        x_labels = hier.ax_heatmap.xaxis.get_majorticklabels()
-
-        dpi_x = hier.fig.dpi_scale_trans.to_values()[0]
-        dpi_y = hier.fig.dpi_scale_trans.to_values()[3]
-
-        x0 = hier.ax_heatmap.transData.transform(x_labels[0].get_position())
-        x1 = hier.ax_heatmap.transData.transform(x_labels[1].get_position())
-
-        ylims = hier.ax_heatmap.get_ylim()
-        bottom_points = hier.ax_heatmap.transData.transform((1.0, ylims[0]))[1]
-        for i, xl in enumerate(x_labels):
-            # Move labels in dx and dy points.
-
-            swap_xy = (1.0, xl.get_position()[0] + 0.5)
-            new_y_points = hier.ax_heatmap.transData.transform(swap_xy)[1]
-
-            dx = -0.5 * abs(x1[0] - x0[0]) / dpi_x
-            dy = (new_y_points - bottom_points) / dpi_y
-
-            offset = mpl.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
-            xl.set_transform(xl.get_transform() + offset)
-
-    if symmetric:
-        rot = 45
-    else:
-        rot = 90
-
-    va = 'center'
-    hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(),
-                                    rotation=rot,
-                                    rotation_mode='anchor',
-                                    va='bottom',
-                                    ha='right')  # , fontsize=9.5)
-    hier.ax_heatmap.set_yticklabels(hier.ax_heatmap.yaxis.get_majorticklabels(),
-                                    rotation=0,
-                                    va=va,
-                                    ha='left')  # , fontsize=9.5)
+    hier = _move_xticks_triangular_clustermap(clustermap=hier,
+                                              symmetric=symmetric
+                                              )
 
     # Title
     if len(title) > 0:
@@ -220,3 +181,49 @@ def _plot_triangular_clustermap(df, symmetric=None, linkage=None, mask=None, col
     cbar.ax.set_ylabel(cbar_title, fontsize=cbar_fontsize)
     cbar.ax.yaxis.set_label_position("left")
     return hier
+
+
+def _move_xticks_triangular_clustermap(clustermap, symmetric=True):
+    if symmetric:
+    # Apply offset transform to all xticklabels.
+        clustermap.ax_row_dendrogram.set_visible(False)
+        clustermap.ax_heatmap.tick_params(bottom=False)  # Hide xtick line
+
+        x_labels = clustermap.ax_heatmap.xaxis.get_majorticklabels()
+
+        dpi_x = clustermap.fig.dpi_scale_trans.to_values()[0]
+        dpi_y = clustermap.fig.dpi_scale_trans.to_values()[3]
+
+        x0 = clustermap.ax_heatmap.transData.transform(x_labels[0].get_position())
+        x1 = clustermap.ax_heatmap.transData.transform(x_labels[1].get_position())
+
+        ylims = clustermap.ax_heatmap.get_ylim()
+        bottom_points = clustermap.ax_heatmap.transData.transform((1.0, ylims[0]))[1]
+        for i, xl in enumerate(x_labels):
+            # Move labels in dx and dy points.
+
+            swap_xy = (1.0, xl.get_position()[0] + 0.5)
+            new_y_points = clustermap.ax_heatmap.transData.transform(swap_xy)[1]
+
+            dx = -0.5 * abs(x1[0] - x0[0]) / dpi_x
+            dy = (new_y_points - bottom_points) / dpi_y
+
+            offset = mpl.transforms.ScaledTranslation(dx, dy, clustermap.fig.dpi_scale_trans)
+            xl.set_transform(xl.get_transform() + offset)
+
+    if symmetric:
+        rot = 45
+    else:
+        rot = 90
+
+    va = 'center'
+    clustermap.ax_heatmap.set_xticklabels(clustermap.ax_heatmap.xaxis.get_majorticklabels(),
+                                          rotation=rot,
+                                          rotation_mode='anchor',
+                                          va='bottom',
+                                          ha='right')  # , fontsize=9.5)
+    clustermap.ax_heatmap.set_yticklabels(clustermap.ax_heatmap.yaxis.get_majorticklabels(),
+                                          rotation=0,
+                                          va=va,
+                                          ha='left')  # , fontsize=9.5)
+    return clustermap
