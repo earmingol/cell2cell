@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from cell2cell.clustering import compute_linkage
 from cell2cell.clustering.cluster_interactions import compute_distance
-from cell2cell.plotting.aesthetics import map_colors_to_metadata
+from cell2cell.plotting.aesthetics import get_colors_from_labels
 
 
 def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', group_col='Groups',
@@ -50,17 +50,15 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
 
     # Colors
     if metadata is not None:
+        meta_ = metadata.set_index(sample_col)
         if excluded_cells is not None:
-            meta_ = metadata.loc[~metadata[sample_col].isin(excluded_cells)]
+            meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
+        labels = meta_[group_col].values.tolist()
+
+        if colors is None:
+            colors = get_colors_from_labels(labels, cmap=meta_cmap)
         else:
-            meta_ = metadata
-        colors = map_colors_to_metadata(df=df_,
-                                        metadata=meta_,
-                                        colors=colors,
-                                        sample_col=sample_col,
-                                        group_col=group_col,
-                                        meta_cmap=meta_cmap
-                                        ).to_dict()
+            assert all(elem in colors.keys() for elem in set(labels))
 
         col_colors_L = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata.loc[metadata[sample_col] == x.split(';')[0],
                                                                                            group_col].values[0]])
