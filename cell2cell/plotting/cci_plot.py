@@ -46,11 +46,6 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
                                             symmetric=symmetric
                                             )
 
-    mask = _triangularize_distance_matrix(df=df,
-                                          linkage=linkage,
-                                          symmetric=symmetric,
-                                          **kwargs
-                                          )
     kwargs_ = kwargs.copy()
 
 
@@ -85,7 +80,6 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
     hier = _plot_triangular_clustermap(df=df,
                                        symmetric=symmetric,
                                        linkage=linkage,
-                                       mask=mask,
                                        col_colors=col_colors,
                                        row_colors=row_colors,
                                        title=title,
@@ -157,6 +151,13 @@ def _plot_triangular_clustermap(df, symmetric=None, linkage=None, mask=None, col
                                 title='', cbar_title='CCI score', cbar_fontsize='12', **kwargs):
     if symmetric is None:
         symmetric = check_symmetry(df)
+
+    if mask is None:
+        mask = _triangularize_distance_matrix(df=df,
+                                              linkage=linkage,
+                                              symmetric=symmetric,
+                                              **kwargs
+                                              )
 
     hier = sns.clustermap(df,
                           col_linkage=linkage,
