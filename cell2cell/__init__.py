@@ -8,6 +8,7 @@ from cell2cell import core
 from cell2cell import datasets
 from cell2cell import external
 from cell2cell import io
+from cell2cell import plotting
 from cell2cell import preprocessing
 from cell2cell import stats
 from cell2cell import utils
