@@ -45,7 +45,7 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
     dm_rows = compute_distance(df_, axis=0, metric=metric)
     row_linkage = compute_linkage(dm_rows, method=method, optimal_ordering=optimal_leaf)
 
-    dm_cols = compute_distance(df_.values.T, axis=1, metric=metric)
+    dm_cols = compute_distance(df_, axis=1, metric=metric)
     col_linkage = compute_linkage(dm_cols, method=method, optimal_ordering=optimal_leaf)
 
     # Colors
