@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import matplotlib as mlp
+import types
+import matplotlib as mpl
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -8,7 +9,7 @@ from matplotlib import pyplot as plt
 
 from cell2cell.clustering import compute_linkage
 from cell2cell.preprocessing.manipulate_dataframes import check_symmetry
-from cell2cell.plotting.aesthetics import get_colors_from_labels
+from cell2cell.plotting.aesthetics import map_colors_to_metadata
 
 
 # TODO: @Erick, modify rotation with anchor. Also, create separe function for clustermap without clustering
@@ -33,20 +34,101 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
     else:
         df = distance_matrix
 
-    # Check symmetry to run linkage separately
+    # Check symmetry to get linkage
     symmetric = check_symmetry(df)
+    if (not symmetric) & (type(interaction_space) is pd.core.frame.DataFrame):
+        assert set(df.index) == set(df.columns), 'The distance matrix does not have the same elements in rows and columns'
+
+    # Obtain info for generating plot
+    linkage = _get_distance_matrix_linkages(df=df,
+                                            kwargs=kwargs,
+                                            method=method,
+                                            optimal_ordering=optimal_leaf,
+                                            symmetric=symmetric
+                                            )
+
+    mask = _triangularize_distance_matrix(df=df,
+                                          linkage=linkage,
+                                          symmetric=symmetric,
+                                          **kwargs
+                                          )
+    kwargs_ = kwargs.copy()
+
+
+    # PLOT CCI MATRIX
+    if space_type == 'class':
+        df = interaction_space.interaction_elements['cci_matrix']
+    else:
+        df = distance_matrix
+
+    if excluded_cells is not None:
+        df = df.loc[~df.index.isin(excluded_cells),
+                    ~df.columns.isin(excluded_cells)]
+
+    # Colors
+    if metadata is not None:
+        col_colors = map_colors_to_metadata(df=df,
+                                            metadata=metadata,
+                                            colors=colors,
+                                            sample_col=sample_col,
+                                            group_col=group_col,
+                                            meta_cmap=meta_cmap)
+
+        if not symmetric:
+            row_colors = col_colors
+        else:
+            row_colors = None
+    else:
+        col_colors = None
+        row_colors = None
+
+    # Plot hierarchical clustering (triangular)
+    hier = _plot_triangular_clustermap(df=df,
+                                       symmetric=symmetric,
+                                       linkage=linkage,
+                                       mask=mask,
+                                       col_colors=col_colors,
+                                       row_colors=row_colors,
+                                       title=title,
+                                       cbar_title=cbar_title,
+                                       cbar_fontsize=cbar_fontsize,
+                                       **kwargs_)
+
+    if filename is not None:
+        plt.savefig(filename, dpi=300,
+                    bbox_inches='tight')
+    return hier
+
+
+def _get_distance_matrix_linkages(df, kwargs, method='ward', optimal_ordering=True, symmetric=None):
+    if symmetric is None:
+        symmetric = check_symmetry(df)
+
     if symmetric:
         if 'col_cluster' in kwargs.keys():
             kwargs['row_cluster'] = kwargs['col_cluster']
             if kwargs['col_cluster']:
-                linkage = compute_linkage(df, method=method, optimal_ordering=optimal_leaf)
+                linkage = compute_linkage(df, method=method, optimal_ordering=optimal_ordering)
+            else:
+                linkage = None
+        elif 'row_cluster' in kwargs.keys():
+            if kwargs['row_cluster']:
+                linkage = compute_linkage(df, method=method, optimal_ordering=optimal_ordering)
             else:
                 linkage = None
         else:
-            linkage = compute_linkage(df, method=method, optimal_ordering=optimal_leaf)
+            linkage = compute_linkage(df, method=method, optimal_ordering=optimal_ordering)
+    else:
+        linkage = None
+    return linkage
 
 
-        # Triangular matrix
+def _triangularize_distance_matrix(df, linkage=None, symmetric=None, **kwargs):
+    if symmetric is None:
+        symmetric = check_symmetry(df)
+
+    # Triangular matrix
+    if symmetric:
         order_map = dict()
         if linkage is None:
             mask = np.ones((df.shape[0], df.shape[1]))
@@ -67,116 +149,67 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
                 order_map[i] = ind
                 filter_list = [order_map[j] for j in range(i)]
                 mask[ind, filter_list] = 1
-
-        kwargs_ = kwargs.copy()
     else:
-        linkage = None
         mask = None
-        kwargs_ = kwargs.copy()
+    return mask
 
-    # PLOT CCI MATRIX
-    if space_type == 'class':
-        df = interaction_space.interaction_elements['cci_matrix']
-    else:
-        df = distance_matrix
 
-    if excluded_cells is not None:
-        df = df.loc[~df.index.isin(excluded_cells),
-                    ~df.columns.isin(excluded_cells)]
+def _plot_triangular_clustermap(df, symmetric=None, linkage=None, mask=None, col_colors=None, row_colors=None,
+                                title='', cbar_title='CCI score', cbar_fontsize='12', **kwargs):
+    if symmetric is None:
+        symmetric = check_symmetry(df)
 
-    # Colors
-    if metadata is not None:
-        meta_ = metadata.set_index(sample_col)
-        if excluded_cells is not None:
-            meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
-
-        assert (set(meta_.index) & set(df.columns)) == set(df.columns), "Metadata is not provided for all cells in interaction space"
-
-        labels = meta_[group_col].values.tolist()
-        if colors is None:
-            colors = get_colors_from_labels(labels, cmap=meta_cmap)
-        else:
-            assert all(elem in colors.keys() for elem in set(labels)), "Colors are not provided for all groups in metadata"
-
-        col_colors = pd.DataFrame(labels)[0].map(colors)
-        col_colors.index = meta_.index
-        col_colors.name = group_col.capitalize()
-
-        if not symmetric:
-            row_colors = col_colors
-        else:
-            row_colors = None
-
-        # Plot hierarchical clustering (triangular)
-        hier = sns.clustermap(df,
-                              col_linkage=linkage,
-                              row_linkage=linkage,
-                              mask=mask,
-                              col_colors=col_colors,
-                              row_colors=row_colors,
-                              **kwargs_
-                              )
-    else:
-        hier = sns.clustermap(df,
-                              col_linkage=linkage,
-                              row_linkage=linkage,
-                              mask=mask,
-                              **kwargs_
-                              )
+    hier = sns.clustermap(df,
+                          col_linkage=linkage,
+                          row_linkage=linkage,
+                          mask=mask,
+                          col_colors=col_colors,
+                          row_colors=row_colors,
+                          **kwargs
+                          )
 
     # Apply offset transform to all xticklabels.
     if symmetric:
         hier.ax_row_dendrogram.set_visible(False)
         hier.ax_heatmap.tick_params(bottom=False)  # Hide xtick line
 
-        labels_x = hier.ax_heatmap.xaxis.get_majorticklabels()
-        labels_y = hier.ax_heatmap.yaxis.get_majorticklabels()
-
-        label_x1 = labels_x[0]
-        label_y1 = labels_y[0]
-
-        pos_x0 = label_x1.get_transform().transform((0., 0.))
-        xlims = hier.ax_heatmap.get_xlim()
-        xrange = abs(xlims[0] - xlims[1])
-        x_cell_width = xrange / len(df.columns)
-
-        pos_y0 = label_y1.get_transform().transform((0., 0.))
-        pos_y1 = label_y1.get_transform().transform(label_y1.get_position())
-        ylims = hier.ax_heatmap.get_ylim()
-        yrange = abs(ylims[0] - ylims[1])
-        y_cell_width = yrange / len(df.index)
+        x_labels = hier.ax_heatmap.xaxis.get_majorticklabels()
 
         dpi_x = hier.fig.dpi_scale_trans.to_values()[0]
         dpi_y = hier.fig.dpi_scale_trans.to_values()[3]
 
-        for i, label in enumerate(labels_x):
-            if label.get_position()[0] % x_cell_width == 0:
-                pos_x1 = label.get_transform().transform((aux_scaler_x, aux_scaler_x))
-                scaler_x = abs(pos_x1 - pos_x0)
-            else:
-                pos_x1 = label.get_transform().transform((x_cell_width, x_cell_width))
-                scaler_x = abs(pos_x1 - pos_x0)
+        x0 = hier.ax_heatmap.transData.transform(x_labels[0].get_position())
+        x1 = hier.ax_heatmap.transData.transform(x_labels[1].get_position())
 
-            aux_scaler_x = label.get_position()[0] - (label.get_position()[0] // x_cell_width) * x_cell_width
-            aux_scaler_y = label.get_position()[1] - (label.get_position()[1] // y_cell_width) * y_cell_width
+        ylims = hier.ax_heatmap.get_ylim()
+        bottom_points = hier.ax_heatmap.transData.transform((1.0, ylims[0]))[1]
+        for i, xl in enumerate(x_labels):
+            # Move labels in dx and dy points.
 
-            new_pos_x = label.get_position()[0] - aux_scaler_x
-            new_pos_y = new_pos_x * yrange / xrange - yrange + y_cell_width
+            swap_xy = (1.0, xl.get_position()[0] + 0.5)
+            new_y_points = hier.ax_heatmap.transData.transform(swap_xy)[1]
 
-            new_pos_y = label_y1.get_transform().transform((0, new_pos_y + aux_scaler_y)) - pos_y0
-            dx = -0.5 * scaler_x[0] / dpi_x
-            dy = new_pos_y[1] / dpi_y
-            offset = mlp.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
-            label.set_transform(label.get_transform() + offset)
+            dx = -0.5 * abs(x1[0] - x0[0]) / dpi_x
+            dy = (new_y_points - bottom_points) / dpi_y
+
+            offset = mpl.transforms.ScaledTranslation(dx, dy, hier.fig.dpi_scale_trans)
+            xl.set_transform(xl.get_transform() + offset)
 
     if symmetric:
         rot = 45
-        ha = 'right'
     else:
         rot = 90
-        ha = 'center'
-    hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(), rotation=rot, ha=ha)#, fontsize=9.5)
-    hier.ax_heatmap.set_yticklabels(hier.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, ha='left')  # , fontsize=9.5)
+
+    va = 'center'
+    hier.ax_heatmap.set_xticklabels(hier.ax_heatmap.xaxis.get_majorticklabels(),
+                                    rotation=rot,
+                                    rotation_mode='anchor',
+                                    va='bottom',
+                                    ha='right')  # , fontsize=9.5)
+    hier.ax_heatmap.set_yticklabels(hier.ax_heatmap.yaxis.get_majorticklabels(),
+                                    rotation=0,
+                                    va=va,
+                                    ha='left')  # , fontsize=9.5)
 
     # Title
     if len(title) > 0:
@@ -186,8 +219,4 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
     cbar = hier.ax_heatmap.collections[0].colorbar
     cbar.ax.set_ylabel(cbar_title, fontsize=cbar_fontsize)
     cbar.ax.yaxis.set_label_position("left")
-
-    if filename is not None:
-        plt.savefig(filename, dpi=300,
-                    bbox_inches='tight')
     return hier
