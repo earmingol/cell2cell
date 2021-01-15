@@ -12,7 +12,6 @@ from cell2cell.preprocessing.manipulate_dataframes import check_symmetry
 from cell2cell.plotting.aesthetics import map_colors_to_metadata
 
 
-# TODO: @Erick, modify rotation with anchor. Also, create separe function for clustermap without clustering
 def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata=None, sample_col='#SampleID',
                    group_col='Groups', meta_cmap='gist_rainbow', colors=None, excluded_cells=None, title='',
                    cbar_title='CCI score', cbar_fontsize='12', filename=None, **kwargs):
