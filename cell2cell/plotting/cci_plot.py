@@ -13,7 +13,7 @@ from cell2cell.plotting.aesthetics import map_colors_to_metadata
 
 def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata=None, sample_col='#SampleID',
                    group_col='Groups', meta_cmap='gist_rainbow', colors=None, excluded_cells=None, title='',
-                   cbar_title='CCI score', cbar_fontsize='12', filename=None, **kwargs):
+                   cbar_title='CCI score', cbar_fontsize='18', filename=None, **kwargs):
     if hasattr(interaction_space, 'distance_matrix'):
         print('Interaction space detected as an InteractionSpace class')
         distance_matrix = interaction_space.distance_matrix
