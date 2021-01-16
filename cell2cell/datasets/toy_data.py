@@ -49,7 +49,7 @@ def generate_toy_ppi(prot_complex=False):
     return ppi
 
 
-def genera_toy_metadata():
+def generate_toy_metadata():
     data = np.asarray([['C1', 'G1'],
                        ['C2', 'G2'],
                        ['C3', 'G3'],
