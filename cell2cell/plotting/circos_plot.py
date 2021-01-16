@@ -236,16 +236,21 @@ def sort_nodes(sender_cells, receiver_cells, ligands, receptors):
     sorted_nodes = dict()
     count = 0
 
-    # TODO: Implement a way to put ligands and receptors together for cells included in sender and receiver cells simultaneously
+    both = set(sender_cells + receiver_cells)
     for c in sender_cells:
         for p in ligands:
             sorted_nodes[(c + '^' + p)] = count
             count += 1
+        if c in both:
+            for p in receptors[::-1]:
+                sorted_nodes[(c + '^' + p)] = count
+                count += 1
 
     for c in receiver_cells[::-1]:
-        for p in receptors[::-1]:
-            sorted_nodes[(c + '^' + p)] = count
-            count += 1
+        if c not in both:
+            for p in receptors[::-1]:
+                sorted_nodes[(c + '^' + p)] = count
+                count += 1
     return sorted_nodes
 
 
