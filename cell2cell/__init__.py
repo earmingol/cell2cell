@@ -13,4 +13,4 @@ from cell2cell import preprocessing
 from cell2cell import stats
 from cell2cell import utils
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
