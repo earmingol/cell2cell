@@ -1,4 +1,6 @@
-# Inferring cell-cell interactions from transcriptomes with cell2cell
+# Inferring cell-cell interactions from transcriptomes with *cell2cell*
+[![PyPI version](https://badge.fury.io/py/cell2cell.svg)](https://pypi.org/project/cell2cell/)
+
 
 ## Installation
 Create a new conda environment:
