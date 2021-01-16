@@ -24,7 +24,7 @@ def map_colors_to_metadata(df, metadata, colors=None, sample_col='#SampleID', gr
     if colors is None:
         colors = get_colors_from_labels(labels, cmap=meta_cmap)
     else:
-        upd_dict = dict([(v, (1., 1., 1., 1.)) for v in colors.keys() if v not in labels])
+        upd_dict = dict([(v, (1., 1., 1., 1.)) for v in labels if v not in colors.keys()])
         colors.update(upd_dict)
 
     new_colors = meta_[group_col].map(colors)
