@@ -81,6 +81,8 @@ def get_cutoffs(rnaseq_data, parameters, verbose=True):
                                  ones in the rnaseq_data.
             'single_col_matrix' : a dataframe must be provided, containing a cutoff for each gene in only one column. These
                                   cutoffs will be applied to all samples.
+            'constant_value' : binarizes the expression. Evaluates whether expression is greater than the value input in
+                               the 'parameter'.
 
     Returns
     -------

@@ -9,12 +9,13 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
-from cell2cell.plotting.aesthetics import get_colors_from_labels
+from cell2cell.plotting.aesthetics import get_colors_from_labels, generate_legend
 
 
 def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, receptors, excluded_score=0, metadata=None,
                 sample_col='#SampleID', group_col='Groups', meta_cmap='Set2', cells_cmap='Pastel1', colors=None, ax=None,
-                figsize=(10,10), fontsize=14, legend=True, ligand_label_color='dimgray', receptor_label_color='dimgray'):
+                figsize=(10,10), fontsize=14, legend=True, ligand_label_color='dimgray', receptor_label_color='dimgray',
+                filename=None):
     '''
     Generates the circos plot in the exact order that sender and receiver cells were provided. Similarly, ligands
     and receptors are sorted by the order they were input.
@@ -176,10 +177,14 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
 
     # Draw legend
     if legend:
-        generate_legend(cell_legend=cell_legend,
-                        meta_legend=meta_legend,
-                        signal_legend=signal_colors,
-                        fontsize=fontsize)
+        generate_circos_legend(cell_legend=cell_legend,
+                               meta_legend=meta_legend,
+                               signal_legend=signal_colors,
+                               fontsize=fontsize)
+
+    if filename is not None:
+        plt.savefig(filename, dpi=300,
+                    bbox_inches='tight')
     return ax
 
 
@@ -231,6 +236,7 @@ def sort_nodes(sender_cells, receiver_cells, ligands, receptors):
     sorted_nodes = dict()
     count = 0
 
+    # TODO: Implement a way to put ligands and receptors together for cells included in sender and receiver cells simultaneously
     for c in sender_cells:
         for p in ligands:
             sorted_nodes[(c + '^' + p)] = count
@@ -310,51 +316,42 @@ def get_node_colors(G, coloring_feature=None, cmap='viridis'):
     return node_colors, feature_colors
 
 
-def generate_legend(cell_legend, signal_legend, meta_legend=None, fontsize=14):
+def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fontsize=14):
     legend_fontsize = int(fontsize * 0.9)
 
-    cell_patches = []
-    for k, v in cell_legend.items():
-        cell_patches.append(patches.Patch(color=v, label=k.replace('_', ' ')))
+    # Cell legend
+    generate_legend(color_dict=cell_legend,
+                    loc='center left',
+                    bbox_to_anchor=(1.01, 0.5),
+                    ncol=1,
+                    fancybox=True,
+                    shadow=True,
+                    title='Cells',
+                    fontsize=legend_fontsize
+                    )
 
-    legend1 = plt.legend(handles=cell_patches,
-                         loc='center left',
-                         bbox_to_anchor=(1.01, 0.5),
-                         ncol=1,
-                         fancybox=True,
-                         shadow=True,
-                         title='Cells',
-                         fontsize=legend_fontsize)
-    plt.setp(legend1.get_title(), fontsize=legend_fontsize)
-    plt.gca().add_artist(legend1)
 
-    signal_patches = []
-    for k, v in signal_legend.items():
-        signal_patches.append(patches.Patch(color=v, label=k.replace('_', ' ').capitalize()))
-
-    legend2 = plt.legend(handles=signal_patches,
-                         loc='upper center',
-                         bbox_to_anchor=(0.5, -0.01),
-                         ncol=2,
-                         fancybox=True,
-                         shadow=True,
-                         title='Signals',
-                         fontsize=legend_fontsize)
-    plt.setp(legend2.get_title(), fontsize=legend_fontsize)
-    #plt.gca().add_artist(legend2)
+    if signal_legend is not None:
+        # Signal legend
+        # generate_legend(color_dict=signal_legend,
+        #                 loc='upper center',
+        #                 bbox_to_anchor=(0.5, -0.01),
+        #                 ncol=2,
+        #                 fancybox=True,
+        #                 shadow=True,
+        #                 title='Signals',
+        #                 fontsize=legend_fontsize
+        #                 )
+        pass
 
     if meta_legend is not None:
-        meta_patches = []
-        for k, v in meta_legend.items():
-            meta_patches.append(patches.Patch(color=v, label=k.replace('_', ' ')))
-
-        legend3 = plt.legend(handles=meta_patches,
-                             loc='center right',
-                             bbox_to_anchor=(-0.01, 0.5),
-                             ncol=1,
-                             fancybox=True,
-                             shadow=True,
-                             title='Groups',
-                             fontsize=legend_fontsize)
-        plt.setp(legend3.get_title(), fontsize=legend_fontsize)
-        plt.gca().add_artist(legend3)
+        # Meta legend
+        generate_legend(color_dict=meta_legend,
+                        loc='center right',
+                        bbox_to_anchor=(-0.01, 0.5),
+                        ncol=1,
+                        fancybox=True,
+                        shadow=True,
+                        title='Groups',
+                        fontsize=legend_fontsize
+                        )

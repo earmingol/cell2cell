@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from matplotlib import pyplot as plt
-
+import matplotlib.patches as patches
 
 def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     assert factor >= 1
@@ -32,3 +32,26 @@ def map_colors_to_metadata(df, metadata, colors=None, sample_col='#SampleID', gr
     new_colors.name = group_col.capitalize()
 
     return new_colors
+
+
+def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), ncol=1, fancybox=True, shadow=True,
+                    title='legend', fontsize=14, fig=None):
+    color_patches = []
+    for k, v in sorted(color_dict.items()):
+        color_patches.append(patches.Patch(color=v, label=k.replace('_', ' ')))
+
+    legend1 = plt.legend(handles=color_patches,
+                         loc=loc,
+                         bbox_to_anchor=bbox_to_anchor,
+                         ncol=ncol,
+                         fancybox=fancybox,
+                         shadow=shadow,
+                         title=title,
+                         fontsize=fontsize)
+
+    if fig is None:
+        plt.setp(legend1.get_title(), fontsize=fontsize)
+        plt.gca().add_artist(legend1)
+    else:
+        plt.setp(legend1.get_title(), fontsize=fontsize)
+    return legend1
