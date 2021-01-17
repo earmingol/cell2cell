@@ -1,3 +1,5 @@
+![plot](./Logo.png)
+
 # Inferring cell-cell interactions from transcriptomes with *cell2cell*
 [![PyPI version](https://badge.fury.io/py/cell2cell.svg)](https://pypi.org/project/cell2cell/)
 
