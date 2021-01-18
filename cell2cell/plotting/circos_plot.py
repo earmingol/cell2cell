@@ -44,6 +44,7 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
         center = (np.nanmean(xlim), np.nanmean(ylim))
 
     # Elements to build network
+    # TODO: Add option to select sort_by: None (as input), cells, proteins or metadata
     sorted_nodes = sort_nodes(sender_cells=sender_cells,
                               receiver_cells=receiver_cells,
                               ligands=ligands,
@@ -194,7 +195,7 @@ def get_arc_angles(G, sorting_feature=None):
 
     if sorting_feature is not None:
         sorting_list = [G.nodes[n][sorting_feature] for n in elements]
-        elements = [x for _, x in sorted(zip(sorting_list, elements))]
+        elements = [x for _, x in sorted(zip(sorting_list, elements), key=lambda pair: pair[0])]
 
     angles = dict()
 
@@ -236,19 +237,20 @@ def sort_nodes(sender_cells, receiver_cells, ligands, receptors):
     sorted_nodes = dict()
     count = 0
 
-    both = set(sender_cells + receiver_cells)
+    both = set(sender_cells) & set(receiver_cells)
     for c in sender_cells:
         for p in ligands:
             sorted_nodes[(c + '^' + p)] = count
             count += 1
+
         if c in both:
-            for p in receptors[::-1]:
+            for p in receptors:
                 sorted_nodes[(c + '^' + p)] = count
                 count += 1
 
-    for c in receiver_cells[::-1]:
+    for c in receiver_cells:
         if c not in both:
-            for p in receptors[::-1]:
+            for p in receptors:
                 sorted_nodes[(c + '^' + p)] = count
                 count += 1
     return sorted_nodes
@@ -284,13 +286,13 @@ def _build_network(sender_cells, receiver_cells, ligands, receptors, sorted_node
                    cell=row.sender,
                    protein=row.ligand,
                    signal='ligand',
-                   sorting=sorted_nodes[node1])
+                   sorting=int(sorted_nodes[node1]))
 
         G.add_node(node2,
                    cell=row.receiver,
                    protein=row.receptor,
                    signal='receptor',
-                   sorting=sorted_nodes[node2])
+                   sorting=int(sorted_nodes[node2]))
 
         # Add edges to. the network
         G.add_edge(node1, node2, weight=row.communication_score)
