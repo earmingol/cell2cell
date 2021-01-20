@@ -17,12 +17,15 @@ def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     return colors
 
 
-def map_colors_to_metadata(df, metadata, colors=None, sample_col='#SampleID', group_col='Groups',
-                           meta_cmap='gist_rainbow'):
-    meta_ = metadata.set_index(sample_col).reindex(df.columns)
+def map_colors_to_metadata(metadata, ref_df=None, colors=None, sample_col='#SampleID', group_col='Groups',
+                           cmap='gist_rainbow'):
+    if ref_df is not None:
+        meta_ = metadata.set_index(sample_col).reindex(ref_df.columns)
+    else:
+        meta_ = metadata.set_index(sample_col)
     labels = meta_[group_col].unique().tolist()
     if colors is None:
-        colors = get_colors_from_labels(labels, cmap=meta_cmap)
+        colors = get_colors_from_labels(labels, cmap=cmap)
     else:
         upd_dict = dict([(v, (1., 1., 1., 1.)) for v in labels if v not in colors.keys()])
         colors.update(upd_dict)
@@ -35,9 +38,13 @@ def map_colors_to_metadata(df, metadata, colors=None, sample_col='#SampleID', gr
 
 
 def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), ncol=1, fancybox=True, shadow=True,
-                    title='legend', fontsize=14, fig=None):
+                    title='legend', fontsize=14, sorted=True, fig=None):
     color_patches = []
-    for k, v in sorted(color_dict.items()):
+    if sorted:
+        iteritems = sorted(color_dict.items())
+    else:
+        iteritems = color_dict.items()
+    for k, v in iteritems:
         color_patches.append(patches.Patch(color=v, label=k.replace('_', ' ')))
 
     legend1 = plt.legend(handles=color_patches,
