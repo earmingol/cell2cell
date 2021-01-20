@@ -32,3 +32,10 @@ def get_continuous_scores(cell1, cell2, ppi_score=None):
 
     communication_scores = c1 * c2 * ppi_score
     return communication_scores
+
+
+def compute_ccc_matrix(prot_a_exp, prot_b_exp, communication_score='expression_product'):
+    if communication_score == 'expression_product':
+        return np.outer(prot_a_exp, prot_b_exp)
+    elif communication_score == 'expression_mean':
+        return (np.outer(prot_a_exp, np.ones(prot_b_exp.shape)) + np.outer(np.ones(prot_a_exp.shape), prot_b_exp)) / 2.
