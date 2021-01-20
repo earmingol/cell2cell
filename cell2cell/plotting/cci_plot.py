@@ -60,12 +60,12 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
 
     # Colors
     if metadata is not None:
-        col_colors = map_colors_to_metadata(df=df,
-                                            metadata=metadata,
+        col_colors = map_colors_to_metadata(metadata=metadata,
+                                            ref_df=df,
                                             colors=colors,
                                             sample_col=sample_col,
                                             group_col=group_col,
-                                            meta_cmap=meta_cmap)
+                                            cmap=meta_cmap)
 
         if not symmetric:
             row_colors = col_colors
