@@ -39,9 +39,9 @@ def map_colors_to_metadata(metadata, ref_df=None, colors=None, sample_col='#Samp
 
 
 def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), ncol=1, fancybox=True, shadow=True,
-                    title='legend', fontsize=14, sorted=True, fig=None):
+                    title='legend', fontsize=14, sorted_labels=True, fig=None):
     color_patches = []
-    if sorted:
+    if sorted_labels:
         iteritems = sorted(color_dict.items())
     else:
         iteritems = color_dict.items()
