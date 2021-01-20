@@ -3,6 +3,7 @@
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 
+
 def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     assert factor >= 1
 
