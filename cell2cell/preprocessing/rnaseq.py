@@ -28,7 +28,7 @@ def scale_expression_by_sum(rnaseq_data, axis=0,sum_value=1e6):
     This function scale all samples to sum up the same value.
     '''
     data = rnaseq_data.values
-    data = sum_value * np.divide(data, np.sum(data, axis=axis))
+    data = sum_value * np.divide(data, np.nansum(data, axis=axis))
     scaled_data = pd.DataFrame(data, index=rnaseq_data.index, columns=rnaseq_data.columns)
     return scaled_data
 

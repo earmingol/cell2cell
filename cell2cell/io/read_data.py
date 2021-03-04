@@ -114,7 +114,7 @@ def load_cutoffs(cutoff_file, gene_column = None, drop_nangenes = True, log_tran
 
 
 def load_ppi(ppi_file, interaction_columns, sort_values=None, score=None, rnaseq_genes=None, complex_sep=None,
-             dropna=False, strna='', verbose=True, **kwargs):
+             dropna=False, strna='', upper_letter_comparison=False, verbose=True, **kwargs):
     '''
     Load PPI network from table. Column of Interactor 1 and Interactor 2 must be specified.
 
@@ -123,25 +123,17 @@ def load_ppi(ppi_file, interaction_columns, sort_values=None, score=None, rnaseq
     if verbose:
         print("Opening PPI datasets from {}".format(ppi_file))
     ppi_data = load_table(ppi_file, verbose=verbose,  **kwargs)
-    if sort_values is not None:
-        ppi_data = ppi_data.sort_values(by=sort_values)
-    if dropna:
-        ppi_data = ppi_data.loc[ppi_data[interaction_columns].dropna().index,:]
-    if strna is not None:
-        assert(isinstance(strna, str)), "strna has to be an string."
-        ppi_data = ppi_data.fillna(strna)
-    unidirectional_ppi = ppi.remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=verbose)
-    simplified_ppi = ppi.simplify_ppi(unidirectional_ppi, interaction_columns, score, verbose=verbose)
-    if rnaseq_genes is not None:
-        if complex_sep is None:
-            simplified_ppi = ppi.filter_ppi_by_proteins(simplified_ppi, rnaseq_genes)
-        else:
-            simplified_ppi = ppi.filter_complex_ppi_by_proteins(ppi_data=simplified_ppi,
-                                                                proteins=rnaseq_genes,
-                                                                complex_sep=complex_sep,
-                                                                interaction_columns=interaction_columns
-                                                                )
-    simplified_ppi = simplified_ppi.drop_duplicates().reset_index(drop=True)
+
+    simplified_ppi = ppi.preprocess_ppi_data(ppi_data=ppi_data,
+                                             interaction_columns=interaction_columns,
+                                             sort_values=sort_values,
+                                             score=score,
+                                             rnaseq_genes=rnaseq_genes,
+                                             complex_sep=complex_sep,
+                                             dropna=dropna,
+                                             strna=strna,
+                                             upper_letter_comparison=upper_letter_comparison,
+                                             verbose=verbose)
     return simplified_ppi
 
 

@@ -8,6 +8,35 @@ import pandas as pd
 from itertools import combinations
 
 
+### Preprocess a PPI table from a known list
+def preprocess_ppi_data(ppi_data, interaction_columns, sort_values=None, score=None, rnaseq_genes=None, complex_sep=None,
+             dropna=False, strna='', upper_letter_comparison=True, verbose=True):
+    if sort_values is not None:
+        ppi_data = ppi_data.sort_values(by=sort_values)
+    if dropna:
+        ppi_data = ppi_data.loc[ppi_data[interaction_columns].dropna().index,:]
+    if strna is not None:
+        assert(isinstance(strna, str)), "strna has to be an string."
+        ppi_data = ppi_data.fillna(strna)
+    unidirectional_ppi = remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=verbose)
+    simplified_ppi = simplify_ppi(unidirectional_ppi, interaction_columns, score, verbose=verbose)
+    if rnaseq_genes is not None:
+        if complex_sep is None:
+            simplified_ppi = filter_ppi_by_proteins(ppi_data=simplified_ppi,
+                                                    proteins=rnaseq_genes,
+                                                    upper_letter_comparison=upper_letter_comparison,
+                                                    )
+        else:
+            simplified_ppi = filter_complex_ppi_by_proteins(ppi_data=simplified_ppi,
+                                                            proteins=rnaseq_genes,
+                                                            complex_sep=complex_sep,
+                                                            interaction_columns=('A', 'B'),
+                                                            upper_letter_comparison=upper_letter_comparison
+                                                            )
+    simplified_ppi = simplified_ppi.drop_duplicates().reset_index(drop=True)
+    return simplified_ppi
+
+
 ### Manipulate PPI networks
 def remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=True):
     '''
@@ -50,15 +79,30 @@ def simplify_ppi(ppi_data, interaction_columns, score=None, verbose=True):
     return simple_ppi
 
 
-def filter_ppi_by_proteins(ppi_data, proteins, protein_complex=False, interaction_columns=('A', 'B')):
+def filter_ppi_by_proteins(ppi_data, proteins, complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B')):
     col_a = interaction_columns[0]
     col_b = interaction_columns[1]
-    if protein_complex:
-        pass
+
+    integrated_ppi = ppi_data.copy()
+
+    if upper_letter_comparison:
+        integrated_ppi[col_a] = integrated_ppi[col_a].apply(lambda x: str(x).upper())
+        integrated_ppi[col_b] = integrated_ppi[col_b].apply(lambda x: str(x).upper())
+        prots = set([str(p).upper() for p in proteins])
     else:
-        ppi_data = ppi_data[(ppi_data[col_a].isin(proteins)) & (ppi_data[col_b].isin(proteins))]
-    ppi_data = ppi_data.reset_index(drop=True)
-    return ppi_data
+        prots = set(proteins)
+
+    if complex_sep is not None:
+        integrated_ppi = filter_complex_ppi_by_proteins(ppi_data=integrated_ppi,
+                                                        proteins=prots,
+                                                        complex_sep=complex_sep,
+                                                        upper_letter_comparison=False,
+                                                        interaction_columns=interaction_columns,
+                                                        )
+    else:
+        integrated_ppi = integrated_ppi[(integrated_ppi[col_a].isin(prots)) & (integrated_ppi[col_b].isin(prots))]
+    integrated_ppi = integrated_ppi.reset_index(drop=True)
+    return integrated_ppi
 
 
 def bidirectional_ppi_for_cci(ppi_data, interaction_columns=('A', 'B'), verbose=True):
@@ -177,9 +221,6 @@ def filter_complex_ppi_by_proteins(ppi_data, proteins, complex_sep='&', upper_le
     integrated_ppi = ppi_data.loc[filter].reset_index(drop=True)
 
     return integrated_ppi
-
-
-
 
 
 ### These functions below are useful for filtering PPI networks based on GO terms

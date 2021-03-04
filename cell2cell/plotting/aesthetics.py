@@ -46,7 +46,7 @@ def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), n
     else:
         iteritems = color_dict.items()
     for k, v in iteritems:
-        color_patches.append(patches.Patch(color=v, label=k.replace('_', ' ')))
+        color_patches.append(patches.Patch(color=v, label=str(k).replace('_', ' ')))
 
     if ax is None:
         legend1 = plt.legend(handles=color_patches,
