@@ -96,7 +96,8 @@ setup(name='cell2cell',
                         'goenrich >= 1.11',
                         'scikit-learn',
                         'tqdm',
-                        'statsmodels'
+                        'statsmodels',
+                        'tensorly'
                         ],
       classifiers=classifiers,
       entry_points={},

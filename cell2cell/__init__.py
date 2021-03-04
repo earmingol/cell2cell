@@ -11,6 +11,7 @@ from cell2cell import io
 from cell2cell import plotting
 from cell2cell import preprocessing
 from cell2cell import stats
+from cell2cell import tensor
 from cell2cell import utils
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
