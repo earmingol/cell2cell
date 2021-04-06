@@ -62,3 +62,27 @@ def add_complexes_to_expression(rnaseq_data, complexes):
         else:
             tmp_rna.loc[k] = [0] * tmp_rna.shape[1]
     return tmp_rna
+
+
+def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', celltype_col='cell_types', method='average'):
+    assert method in ['average', 'nn_cell_fraction'], "{} is not a valid option for method".format(method)
+
+    meta = metadata[[barcode_col, celltype_col]].set_index(barcode_col)
+    mapper = meta['celltype'].to_dict()
+
+    df = rnaseq_data.T
+    df.index = [mapper[c] for c in df.index]
+    df.index.name = 'celltype'
+    df.reset_index(inplace=True)
+
+    agg_df = pd.DataFrame(index=df.columns)
+
+    for celltype, ct_df in df.groupby('celltype'):
+        ct_df = ct_df.drop('celltype', axis=1)
+        if method == 'average':
+            agg = ct_df.mean()
+        elif method == 'nn_cell_fraction':
+            agg = ((ct_df > 0).sum() / ct_df.shape[0])
+        agg_df[celltype] = agg
+    return agg_df
+
