@@ -19,19 +19,35 @@ def get_binary_scores(cell1, cell2, ppi_score=None):
     return communication_scores
 
 
-def get_continuous_scores(cell1, cell2, ppi_score=None):
-    # raise ValueError("Continuous communication scores not implemented yet")
+def get_continuous_scores(cell1, cell2, ppi_score=None, method='expression_product'):
     c1 = cell1.weighted_ppi['A'].values
     c2 = cell2.weighted_ppi['B'].values
 
-    if (len(c1) == 0) or (len(c2) == 0):
-        return 0.0
+    if method == 'expression_product':
+        communication_scores = score_expression_product(c1, c2)
+    elif method == 'expression_mean':
+        communication_scores = score_expression_mean(c1, c2)
+    else:
+        raise ValueError('{} is not implemented yet'.format(method))
 
     if ppi_score is None:
         ppi_score = np.array([1.0] * len(c1))
 
-    communication_scores = c1 * c2 * ppi_score
+    communication_scores = communication_scores * ppi_score
     return communication_scores
+
+
+def score_expression_product(c1, c2):
+    if (len(c1) == 0) or (len(c2) == 0):
+        return 0.0
+    return c1 * c2
+
+
+def score_expression_mean(c1, c2):
+    if (len(c1) == 0) or (len(c2) == 0):
+        return 0.0
+    return (c1 + c2)/2.
+
 
 
 def compute_ccc_matrix(prot_a_exp, prot_b_exp, communication_score='expression_product'):

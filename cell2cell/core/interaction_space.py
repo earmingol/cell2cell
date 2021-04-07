@@ -261,11 +261,11 @@ class InteractionSpace():
             print("Computing communication score between {} and {}".format(cell1.type, cell2.type))
 
         # Check that new score is the same type as score used to build interaction space (binary or continuous)
-        if (communication_score in ['expression_product', 'coexpression']) \
+        if (communication_score in ['expression_product', 'expression_correlation', 'expression_mean']) \
                 & (self.communication_score in ['expression_thresholding', 'differential_combinations']):
             raise ValueError('Cannot use {} for this interaction space'.format(communication_score))
         if (communication_score in ['expression_thresholding', 'differential_combinations']) \
-                & (self.communication_score in ['expression_product', 'expression_correlation']):
+                & (self.communication_score in ['expression_product', 'expression_correlation', 'expression_mean']):
             raise ValueError('Cannot use {} for this interaction space'.format(communication_score))
 
         if use_ppi_score:
@@ -274,9 +274,15 @@ class InteractionSpace():
             ppi_score = None
 
         if (communication_score == 'expression_thresholding') | (communication_score == 'differential_combinations'):
-            communication_value = communication_scores.get_binary_scores(cell1, cell2, ppi_score=ppi_score)
-        elif (communication_score == 'expression_product') | (communication_score == 'expression_correlation'):
-              communication_value = communication_scores.get_continuous_scores(cell1, cell2, ppi_score=ppi_score)
+            communication_value = communication_scores.get_binary_scores(cell1=cell1,
+                                                                         cell2=cell2,
+                                                                         ppi_score=ppi_score)
+        elif (communication_score == 'expression_product') | (communication_score == 'expression_correlation') \
+                | (communication_score == 'expression_mean'):
+              communication_value = communication_scores.get_continuous_scores(cell1=cell1,
+                                                                               cell2=cell2,
+                                                                               ppi_score=ppi_score,
+                                                                               method=communication_score)
         else:
             raise NotImplementedError(
                 "Communication score {} to compute pairwise cell-communication is not implemented".format(communication_score))
