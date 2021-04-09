@@ -104,6 +104,7 @@ class BaseTensor():
         for k, v in self.factors.items():
             v.to_excel(writer, sheet_name=k)
         writer.save()
+        print('Loadings of the tensor factorization were successfully saved into {}'.format(filename))
 
 
 class InteractionTensor(BaseTensor):
@@ -236,4 +237,44 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
     return ccc_tensor
 
 
+def generate_coloring_metadata(interaction_tensor, metadata_dicts, none_as_order_elements=True):
+    '''
+    Uses a list of of dicts (or None when a dict is missing) to generate a list of metadata for each order in the tensor.
+
+    Parameters
+    ----------
+    interaction_tensor : cell2cell.tensor.InteractionTensor class
+
+    metadata_dicts : list
+        A list of dictionaries. Each dictionary represents an order of the tensor. In an interaction tensor these orders
+        should be contexts, LR pairs, sender cells and receiver cells. The keys are the elements in each order
+        (they are contained in interaction_tensor.order_names) and the values are the categories that each elements will
+        be represented/colored by.
+
+    none_as_order_elements : boolean, True by default
+        Whether coloring each element individually when a None is passed instead of a dictionary for the respective
+        order. If True, each element in that order will be colored independently, otherwise elements of that order will
+        not be colored.
+
+    Returns
+    -------
+    metadata : list
+        A list of pandas.DataFrames that will be used as an input of the cell2cell.plot.tensor_factors_plot.
+    '''
+    assert (len(interaction_tensor.tensor.shape) == len(metadata_dicts)), "metadata_dicts should be of the same size as the number of orders/dimensions in the tensor"
+
+    if none_as_order_elements:
+        metadata = [pd.DataFrame(index=names) for names in interaction_tensor.order_names]
+    else:
+        metadata = [pd.DataFrame(index=names) if (meta is not None) else None for names, meta in zip(interaction_tensor.order_names, metadata_dicts)]
+
+    for i, meta in enumerate(metadata):
+        if meta is not None:
+            if metadata_dicts[i] is not None:
+                meta['Category'] = [metadata_dicts[i][idx] for idx in meta.index]
+            else:
+                meta['Category'] = meta.index
+            meta.index.name = 'Element'
+            meta.reset_index(inplace=True)
+    return metadata
 

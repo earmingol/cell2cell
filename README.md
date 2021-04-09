@@ -22,11 +22,18 @@ Then, install cell2cell:
 ```
 pip install cell2cell
 ```
-
 ## Examples
-![plot](./Logo.png)
+
+---
+![plot](https://github.com/earmingol/cell2cell/blob/master/Logo.png?raw=true)
 - A toy example containing main standard analyses is [available here](./examples/Toy-Example.ipynb)
 - An example of using *cell2cell* to infer cell-cell interactions across the whole
 body of *C. elegans* is [available here](https://github.com/LewisLabUCSD/Celegans-cell2cell)
   
-![plot](./LogoTensor.png)
+---
+
+![plot](https://github.com/earmingol/cell2cell/blob/master/LogoTensor.png?raw=true)
+- A capsule containing jupyter notebooks for running Tensor-cell2cell on datasets of COVID-19 an the embryonic development
+  of *C. elegans* is [available in codeocean.com]()
+
+---

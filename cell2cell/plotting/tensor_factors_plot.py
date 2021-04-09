@@ -11,6 +11,7 @@ from cell2cell.plotting.aesthetics import generate_legend, get_colors_from_label
 
 def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sample_col='#SampleID', group_col='Groups',
                         meta_cmaps=None, fontsize=20, plot_legend=True, filename=None):
+    '''Metadata is a list of pandas dataframes'''
     assert interaction_tensor.factors is not None, "First run the method 'compute_tensor_factorization' in your InteractionTensor"
     dim = len(interaction_tensor.factors)
 
@@ -26,7 +27,7 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
     else:
         if meta_cmaps is None:
             meta_cmaps = ['gist_rainbow']*len(metadata)
-        assert len(metadata) == len(meta_cmaps), "Provide a cmap for each metadata element"
+        assert len(metadata) == len(meta_cmaps), "Provide a cmap for each order"
         assert len(metadata) == len(interaction_tensor.order_names), "Provide a metadata for each order. If there is no metadata for any, replace with None"
         meta_colors = [get_colors_from_labels(m[group_col], cmap=cmap) if ((m is not None) & (cmap is not None)) else None for m, cmap in zip(metadata, meta_cmaps)]
         element_colors = [map_colors_to_metadata(metadata=m,
