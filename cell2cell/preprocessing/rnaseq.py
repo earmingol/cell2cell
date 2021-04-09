@@ -68,7 +68,7 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
     assert method in ['average', 'nn_cell_fraction'], "{} is not a valid option for method".format(method)
 
     meta = metadata[[barcode_col, celltype_col]].set_index(barcode_col)
-    mapper = meta['celltype'].to_dict()
+    mapper = meta[celltype_col].to_dict()
 
     df = rnaseq_data.T
     df.index = [mapper[c] for c in df.index]
@@ -84,5 +84,5 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
         elif method == 'nn_cell_fraction':
             agg = ((ct_df > 0).sum() / ct_df.shape[0])
         agg_df[celltype] = agg
-    return agg_df
+    return agg_df.drop('celltype')
 
