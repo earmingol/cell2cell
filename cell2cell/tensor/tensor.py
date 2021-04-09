@@ -99,6 +99,12 @@ class BaseTensor():
         top_elements = self.factors[order_name][factor_name].sort_values(ascending=False).head(top_number)
         return top_elements
 
+    def export_factor_loadings(self, filename):
+        writer = pd.ExcelWriter(filename)
+        for k, v in self.factors.items():
+            v.to_excel(writer, sheet_name=k)
+        writer.save()
+
 
 class InteractionTensor(BaseTensor):
 
