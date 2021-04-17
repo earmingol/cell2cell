@@ -237,7 +237,7 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
     return ccc_tensor
 
 
-def generate_coloring_metadata(interaction_tensor, metadata_dicts, none_as_order_elements=True):
+def generate_tensor_metadata(interaction_tensor, metadata_dicts, none_as_order_elements=True):
     '''
     Uses a list of of dicts (or None when a dict is missing) to generate a list of metadata for each order in the tensor.
 
