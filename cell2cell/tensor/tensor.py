@@ -237,7 +237,7 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
     return ccc_tensor
 
 
-def generate_tensor_metadata(interaction_tensor, metadata_dicts, none_as_order_elements=True):
+def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order_elements=True):
     '''
     Uses a list of of dicts (or None when a dict is missing) to generate a list of metadata for each order in the tensor.
 
@@ -249,12 +249,12 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, none_as_order_e
         A list of dictionaries. Each dictionary represents an order of the tensor. In an interaction tensor these orders
         should be contexts, LR pairs, sender cells and receiver cells. The keys are the elements in each order
         (they are contained in interaction_tensor.order_names) and the values are the categories that each elements will
-        be represented/colored by.
+        be assigned as metadata.
 
-    none_as_order_elements : boolean, True by default
-        Whether coloring each element individually when a None is passed instead of a dictionary for the respective
-        order. If True, each element in that order will be colored independently, otherwise elements of that order will
-        not be colored.
+    fill_with_order_elements : boolean, True by default
+        Whether using each element of a dimension as its own metadata when a None is passed instead of a dictionary for
+        the respective order/dimension. If True, each element in that order will be use itself, that dimension will not
+        contain metadata.
 
     Returns
     -------
@@ -263,7 +263,7 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, none_as_order_e
     '''
     assert (len(interaction_tensor.tensor.shape) == len(metadata_dicts)), "metadata_dicts should be of the same size as the number of orders/dimensions in the tensor"
 
-    if none_as_order_elements:
+    if fill_with_order_elements:
         metadata = [pd.DataFrame(index=names) for names in interaction_tensor.order_names]
     else:
         metadata = [pd.DataFrame(index=names) if (meta is not None) else None for names, meta in zip(interaction_tensor.order_names, metadata_dicts)]
