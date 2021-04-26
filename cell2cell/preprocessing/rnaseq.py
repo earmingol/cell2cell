@@ -64,13 +64,22 @@ def add_complexes_to_expression(rnaseq_data, complexes):
     return tmp_rna
 
 
-def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', celltype_col='cell_types', method='average'):
+def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', celltype_col='cell_types', method='average',
+                           transposed=True):
+    '''
+    rnaseq_data is an expression matrix with genes as columns and single cells as rows. Transposed has to be set True when
+    columns are single cells and rows are genes.
+    '''
     assert method in ['average', 'nn_cell_fraction'], "{} is not a valid option for method".format(method)
 
-    meta = metadata[[barcode_col, celltype_col]].set_index(barcode_col)
+    meta = metadata.reset_index()
+    meta = meta[[barcode_col, celltype_col]].set_index(barcode_col)
     mapper = meta[celltype_col].to_dict()
 
-    df = rnaseq_data.T
+    if transposed:
+        df = rnaseq_data.T
+    else:
+        df = rnaseq_data
     df.index = [mapper[c] for c in df.index]
     df.index.name = 'celltype'
     df.reset_index(inplace=True)
