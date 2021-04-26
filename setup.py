@@ -97,7 +97,8 @@ setup(name='cell2cell',
                         'scikit-learn',
                         'tqdm',
                         'statsmodels',
-                        'tensorly'
+                        'tensorly',
+                        'kneed'
                         ],
       classifiers=classifiers,
       entry_points={},
