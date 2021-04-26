@@ -115,7 +115,7 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
     return fig, axes
 
 
-def plot_elbow(loss, figsize=(4, 2.25), fontsize=14, filename=None):
+def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
 
     fig = plt.figure(figsize=figsize)
 
@@ -124,13 +124,16 @@ def plot_elbow(loss, figsize=(4, 2.25), fontsize=14, filename=None):
     plt.xlabel('Rank', fontsize=int(1.2*fontsize))
     plt.ylabel('Error', fontsize=int(1.2 * fontsize))
 
+    if elbow is not None:
+        _ = plt.plot(*loss[elbow - 1], 'ro')
+
     if filename is not None:
         plt.savefig(filename, dpi=300,
                     bbox_inches='tight')
     return fig
 
 
-def plot_multiple_run_elbow(all_loss, figsize=(4, 2.25), fontsize=14, filename=None):
+def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), fontsize=14, filename=None):
 
     fig = plt.figure(figsize=figsize)
 
@@ -141,14 +144,24 @@ def plot_multiple_run_elbow(all_loss, figsize=(4, 2.25), fontsize=14, filename=N
     # Plot Mean
     plt.plot(x, mean, 'ob')
 
-    # Plot Std
-    plt.fill_between(x, mean-std, mean+std, color='steelblue', alpha=.2,
+    # Plot CI
+    if ci == '95%':
+        coeff = 1.96
+    elif ci == 'std':
+        coeff = 1.0
+    else:
+        raise ValueError("Specify a correct ci. Either '95%' or 'std'")
+
+    plt.fill_between(x, mean-coeff*std, mean+coeff*std, color='steelblue', alpha=.2,
                      label='$\pm$ 1 std')
 
 
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.xlabel('Rank', fontsize=int(1.2*fontsize))
     plt.ylabel('Error', fontsize=int(1.2 * fontsize))
+
+    if elbow is not None:
+        _ = plt.plot(x[elbow - 1], mean[elbow - 1], 'ro')
 
     if filename is not None:
         plt.savefig(filename, dpi=300,

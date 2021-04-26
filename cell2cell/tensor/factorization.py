@@ -2,6 +2,7 @@
 
 import numpy as np
 from tqdm.auto import tqdm
+from kneed import KneeLocator
 
 from tensorly.decomposition import non_negative_parafac
 
@@ -24,6 +25,12 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
     return cp_tf
 
 
+def _compute_elbow(loss):
+    kneedle = KneeLocator(*zip(*loss), S=1.0, curve="convex", direction="decreasing")
+    rank = kneedle.elbow
+    return rank
+
+
 def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='svd', random_state=None, mask=None,
                         verbose=False, disable_pbar=False, **kwargs):
     loss = []
@@ -41,8 +48,8 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
     return loss
 
 
-def multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_negative_cp', init='svd', random_state=None,
-                                 mask=None, verbose=False, **kwargs):
+def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_negative_cp', init='svd', random_state=None,
+                                  mask=None, verbose=False, **kwargs):
     assert isinstance(runs, int), "runs must be an integer"
     all_loss = []
     for r in tqdm(range(1, upper_rank + 1)):

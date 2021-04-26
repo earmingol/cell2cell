@@ -11,7 +11,7 @@ from cell2cell.core.communication_scores import compute_ccc_matrix
 from cell2cell.preprocessing.ppi import get_genes_from_complexes
 from cell2cell.preprocessing.rnaseq import add_complexes_to_expression
 from cell2cell.preprocessing.ppi import filter_ppi_by_proteins
-from cell2cell.tensor.factorization import _compute_tensor_factorization, _run_elbow_analysis, multiple_runs_elbow_analysis
+from cell2cell.tensor.factorization import _compute_tensor_factorization, _run_elbow_analysis, _multiple_runs_elbow_analysis, _compute_elbow
 from cell2cell.plotting.tensor_factors_plot import plot_elbow, plot_multiple_run_elbow
 
 
@@ -48,8 +48,8 @@ class BaseTensor():
         self.rank = rank
 
 
-    def elbow_rank_selection(self, upper_rank=50, runs=1, tf_type='non_negative_cp', init='svd', random_state=None, mask=None,
-                             figsize=(4, 2.25), fontsize=14, filename=None, verbose=False, **kwargs):
+    def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', random_state=None,
+                             mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None, verbose=False, **kwargs):
         # Run analysis
         if verbose:
             print('Running Elbow Analysis')
@@ -64,34 +64,42 @@ class BaseTensor():
                                        verbose=verbose,
                                        **kwargs
                                        )
-
+            rank = _compute_elbow(loss)
             fig = plot_elbow(loss=loss,
+                             elbow=rank,
                              figsize=figsize,
                              fontsize=fontsize,
                              filename=filename)
         elif runs > 1:
 
-            all_loss = multiple_runs_elbow_analysis(tensor=self.tensor,
-                                                    upper_rank=upper_rank,
-                                                    runs=runs,
-                                                    tf_type=tf_type,
-                                                    init=init,
-                                                    random_state=random_state,
-                                                    mask=mask,
-                                                    verbose=verbose,
-                                                    **kwargs
-                                                    )
+            all_loss = _multiple_runs_elbow_analysis(tensor=self.tensor,
+                                                     upper_rank=upper_rank,
+                                                     runs=runs,
+                                                     tf_type=tf_type,
+                                                     init=init,
+                                                     random_state=random_state,
+                                                     mask=mask,
+                                                     verbose=verbose,
+                                                     **kwargs
+                                                     )
+
+            # Same outputs as runs = 1
+            loss = np.nanmean(all_loss, axis=0).tolist()
+            loss = [(i + 1, l) for i, l in enumerate(loss)]
+            rank = _compute_elbow(loss)
 
             fig = plot_multiple_run_elbow(all_loss=all_loss,
+                                          ci=ci,
+                                          elbow=rank,
                                           figsize=figsize,
                                           fontsize=fontsize,
                                           filename=filename)
 
-            # Same outputs as runs = 1
-            loss = np.nanmean(all_loss, axis=0).tolist()
-            loss = [(i+1, l) for i, l in enumerate(loss)]
         else:
             assert runs > 0, "Input runs must be an integer greater than 0"
+
+        self.rank = rank
+        print('The rank at the elbow is: {}'.format(self.rank))
         return fig, loss
 
 
