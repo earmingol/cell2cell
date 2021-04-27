@@ -28,7 +28,7 @@ def agents_number(n_jobs):
 # CORE FUNCTIONS
 def parallel_spatial_ccis(inputs):
     '''
-    Parallel computing in cell2cell2.spatial_interactions.SpatialCCIs
+    Parallel computing in cell2cell2.experiments.SpatialSingleCellExperiment
     '''
     # TODO: Implement this for enabling spatial analysis and compute interactions in parallel
 

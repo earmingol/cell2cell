@@ -7,4 +7,3 @@ from cell2cell.core.cci_scores import (compute_braycurtis_like_cci_score, comput
 from cell2cell.core.cell import (Cell, get_cells_from_rnaseq)
 from cell2cell.core.communication_scores import (get_binary_scores, get_continuous_scores, compute_ccc_matrix)
 from cell2cell.core.interaction_space import (generate_interaction_elements, InteractionSpace)
-from cell2cell.core.spatial_interactions import (SpatialCCI)

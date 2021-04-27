@@ -4,40 +4,145 @@ from __future__ import absolute_import
 
 import os
 
+import scanpy
+
 import cell2cell.plotting.ccc_plot
 import cell2cell.plotting.cci_plot
 import cell2cell.plotting.pcoa_plot
 from cell2cell.core import interaction_space as ispace
-from cell2cell.datasets import heuristic_data
 from cell2cell.io import read_data
-from cell2cell.preprocessing import gene_ontology, integrate_data, ppi
+from cell2cell.preprocessing import ppi
+
+class BulkExperiment:
+    def __init__(self, rnaseq_data, ppi_data, metadata=None, interaction_columns=('A', 'B'),
+                 communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
+                 expression_threshold=10, verbose=False):
+        # Placeholders
+        self.rnaseq_data = rnaseq_data
+        self.ppi_data = ppi.remove_ppi_bidirectionality(ppi_data=ppi_data,
+                                                        interaction_columns=interaction_columns,
+                                                        verbose=verbose)
+        self.ref_ppi = self.ppi_data
+        self.metadata = metadata
+        self.analysis_setup = dict()
+        self.cutoff_setup = dict()
+
+        # Analysis
+        self.analysis_setup['communication_score'] = communication_score
+        self.analysis_setup['cci_score'] = cci_score
+        self.analysis_setup['cci_type'] = cci_type
+
+        # Initialize PPI
+        if self.analysis_setup['cci_type'] == 'undirected':
+            self.ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
+                                                          interaction_columns=interaction_columns,
+                                                          verbose=verbose)
+        else:
+            self.ref_ppi = None
+
+        # Thresholding
+        self.cutoff_setup['type'] = 'constant_value'
+        self.cutoff_setup['parameter'] = expression_threshold
+
+        self.interaction_space = initialize_interaction_space(rnaseq_data=self.rnaseq_data,
+                                                              ppi_data=self.ppi_data,
+                                                              cutoff_setup=self.cutoff_setup,
+                                                              analysis_setup=self.analysis_setup,
+                                                              verbose=verbose)
+
+    def compute_pairwise_cci_scores(self, cci_score=None, use_ppi_score=False, verbose=True):
+        self.interaction_space.compute_pairwise_cci_scores(cci_score=cci_score,
+                                                           use_ppi_score=use_ppi_score,
+                                                           verbose=verbose)
+
+    def compute_pairwise_communication_scores(self, communication_score=None, use_ppi_score=False, ref_ppi_data=None,
+                                              interaction_columns=('A', 'B'), cells=None, cci_type=None, verbose=True):
+        self.interaction_space.compute_pairwise_communication_scores(communication_score=communication_score,
+                                                                     use_ppi_score=use_ppi_score,
+                                                                     ref_ppi_data=ref_ppi_data,
+                                                                     interaction_columns=interaction_columns,
+                                                                     cells=cells,
+                                                                     cci_type=cci_type,
+                                                                     verbose=verbose)
 
 
-def basic_pipeline(rnaseq_data, ppi_data, cutoff_setup, analysis_setup, excluded_cells=None,
-                   use_ppi_score=False,verbose=True):
+class SingleCellExperiment:
+    compute_pairwise_ccc_scores = BulkExperiment.compute_pairwise_cci_scores
+    compuse_pairwise_communication_scores =  BulkExperiment.compute_pairwise_communication_scores
 
+
+    def __init__(self, rnaseq_data, ppi_data, metadata=None, interaction_columns=('A', 'B'),
+                 communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
+                 expression_threshold=0.20, aggregation_method='nn_cell_fraction', barcode_col='barcodes',
+                 celltype_col='cell_types', verbose=False):
+        # Placeholders
+        self.rnaseq_data = rnaseq_data
+        self.ppi_data = ppi.remove_ppi_bidirectionality(ppi_data=ppi_data,
+                                                        interaction_columns=interaction_columns,
+                                                        verbose=verbose)
+        self.ref_ppi = self.ppi_data
+        self.metadata = metadata
+        self.analysis_setup = dict()
+        self.cutoff_setup = dict()
+
+        # Analysis
+        self.analysis_setup['communication_score'] = communication_score
+        self.analysis_setup['cci_score'] = cci_score
+        self.analysis_setup['cci_type'] = cci_type
+
+        # Initialize PPI
+        if self.analysis_setup['cci_type'] == 'undirected':
+            self.ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
+                                                          interaction_columns=interaction_columns,
+                                                          verbose=verbose)
+        else:
+            self.ref_ppi = None
+
+        # Thresholding
+        self.cutoff_setup['type'] = 'constant_value'
+        self.cutoff_setup['parameter'] = expression_threshold
+
+
+        # Aggregate single-cell RNA-Seq data
+        if isinstance(rnaseq_data, scanpy.AnnData):
+            self.__adata = True
+        else:
+            self.__adata = False
+
+        self.aggregated_expression = cell2cell.preprocessing.aggregate_single_cells(rnaseq_data=self.rnaseq_data,
+                                                                                    metadata=self.metadata,
+                                                                                    barcode_col=barcode_col,
+                                                                                    celltype_col=celltype_col,
+                                                                                    method=aggregation_method,
+                                                                                    transposed=self.__adata)
+
+        self.interaction_space = initialize_interaction_space(rnaseq_data=self.aggregated_expression,
+                                                              ppi_data=self.ppi_data,
+                                                              cutoff_setup=self.cutoff_setup,
+                                                              analysis_setup=self.analysis_setup,
+                                                              verbose=verbose)
+
+
+class SpatialSingleCellExperiment:
+    def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, spatial_dict, score_type='binary', score_metric='bray_curtis',
+                 n_jobs=1, verbose=True):
+        pass
+        # TODO IMPLEMENT SPATIAL EXPERIMENT
+
+
+def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_setup, excluded_cells=None, verbose=True):
     if excluded_cells is None:
         excluded_cells = []
-
-    if analysis_setup['cci_type'] == 'undirected':
-        bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_data, verbose=False)
-    else:
-        bi_ppi_data = ppi_data.copy()
-
 
     included_cells = sorted(list((set(rnaseq_data.columns) - set(excluded_cells))))
 
     interaction_space = ispace.InteractionSpace(rnaseq_data=rnaseq_data[included_cells],
-                                                ppi_data=bi_ppi_data,
+                                                ppi_data=ppi_data,
                                                 gene_cutoffs=cutoff_setup,
                                                 communication_score=analysis_setup['communication_score'],
                                                 cci_score=analysis_setup['cci_score'],
                                                 cci_type=analysis_setup['cci_type'],
                                                 verbose=verbose)
-
-    interaction_space.compute_pairwise_cci_scores(use_ppi_score=use_ppi_score,
-                                                  verbose=verbose)
-
     return interaction_space
 
 
@@ -50,18 +155,23 @@ def core_pipeline(files, rnaseq_data, ppi_data, metadata, meta_setup, cutoff_set
 
     # Generate reference ppi data for generating directed CCC clustermap later
     if analysis_setup['cci_type'] == 'undirected':
+        bi_ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=ppi_data, verbose=False)
         ref_ppi = ppi_data
     else:
+        bi_ppi_data = ppi_data.copy()
         ref_ppi = None
 
     # Generate interaction space and compute parwise CCI scores
-    interaction_space = basic_pipeline(rnaseq_data=rnaseq_data,
-                                       ppi_data=ppi_data,
-                                       cutoff_setup=cutoff_setup,
-                                       analysis_setup=analysis_setup,
-                                       excluded_cells=excluded_cells,
-                                       use_ppi_score=use_ppi_score,
-                                       verbose=verbose)
+    interaction_space = initialize_interaction_space(rnaseq_data=rnaseq_data,
+                                                     ppi_data=bi_ppi_data,
+                                                     cutoff_setup=cutoff_setup,
+                                                     analysis_setup=analysis_setup,
+                                                     excluded_cells=excluded_cells,
+                                                     verbose=verbose)
+
+    # Compute CCI scores for each pair of cell
+    interaction_space.compute_pairwise_cci_scores(use_ppi_score=use_ppi_score,
+                                                  verbose=verbose)
 
     # Compute communication scores for each protein-protein interaction
     interaction_space.compute_pairwise_communication_scores(ref_ppi_data=ref_ppi,
@@ -163,139 +273,6 @@ def ligand_receptor_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_
     outputs = core_pipeline(files=files,
                             rnaseq_data=rnaseq_data,
                             ppi_data=ppi_data,
-                            metadata=meta,
-                            meta_setup=meta_setup,
-                            cutoff_setup=cutoff_setup,
-                            analysis_setup=analysis_setup,
-                            excluded_cells=excluded_cells,
-                            colors=colors,
-                            use_ppi_score=use_ppi_score,
-                            filename_suffix=filename_suffix,
-                            verbose=verbose)
-    return outputs
-
-
-def heuristic_pipeline(files, rnaseq_setup, ppi_setup, meta_setup, cutoff_setup, go_setup, analysis_setup,
-                       contact_go_terms = None, mediator_go_terms = None, interaction_type='mediated',
-                       excluded_cells=None, colors=None,  use_ppi_score=False, filename_suffix='', verbose=None):
-    '''
-    This function performs the analysis with the default list of GO terms to filter the proteins in the PPI network.
-
-    Parameters
-    ----------
-    files : dict
-        This dictionary contains the locations of files to use in the analysis. Use the following keys:
-        'rnaseq' : location of RNAseq matrix for cell types.
-        'ppi' : location of PPI network to use.
-        'go_annotation' : location of go annotation file, usually obtained from http://current.geneontology.org/products/pages/downloads.html
-        'go_terms' : location of .obo file which contains the hierarchy for Gene Ontology.
-        'output_folder' : location of the folder where the outputs will be generated.
-
-    rnaseq_setup : dict
-        This dictionary contains the parameters to load a RNAseq expression matrix. Use the following keys:
-        'gene_col' : column name were the gene names are provided.
-        'drop_nangenes' : Boolean value to indicate whether to remove genes without expression values in all cells.
-        'log_transform' : Boolean value to indicate whether to log transform the expression values.
-
-    ppi_setup : dict
-        This dictionary contains the parameters to load a PPI network. Use the following keys:
-        'protein_cols' : A list with column names where interactors A & B are contained.
-
-    cutoff_setup : dict
-         This dictionary contains the parameters use cutoffs to make gene expression values be binary. Use the following keys:
-         'type' : Type of cutoff to use (e.g. local_percentile or global_percentile)
-         'parameter' : Parameter associated to the type of cutoff. If type is percentile, it should be the percentile value (e.g. 0.75).
-
-    analysis_setup : dict
-
-
-    contact_go_terms : list, None by default
-
-
-    mediator_go_terms : list, None by default
-
-
-    Returns
-    -------
-    subsampling_space : cell2cell.core.SpatialCCI
-
-
-    ppi_dict : dict
-
-
-    '''
-    if excluded_cells is None:
-        excluded_cells = []
-
-    # Check for output directory
-    if 'output_folder' in files.keys():
-        if not os.path.exists(files['output_folder']):
-            os.makedirs(files['output_folder'])
-
-    # Load Data
-    rnaseq_data = read_data.load_rnaseq(rnaseq_file=files['rnaseq'],
-                                        gene_column=rnaseq_setup['gene_col'],
-                                        drop_nangenes=rnaseq_setup['drop_nangenes'],
-                                        log_transformation=rnaseq_setup['log_transform'],
-                                        format='auto',
-                                        verbose=verbose
-                                        )
-
-    meta = read_data.load_metadata(metadata_file=files['metadata'],
-                                   rnaseq_data=rnaseq_data,
-                                   sample_col=meta_setup['sample_col'],
-                                   format='auto',
-                                   verbose=verbose
-                                   )
-
-    ppi_data = read_data.load_ppi(ppi_file=files['ppi'],
-                                  interaction_columns=ppi_setup['protein_cols'],
-                                  rnaseq_genes=list(rnaseq_data.index),
-                                  format='auto',
-                                  verbose=verbose
-                                  )
-
-    go_annotations = read_data.load_go_annotations(goa_file=files['go_annotations'],
-                                                   experimental_evidence=go_setup['experimental_evidence'],
-                                                   verbose=verbose)
-
-    go_terms = read_data.load_go_terms(go_terms_file=files['go_terms'],
-                                       verbose=verbose)
-
-    # Filter genes associated to GO terms
-    default_heuristic_go = heuristic_data.HeuristicGOTerms()
-
-    if contact_go_terms is None:
-        contact_go_terms = default_heuristic_go.contact_go_terms
-
-    if mediator_go_terms is None:
-        mediator_go_terms = default_heuristic_go.mediator_go_terms
-
-    contact_genes = gene_ontology.get_genes_from_go_hierarchy(go_annotations,
-                                                              go_terms,
-                                                              contact_go_terms,
-                                                              verbose=verbose)
-
-    mediator_genes = gene_ontology.get_genes_from_go_hierarchy(go_annotations,
-                                                               go_terms,
-                                                               mediator_go_terms,
-                                                               verbose=verbose)
-
-    contact_genes = list(set(contact_genes))
-    mediator_genes = list(set(mediator_genes))
-
-    # Run analysis
-    ppi_dict = integrate_data.get_ppi_dict_from_proteins(ppi_data,
-                                                         contact_genes,
-                                                         mediator_genes,
-                                                         bidirectional=False,
-                                                         verbose=verbose
-                                                         )
-
-
-    outputs = core_pipeline(files=files,
-                            rnaseq_data=rnaseq_data,
-                            ppi_data=ppi_dict[interaction_type],
                             metadata=meta,
                             meta_setup=meta_setup,
                             cutoff_setup=cutoff_setup,
