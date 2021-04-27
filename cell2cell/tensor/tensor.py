@@ -49,7 +49,7 @@ class BaseTensor():
 
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', random_state=None,
-                             automatic_elbow=False, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
+                             automatic_elbow=True, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
                              verbose=False, **kwargs):
         # Run analysis
         if verbose:
@@ -65,7 +65,10 @@ class BaseTensor():
                                        verbose=verbose,
                                        **kwargs
                                        )
-            rank = _compute_elbow(loss)
+            if automatic_elbow:
+                rank = _compute_elbow(loss)
+            else:
+                rank = None
             fig = plot_elbow(loss=loss,
                              elbow=rank,
                              figsize=figsize,
@@ -87,7 +90,11 @@ class BaseTensor():
             # Same outputs as runs = 1
             loss = np.nanmean(all_loss, axis=0).tolist()
             loss = [(i + 1, l) for i, l in enumerate(loss)]
-            rank = _compute_elbow(loss)
+
+            if automatic_elbow:
+                rank = _compute_elbow(loss)
+            else:
+                rank = None
 
             fig = plot_multiple_run_elbow(all_loss=all_loss,
                                           ci=ci,
