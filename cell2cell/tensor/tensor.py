@@ -49,7 +49,8 @@ class BaseTensor():
 
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', random_state=None,
-                             mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None, verbose=False, **kwargs):
+                             automatic_elbow=False, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
+                             verbose=False, **kwargs):
         # Run analysis
         if verbose:
             print('Running Elbow Analysis')
@@ -98,8 +99,9 @@ class BaseTensor():
         else:
             assert runs > 0, "Input runs must be an integer greater than 0"
 
-        self.rank = rank
-        print('The rank at the elbow is: {}'.format(self.rank))
+        if automatic_elbow:
+            self.rank = rank
+            print('The rank at the elbow is: {}'.format(self.rank))
         return fig, loss
 
 
