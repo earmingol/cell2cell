@@ -13,19 +13,23 @@ from cell2cell.core import interaction_space as ispace
 from cell2cell.io import read_data
 from cell2cell.preprocessing import ppi
 
-class BulkExperiment:
+
+# TODO: Add complex_sep for including complex-based LRs
+# TODO: Add plotting functions
+
+class BulkInteractions:
     def __init__(self, rnaseq_data, ppi_data, metadata=None, interaction_columns=('A', 'B'),
                  communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
-                 expression_threshold=10, verbose=False):
+                 sample_col='sampleID', group_col='tissue', expression_threshold=10, complex_sep=None, verbose=False):
         # Placeholders
         self.rnaseq_data = rnaseq_data
-        self.ppi_data = ppi.remove_ppi_bidirectionality(ppi_data=ppi_data,
-                                                        interaction_columns=interaction_columns,
-                                                        verbose=verbose)
-        self.ref_ppi = self.ppi_data
         self.metadata = metadata
+        self.index_col = sample_col
+        self.group_col = group_col
         self.analysis_setup = dict()
         self.cutoff_setup = dict()
+        self.interaction_columns = interaction_columns
+        self.complex_sep = complex_sep
 
         # Analysis
         self.analysis_setup['communication_score'] = communication_score
@@ -33,10 +37,21 @@ class BulkExperiment:
         self.analysis_setup['cci_type'] = cci_type
 
         # Initialize PPI
+        genes = list(rnaseq_data.index)
+        ppi_data_ = ppi.filter_ppi_by_proteins(ppi_data=ppi_data,
+                                               proteins=genes,
+                                               complex_sep=complex_sep,
+                                               upper_letter_comparison=False,
+                                               interaction_columns=interaction_columns)
+
+        self.ppi_data = ppi.remove_ppi_bidirectionality(ppi_data=ppi_data_,
+                                                        interaction_columns=interaction_columns,
+                                                        verbose=verbose)
         if self.analysis_setup['cci_type'] == 'undirected':
             self.ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
                                                           interaction_columns=interaction_columns,
                                                           verbose=verbose)
+            self.ref_ppi = self.ppi_data
         else:
             self.ref_ppi = None
 
@@ -48,6 +63,7 @@ class BulkExperiment:
                                                               ppi_data=self.ppi_data,
                                                               cutoff_setup=self.cutoff_setup,
                                                               analysis_setup=self.analysis_setup,
+                                                              complex_sep=complex_sep,
                                                               verbose=verbose)
 
     def compute_pairwise_cci_scores(self, cci_score=None, use_ppi_score=False, verbose=True):
@@ -66,24 +82,22 @@ class BulkExperiment:
                                                                      verbose=verbose)
 
 
-class SingleCellExperiment:
-    compute_pairwise_ccc_scores = BulkExperiment.compute_pairwise_cci_scores
-    compuse_pairwise_communication_scores =  BulkExperiment.compute_pairwise_communication_scores
-
+class SingleCellInteractions:
+    compute_pairwise_ccc_scores = BulkInteractions.compute_pairwise_cci_scores
+    compuse_pairwise_communication_scores =  BulkInteractions.compute_pairwise_communication_scores
 
     def __init__(self, rnaseq_data, ppi_data, metadata=None, interaction_columns=('A', 'B'),
                  communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
                  expression_threshold=0.20, aggregation_method='nn_cell_fraction', barcode_col='barcodes',
-                 celltype_col='cell_types', verbose=False):
+                 celltype_col='cell_types', complex_sep=None, verbose=False):
         # Placeholders
         self.rnaseq_data = rnaseq_data
-        self.ppi_data = ppi.remove_ppi_bidirectionality(ppi_data=ppi_data,
-                                                        interaction_columns=interaction_columns,
-                                                        verbose=verbose)
-        self.ref_ppi = self.ppi_data
         self.metadata = metadata
+        self.index_col = barcode_col
+        self.group_col = celltype_col
         self.analysis_setup = dict()
         self.cutoff_setup = dict()
+        self.complex_sep = complex_sep
 
         # Analysis
         self.analysis_setup['communication_score'] = communication_score
@@ -91,10 +105,20 @@ class SingleCellExperiment:
         self.analysis_setup['cci_type'] = cci_type
 
         # Initialize PPI
+        genes = list(rnaseq_data.index)
+        ppi_data_ = ppi.filter_ppi_by_proteins(ppi_data=ppi_data,
+                                               proteins=genes,
+                                               complex_sep=complex_sep,
+                                               upper_letter_comparison=False,
+                                               interaction_columns=interaction_columns)
+        self.ppi_data = ppi.remove_ppi_bidirectionality(ppi_data=ppi_data_,
+                                                        interaction_columns=interaction_columns,
+                                                        verbose=verbose)
         if self.analysis_setup['cci_type'] == 'undirected':
             self.ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
                                                           interaction_columns=interaction_columns,
                                                           verbose=verbose)
+            self.ref_ppi = self.ppi_data
         else:
             self.ref_ppi = None
 
@@ -120,17 +144,19 @@ class SingleCellExperiment:
                                                               ppi_data=self.ppi_data,
                                                               cutoff_setup=self.cutoff_setup,
                                                               analysis_setup=self.analysis_setup,
+                                                              complex_sep=complex_sep,
                                                               verbose=verbose)
 
 
-class SpatialSingleCellExperiment:
+class SpatialSingleCellInteractions:
     def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, spatial_dict, score_type='binary', score_metric='bray_curtis',
                  n_jobs=1, verbose=True):
         pass
         # TODO IMPLEMENT SPATIAL EXPERIMENT
 
 
-def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_setup, excluded_cells=None, verbose=True):
+def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_setup, excluded_cells=None,
+                                 complex_sep=None, verbose=True):
     if excluded_cells is None:
         excluded_cells = []
 
@@ -142,6 +168,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
                                                 communication_score=analysis_setup['communication_score'],
                                                 cci_score=analysis_setup['cci_score'],
                                                 cci_type=analysis_setup['cci_type'],
+                                                complex_sep=complex_sep,
                                                 verbose=verbose)
     return interaction_space
 
