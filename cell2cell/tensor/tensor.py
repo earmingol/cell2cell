@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import tensorly as tl
 
-from tqdm.auto import tqdm
 from collections import OrderedDict
 
 from cell2cell.core.communication_scores import compute_ccc_matrix
@@ -282,6 +281,7 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
 
     if fill_with_order_elements:
         metadata = [pd.DataFrame(index=names) for names in interaction_tensor.order_names]
+        metadata[1] = pd.DataFrame(index=["Ligand-Receptor Pairs"]*len(metadata[1])) # To avoid having thousands of different categories (each LR pair would be one)
     else:
         metadata = [pd.DataFrame(index=names) if (meta is not None) else None for names, meta in zip(interaction_tensor.order_names, metadata_dicts)]
 
@@ -295,3 +295,37 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
             meta.reset_index(inplace=True)
     return metadata
 
+
+def interactions_to_tensor(interactions, experiment='single_cell', context_names=None, how='inner',
+                           communication_score='expression_product', upper_letter_comparison=True, verbose=True):
+    '''Experiment either "bulk" or "single_cell'''
+    ppis = []
+    rnaseq_matrices = []
+    complex_sep = interactions[0].complex_sep
+    interaction_columns = interactions[0].interaction_columns
+    for Int_ in interactions:
+        if Int_.analysis_setup['cci_type'] == 'undirected':
+            ppis.append(Int_.ref_ppi)
+        else:
+            ppis.append(Int_.ppi_data)
+
+        if experiment == 'single_cell':
+            rnaseq_matrices.append(Int_.aggregated_expression)
+        elif experiment == 'bulk':
+            rnaseq_matrices.append(Int_.rnaseq_data)
+        else:
+            raise ValueError("experiment must be 'single_cell' or 'bulk'")
+
+    ppi_data = pd.concat(ppis)
+
+    tensor = InteractionTensor(rnaseq_matrices=rnaseq_matrices,
+                               ppi_data=ppi_data,
+                               context_names=context_names,
+                               how=how,
+                               complex_sep=complex_sep,
+                               interaction_columns=interaction_columns,
+                               communication_score=communication_score,
+                               upper_letter_comparison=upper_letter_comparison,
+                               verbose=verbose
+                               )
+    return tensor
