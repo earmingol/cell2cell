@@ -96,7 +96,7 @@ def filter_ppi_by_proteins(ppi_data, proteins, complex_sep=None, upper_letter_co
         integrated_ppi = filter_complex_ppi_by_proteins(ppi_data=integrated_ppi,
                                                         proteins=prots,
                                                         complex_sep=complex_sep,
-                                                        upper_letter_comparison=False,
+                                                        upper_letter_comparison=False, # Because it was ran above
                                                         interaction_columns=interaction_columns,
                                                         )
     else:
