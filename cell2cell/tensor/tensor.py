@@ -317,6 +317,7 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
             raise ValueError("experiment must be 'single_cell' or 'bulk'")
 
     ppi_data = pd.concat(ppis)
+    ppi_data = ppi_data.drop_duplicates().reset_index(drop=True)
 
     tensor = InteractionTensor(rnaseq_matrices=rnaseq_matrices,
                                ppi_data=ppi_data,
