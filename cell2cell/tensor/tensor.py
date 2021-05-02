@@ -281,7 +281,6 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
 
     if fill_with_order_elements:
         metadata = [pd.DataFrame(index=names) for names in interaction_tensor.order_names]
-        metadata[1] = pd.DataFrame(index=["Ligand-Receptor Pairs"]*len(metadata[1])) # To avoid having thousands of different categories (each LR pair would be one)
     else:
         metadata = [pd.DataFrame(index=names) if (meta is not None) else None for names, meta in zip(interaction_tensor.order_names, metadata_dicts)]
 
@@ -289,8 +288,11 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
         if meta is not None:
             if metadata_dicts[i] is not None:
                 meta['Category'] = [metadata_dicts[i][idx] for idx in meta.index]
-            else:
-                meta['Category'] = meta.index
+            else: # dict is None and fill with order elements TRUE
+                if i != 1: # Not LR pairs
+                    meta['Category'] = meta.index
+                else: # LR pairs
+                    meta['Category'] = len(meta.index) * ['Ligand-receptor pair']
             meta.index.name = 'Element'
             meta.reset_index(inplace=True)
     return metadata
