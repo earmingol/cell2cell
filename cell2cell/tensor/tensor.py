@@ -6,7 +6,7 @@ import tensorly as tl
 
 from collections import OrderedDict
 
-from cell2cell.core.communication_scores import compute_ccc_matrix
+from cell2cell.core.communication_scores import compute_ccc_matrix, aggregate_ccc_matrices
 from cell2cell.preprocessing.ppi import get_genes_from_complexes
 from cell2cell.preprocessing.rnaseq import add_complexes_to_expression
 from cell2cell.preprocessing.ppi import filter_ppi_by_proteins
@@ -126,7 +126,13 @@ class BaseTensor():
 class InteractionTensor(BaseTensor):
 
     def __init__(self, rnaseq_matrices, ppi_data, context_names=None, how='inner', communication_score='expression_product',
-                 complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'), verbose=True):
+                 complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'),
+                 group_ppi_by=None, group_ppi_method='gmean', verbose=True):
+        # Asserts
+        if group_ppi_by is not None:
+            assert group_ppi_by in ppi_data.columns, "Using {} for grouping PPIs is not possible. Not present among columns in ppi_data".format(group_ppi_by)
+
+
         # Init BaseTensor
         BaseTensor.__init__(self)
 
@@ -156,6 +162,8 @@ class InteractionTensor(BaseTensor):
                                                                          complex_sep=complex_sep,
                                                                          upper_letter_comparison=upper_letter_comparison,
                                                                          interaction_columns=interaction_columns,
+                                                                         group_ppi_by=group_ppi_by,
+                                                                         group_ppi_method=group_ppi_method,
                                                                          verbose=verbose)
 
         # Generate names for the elements in each dimension (order) in the tensor
@@ -183,7 +191,8 @@ class PreBuiltTensor(BaseTensor):
 
 
 def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communication_score='expression_product',
-                             complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'), verbose=True):
+                             complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'),
+                             group_ppi_by=None, group_ppi_method='gmean', verbose=True):
 
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
     df_cols = [list(rnaseq.columns) for rnaseq in rnaseq_matrices]
@@ -222,6 +231,15 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
                                    communication_score=communication_score,
                                    interaction_columns=interaction_columns) for rnaseq in rnaseq_matrices]
 
+    if group_ppi_by is not None:
+        ppi_names = [group for group, _ in ppi_data_.groupby(group_ppi_by)]
+        tensors = [aggregate_ccc_tensor(ccc_tensor=t,
+                                        ppi_data=ppi_data_,
+                                        group_ppi_by=group_ppi_by,
+                                        group_ppi_method=group_ppi_method) for t in tensors]
+    else:
+        ppi_names = [row[interaction_columns[0]] + '^' + row[interaction_columns[1]] for idx, row in ppi_data_.iterrows()]
+
     # Generate mask:
     if how == 'outer':
         mask_tensor = []
@@ -229,13 +247,11 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
             rna_cells = list(rnaseq.columns)
             ppi_mask = pd.DataFrame(np.ones((len(rna_cells), len(rna_cells))), columns=rna_cells, index=rna_cells)
             ppi_mask = ppi_mask.reindex(cells, fill_value=0.).reindex(cells, axis='columns', fill_value=0.) # Here we mask those cells that are not in the rnaseq data
-            rna_tensor = [ppi_mask.values for i in range(ppi_data_.shape[0])] # Replicate the mask across all PPIs in ppi_data_
+            rna_tensor = [ppi_mask.values for i in range(len(ppi_names))] # Replicate the mask across all PPIs in ppi_data_
             mask_tensor.append(rna_tensor)
         mask_tensor = np.asarray(mask_tensor)
     else:
         mask_tensor = None
-
-    ppi_names = [row[interaction_columns[0]] + '^' + row[interaction_columns[1]] for idx, row in ppi_data_.iterrows()]
     return tensors, genes, cells, ppi_names, mask_tensor
 
 
@@ -251,6 +267,17 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
                                              prot_b_exp=w,
                                              communication_score=communication_score).tolist())
     return ccc_tensor
+
+
+def aggregate_ccc_tensor(ccc_tensor, ppi_data, group_ppi_by=None, group_ppi_method='gmean'):
+    tensor_ = np.array(ccc_tensor)
+    aggregated_tensor = []
+    for group, df in ppi_data.groupby(group_ppi_by):
+        lr_idx = list(df.index)
+        ccc_matrices = tensor_[lr_idx]
+        aggregated_tensor.append(aggregate_ccc_matrices(ccc_matrices=ccc_matrices,
+                                                        method=group_ppi_method).tolist())
+    return aggregated_tensor
 
 
 def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order_elements=True):
@@ -279,6 +306,12 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
     '''
     assert (len(interaction_tensor.tensor.shape) == len(metadata_dicts)), "metadata_dicts should be of the same size as the number of orders/dimensions in the tensor"
 
+    default_cats = {0 : 'Context',
+                    1 : 'Ligand-receptor pair',
+                    2 : 'Sender cell',
+                    3 : 'Receiver cell'
+                    }
+
     if fill_with_order_elements:
         metadata = [pd.DataFrame(index=names) for names in interaction_tensor.order_names]
     else:
@@ -289,10 +322,10 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
             if metadata_dicts[i] is not None:
                 meta['Category'] = [metadata_dicts[i][idx] for idx in meta.index]
             else: # dict is None and fill with order elements TRUE
-                if i != 1: # Not LR pairs
+                if len(meta.index) < 75:
                     meta['Category'] = meta.index
-                else: # LR pairs
-                    meta['Category'] = len(meta.index) * ['Ligand-receptor pair']
+                else:
+                    meta['Category'] = len(meta.index) * [default_cats[i]]
             meta.index.name = 'Element'
             meta.reset_index(inplace=True)
     return metadata

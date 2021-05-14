@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import numpy as np
+from scipy.stats.mstats import gmean
 
 
 def get_binary_scores(cell1, cell2, ppi_score=None):
@@ -49,9 +50,21 @@ def score_expression_mean(c1, c2):
     return (c1 + c2)/2.
 
 
-
 def compute_ccc_matrix(prot_a_exp, prot_b_exp, communication_score='expression_product'):
     if communication_score == 'expression_product':
         return np.outer(prot_a_exp, prot_b_exp)
     elif communication_score == 'expression_mean':
         return (np.outer(prot_a_exp, np.ones(prot_b_exp.shape)) + np.outer(np.ones(prot_a_exp.shape), prot_b_exp)) / 2.
+
+
+def aggregate_ccc_matrices(ccc_matrices, method='gmean'):
+    if method == 'gmean':
+        aggregated_ccc_matrix = gmean(ccc_matrices)
+    elif method == 'sum':
+        aggregated_ccc_matrix = np.nansum(ccc_matrices, axis=0)
+    elif method == 'mean':
+        aggregated_ccc_matrix = np.nanmean(ccc_matrices, axis=0)
+    else:
+        raise ValueError("Not a valid method")
+
+    return aggregated_ccc_matrix
