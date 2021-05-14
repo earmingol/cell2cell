@@ -19,8 +19,12 @@ def pcoa_3dplot(interaction_space, metadata, sample_col='#SampleID', group_col='
     elif (type(interaction_space) is np.ndarray) or (type(interaction_space) is pd.core.frame.DataFrame):
         print('Interaction space detected as a distance matrix')
         distance_matrix = interaction_space
+    elif hasattr(interaction_space, 'interaction_space'):
+        print('Interaction space detected as a Interactions class')
+        distance_matrix = interaction_space.interaction_space.distance_matrix
     else:
-        raise ValueError('First run InteractionSpace.compute_pairwise_interactions() to generate a distance matrix.')
+        raise ValueError('First run the method compute_pairwise_interactions() in your interaction' + \
+                         ' object to generate a distance matrix.')
 
     # Drop excluded cells
     if excluded_cells is not None:

@@ -3,6 +3,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+import cell2cell.analysis
 from cell2cell.clustering import compute_linkage
 from cell2cell.clustering.cluster_interactions import compute_distance
 from cell2cell.plotting.aesthetics import get_colors_from_labels
@@ -19,8 +20,12 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
     elif (type(interaction_space) is np.ndarray) or (type(interaction_space) is pd.core.frame.DataFrame):
         print('Interaction space detected as a communication matrix')
         df_ = interaction_space
+    elif hasattr(interaction_space, 'interaction_space'):
+        print('Interaction space detected as a Interactions class')
+        df_ = interaction_space.interaction_space.interaction_elements['communication_matrix'].copy()
     else:
-        raise ValueError('First run InteractionSpace.compute_pairwise_communication_scores() to generate a communication matrix.')
+        raise ValueError('First run the method compute_pairwise_communication_scores() in your interaction' + \
+                         ' object to generate a communication matrix.')
 
     if excluded_cells is not None:
         included_cells = []

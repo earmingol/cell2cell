@@ -22,7 +22,17 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
     '''
     if hasattr(interaction_space, 'interaction_elements'):
         if 'communication_matrix' not in interaction_space.interaction_elements.keys():
-            raise ValueError('Run compute_pairwise_communication_scores method before generating circos plots.')
+            raise ValueError('Run the method compute_pairwise_communication_scores() before generating circos plots.')
+        else:
+            readable_ccc = get_readable_ccc_matrix(interaction_space.interaction_elements['communication_matrix'])
+    elif hasattr(interaction_space, 'interaction_space'):
+        if 'communication_matrix' not in interaction_space.interaction_space.interaction_elements.keys():
+            raise ValueError('Run the method compute_pairwise_communication_scores() before generating circos plots.')
+        else:
+            readable_ccc = get_readable_ccc_matrix(interaction_space.interaction_space.interaction_elements['communication_matrix'])
+    else:
+        raise ValueError('Not a valid interaction_space')
+
 
     # Figure setups
     if ax is None:
@@ -50,8 +60,6 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
                               ligands=ligands,
                               receptors=receptors
                               )
-
-    readable_ccc = get_readable_ccc_matrix(interaction_space.interaction_elements['communication_matrix'])
 
     # Build network
     G = _build_network(sender_cells=sender_cells,

@@ -22,8 +22,13 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
         print('Interaction space detected as a distance matrix')
         distance_matrix = interaction_space
         space_type = 'matrix'
+    elif hasattr(interaction_space, 'interaction_space'):
+        print('Interaction space detected as a Interactions class')
+        distance_matrix = interaction_space.interaction_space.distance_matrix
+        space_type = 'class'
     else:
-        raise ValueError('First run InteractionSpace.compute_pairwise_interactions() to generate a distance matrix.')
+        raise ValueError('First run the method compute_pairwise_interactions() in your interaction' + \
+                         ' object to generate a distance matrix.')
 
     # Drop excluded cells
     if excluded_cells is not None:
