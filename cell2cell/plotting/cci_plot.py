@@ -24,8 +24,13 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
         space_type = 'matrix'
     elif hasattr(interaction_space, 'interaction_space'):
         print('Interaction space detected as a Interactions class')
-        distance_matrix = interaction_space.interaction_space.distance_matrix
-        space_type = 'class'
+        if not hasattr(interaction_space.interaction_space, 'distance_matrix'):
+            raise ValueError('First run the method compute_pairwise_interactions() in your interaction' + \
+                             ' object to generate a distance matrix.')
+        else:
+            interaction_space = interaction_space.interaction_space
+            distance_matrix = interaction_space.distance_matrix
+            space_type = 'class'
     else:
         raise ValueError('First run the method compute_pairwise_interactions() in your interaction' + \
                          ' object to generate a distance matrix.')
@@ -90,6 +95,10 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
                                        cbar_title=cbar_title,
                                        cbar_fontsize=cbar_fontsize,
                                        **kwargs_)
+
+    if ~symmetric:
+        hier.ax_heatmap.set_xlabel('Receiver cells', fontsize=cbar_fontsize)
+        hier.ax_heatmap.set_ylabel('Sender cells', fontsize=cbar_fontsize)
 
     if filename is not None:
         plt.savefig(filename, dpi=300,

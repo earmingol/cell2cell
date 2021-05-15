@@ -9,7 +9,7 @@ from cell2cell.external import pcoa
 from cell2cell.plotting.aesthetics import get_colors_from_labels
 
 
-def pcoa_3dplot(interaction_space, metadata, sample_col='#SampleID', group_col='Groups', pcoa_method='eigh',
+def pcoa_3dplot(interaction_space, metadata=None, sample_col='#SampleID', group_col='Groups', pcoa_method='eigh',
                 meta_cmap='gist_rainbow', title='', axis_size=14, legend_size=12, figsize=(6, 5), view_angles=(30, 135),
                 filename=None, colors=None, excluded_cells=None):
 
@@ -21,7 +21,11 @@ def pcoa_3dplot(interaction_space, metadata, sample_col='#SampleID', group_col='
         distance_matrix = interaction_space
     elif hasattr(interaction_space, 'interaction_space'):
         print('Interaction space detected as a Interactions class')
-        distance_matrix = interaction_space.interaction_space.distance_matrix
+        if not hasattr(interaction_space.interaction_space, 'distance_matrix'):
+            raise ValueError('First run the method compute_pairwise_interactions() in your interaction' + \
+                             ' object to generate a distance matrix.')
+        else:
+            distance_matrix = interaction_space.interaction_space.distance_matrix
     else:
         raise ValueError('First run the method compute_pairwise_interactions() in your interaction' + \
                          ' object to generate a distance matrix.')
@@ -42,6 +46,11 @@ def pcoa_3dplot(interaction_space, metadata, sample_col='#SampleID', group_col='
     #ax = fig.add_subplot(111, projection='3d')
 
     ax = Axes3D(fig)
+
+    if metadata is None:
+        meta_ = pd.DataFrame()
+        meta_[sample_col] = list(distance_matrix.columns)
+        meta_[group_col] = list(distance_matrix.columns)
 
     meta_ = metadata.set_index(sample_col)
     if excluded_cells is not None:

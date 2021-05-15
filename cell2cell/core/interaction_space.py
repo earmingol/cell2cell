@@ -145,6 +145,8 @@ class InteractionSpace():
         if ('B' in self.ppi_data.columns) & (prot_b != 'B'):
             self.ppi_data = self.ppi_data.drop(columns='B')
         self.ppi_data = self.ppi_data.rename(columns={prot_a : 'A', prot_b : 'B'})
+        if 'score' not in self.ppi_data.columns:
+            self.ppi_data = self.ppi_data.assign(score=1.0)
 
         self.modified_rnaseq = integrate_data.get_modified_rnaseq(rnaseq_data=rnaseq_data,
                                                                   communication_score=self.communication_score,
@@ -323,7 +325,7 @@ class InteractionSpace():
 
         # Ref PPI data
         if ref_ppi_data is None:
-            ref_index = self.ppi_data.apply(lambda row: (row[0], row[1]), axis=1)
+            ref_index = self.ppi_data.apply(lambda row: (row['A'], row['B']), axis=1)
             keep_index = list(range(self.ppi_data.shape[0]))
         else:
             ref_ppi = ref_ppi_data.copy()

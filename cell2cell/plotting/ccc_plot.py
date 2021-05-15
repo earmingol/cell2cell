@@ -16,13 +16,21 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
 
     if hasattr(interaction_space, 'interaction_elements'):
         print('Interaction space detected as an InteractionSpace class')
-        df_ = interaction_space.interaction_elements['communication_matrix'].copy()
+        if 'communication_matrix' not in interaction_space.interaction_elements.keys():
+            raise ValueError('First run the method compute_pairwise_communication_scores() in your interaction' + \
+                             ' object to generate a communication matrix.')
+        else:
+            df_ = interaction_space.interaction_elements['communication_matrix'].copy()
     elif (type(interaction_space) is np.ndarray) or (type(interaction_space) is pd.core.frame.DataFrame):
         print('Interaction space detected as a communication matrix')
         df_ = interaction_space
     elif hasattr(interaction_space, 'interaction_space'):
         print('Interaction space detected as a Interactions class')
-        df_ = interaction_space.interaction_space.interaction_elements['communication_matrix'].copy()
+        if 'communication_matrix' not in interaction_space.interaction_space.interaction_elements.keys():
+            raise ValueError('First run the method compute_pairwise_communication_scores() in your interaction' + \
+                             ' object to generate a communication matrix.')
+        else:
+            df_ = interaction_space.interaction_space.interaction_elements['communication_matrix'].copy()
     else:
         raise ValueError('First run the method compute_pairwise_communication_scores() in your interaction' + \
                          ' object to generate a communication matrix.')
