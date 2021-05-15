@@ -9,7 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from cell2cell.analysis import initialize_interaction_space
+import cell2cell.core.interaction_space as ispace
 from cell2cell.preprocessing import shuffle_rows_in_df
 
 from sklearn.utils import shuffle
@@ -129,7 +129,7 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
 
 
 def run_cellwise_permutation(rnaseq_data, ppi_data, genes, cutoff_setup, analysis_setup, permutations=10000, shuffle_type='gene_labels',
-                             excluded_cells=None, use_ppi_score=False, consider_size=True, verbose = False):
+                             excluded_cells=None, consider_size=True, verbose=False):
     '''
     shuffle_type : 'genes, gene_labels, cell_labels
     '''
@@ -169,13 +169,14 @@ def run_cellwise_permutation(rnaseq_data, ppi_data, genes, cutoff_setup, analysi
         else:
             raise ValueError('Not a valid shuffle_type.')
 
-        interaction_space = initialize_interaction_space(rnaseq_data=shuffled_rnaseq_data.loc[genes, included_cells],
-                                                         ppi_data=ppi_data,
-                                                         cutoff_setup=cutoff_setup,
-                                                         analysis_setup=analysis_setup,
-                                                         excluded_cells=excluded_cells,
-                                                         use_ppi_score=use_ppi_score,
-                                                         verbose=verbose)
+
+        interaction_space = ispace.InteractionSpace(rnaseq_data=shuffled_rnaseq_data.loc[genes, included_cells],
+                                                    ppi_data=ppi_data,
+                                                    gene_cutoffs=cutoff_setup,
+                                                    communication_score=analysis_setup['communication_score'],
+                                                    cci_score=analysis_setup['cci_score'],
+                                                    cci_type=analysis_setup['cci_type'],
+                                                    verbose=verbose)
 
         # Keep scores
         cci = interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
@@ -198,13 +199,13 @@ def run_cellwise_permutation(rnaseq_data, ppi_data, genes, cutoff_setup, analysi
             diag = np.concatenate([diag, iter_diag], axis=0)
 
     # Base CCI scores
-    base_interaction_space = initialize_interaction_space(rnaseq_data=rnaseq_data_,
-                                                          ppi_data=ppi_data,
-                                                          cutoff_setup=cutoff_setup,
-                                                          analysis_setup=analysis_setup,
-                                                          excluded_cells=excluded_cells,
-                                                          use_ppi_score=use_ppi_score,
-                                                          verbose=verbose)
+    base_interaction_space = ispace.InteractionSpace(rnaseq_data=rnaseq_data_[included_cells],
+                                                     ppi_data=ppi_data,
+                                                     gene_cutoffs=cutoff_setup,
+                                                     communication_score=analysis_setup['communication_score'],
+                                                     cci_score=analysis_setup['cci_score'],
+                                                     cci_type=analysis_setup['cci_type'],
+                                                     verbose=verbose)
 
     # Keep scores
     base_cci = base_interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
