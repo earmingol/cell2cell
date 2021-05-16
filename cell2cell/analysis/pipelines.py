@@ -78,6 +78,9 @@ class BulkInteractions:
         if ref_ppi_data is None:
             ref_ppi_data = self.ref_ppi
 
+        if cci_type is None:
+            cci_type = 'directed'
+
         self.interaction_space.compute_pairwise_communication_scores(communication_score=communication_score,
                                                                      use_ppi_score=use_ppi_score,
                                                                      ref_ppi_data=ref_ppi_data,
