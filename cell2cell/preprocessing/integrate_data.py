@@ -8,7 +8,7 @@ from cell2cell.preprocessing import ppi, gene_ontology, rnaseq
 def get_modified_rnaseq(rnaseq_data, communication_score='expression_thresholding', **kwargs):
     if communication_score == 'expression_thresholding':
         modified_rnaseq = get_thresholded_rnaseq(rnaseq_data, kwargs['cutoffs'])
-    elif communication_score == 'expression_product':
+    elif (communication_score == 'expression_product') or (communication_score == 'expression_mean'):
         modified_rnaseq = rnaseq_data.copy()
     else:
         # As other score types are implemented, other elif condition will be included here.
