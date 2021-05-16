@@ -48,9 +48,9 @@ def pcoa_3dplot(interaction_space, metadata=None, sample_col='#SampleID', group_
     ax = Axes3D(fig)
 
     if metadata is None:
-        meta_ = pd.DataFrame()
-        meta_[sample_col] = list(distance_matrix.columns)
-        meta_[group_col] = list(distance_matrix.columns)
+        metadata = pd.DataFrame()
+        metadata[sample_col] = list(distance_matrix.columns)
+        metadata[group_col] = list(distance_matrix.columns)
 
     meta_ = metadata.set_index(sample_col)
     if excluded_cells is not None:
