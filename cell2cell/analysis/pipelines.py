@@ -45,10 +45,10 @@ class BulkInteractions:
                                                         interaction_columns=self.interaction_columns,
                                                         verbose=verbose)
         if self.analysis_setup['cci_type'] == 'undirected':
+            self.ref_ppi = self.ppi_data.copy()
             self.ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
                                                           interaction_columns=self.interaction_columns,
                                                           verbose=verbose)
-            self.ref_ppi = self.ppi_data
         else:
             self.ref_ppi = None
 
@@ -122,10 +122,10 @@ class SingleCellInteractions:
                                                         interaction_columns=interaction_columns,
                                                         verbose=verbose)
         if self.analysis_setup['cci_type'] == 'undirected':
+            self.ref_ppi = self.ppi_data
             self.ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
                                                           interaction_columns=interaction_columns,
                                                           verbose=verbose)
-            self.ref_ppi = self.ppi_data
         else:
             self.ref_ppi = None
 
