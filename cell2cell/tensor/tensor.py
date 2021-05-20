@@ -45,7 +45,7 @@ class BaseTensor():
         if tensor_dim == 4:
             order_names = ['Context', 'LRs', 'Sender', 'Receiver']
         elif tensor_dim > 4:
-            order_names = ['Context-{}'.format(i+1) for i in range(tensor_dim-3)]
+            order_names = ['Context-{}'.format(i+1) for i in range(tensor_dim-3)] + ['LRs', 'Sender', 'Receiver']
         elif tensor_dim == 3:
             order_names = ['LRs', 'Sender', 'Receiver']
         else: raise ValueError('Too few dimensions in the tensor')
