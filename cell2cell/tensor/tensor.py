@@ -30,6 +30,7 @@ class BaseTensor():
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
                                      **kwargs):
+        tensor_dim = len(self.tensor.shape)
         tf = _compute_tensor_factorization(tensor=self.tensor,
                                            rank=rank,
                                            tf_type=tf_type,
@@ -41,7 +42,13 @@ class BaseTensor():
 
         self.tl_object = tf
         factor_names = ['Factor {}'.format(i) for i in range(1, rank+1)]
-        order_names = ['Context', 'LRs', 'Sender', 'Receiver']
+        if tensor_dim == 4:
+            order_names = ['Context', 'LRs', 'Sender', 'Receiver']
+        elif tensor_dim > 4:
+            order_names = ['Context-{}'.format(i+1) for i in range(tensor_dim-3)]
+        elif tensor_dim == 3:
+            order_names = ['LRs', 'Sender', 'Receiver']
+        else: raise ValueError('Too few dimensions in the tensor')
         self.factors = OrderedDict(zip(order_names,
                                        [pd.DataFrame(f, index=idx, columns=factor_names) for f, idx in zip(tf.factors, self.order_names)]))
         self.rank = rank
@@ -182,12 +189,13 @@ class InteractionTensor(BaseTensor):
 
 
 class PreBuiltTensor(BaseTensor):
-    def __init__(self, tensor, order_names):
+    def __init__(self, tensor, order_names, mask=None):
         # Init BaseTensor
         BaseTensor.__init__(self)
 
         self.tensor = tl.tensor(tensor)
         self.order_names = order_names
+        self.mask = mask
 
 
 def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communication_score='expression_product',
