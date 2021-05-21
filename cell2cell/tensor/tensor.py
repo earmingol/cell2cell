@@ -15,6 +15,51 @@ from cell2cell.plotting.tensor_factors_plot import plot_elbow, plot_multiple_run
 
 
 class BaseTensor():
+    '''Empty base tensor class that contains the main functions for the Tensor Factorization of a Communication Tensor
+
+    Attributes
+    ----------
+    communication_score : str
+        Type of communication score to infer the potential use of a given ligand-receptor pair by a pair of
+        cells/tissues/samples. Available communication_scores are:
+        - 'expression_mean' : Computes the average between the expression of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a ligand from a sender cell and the
+                                expression of a receptor on a receiver cell.
+
+    how : str
+        Approach to consider cell types and genes present across multiple contexts.
+        - 'inner' : Considers only cell types and genes that are present in all contexts (intersection).
+        - 'outer' : Considers all cell types and genes present across contexts (union).
+
+    tensor : tensorly.tensor
+        Tensor object created with the library tensorly.
+
+    genes : list
+        List of strings detailing the genes used through all contexts. Obtained depending on the attribute 'how'.
+
+    cells : list
+        List of strings detailing the cells used through all contexts. Obtained depending on the attribute 'how'.
+
+    order_names : list
+        List of lists containing the string names of each element in each of the dimensions or orders in the tensor. For
+        a 4D-Communication tensor, the first list should contain the names of the contexts, the second the names of the
+        ligand-receptor interactions, the third the names of the sender cells and the fourth the names of the receiver
+        cells.
+
+    tl_object : ndarray list
+        List of factors of the Tensor Factorization through tensorly.
+
+    factors : dict
+        Ordered dictionary containing a dataframe with the factor loadings for each dimension/order of the tensor.
+
+    rank : int
+        Rank of the Tensor Factorization (number of factors to deconvolve the original tensor).
+
+    mask : ndarray list
+        Helps avoiding missing values during a tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor that is False/0 where the value is missing and True/1 where it is not.
+    '''
     def __init__(self):
         # Save variables for this class
         self.communication_score = None
@@ -30,6 +75,41 @@ class BaseTensor():
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
                                      **kwargs):
+        '''Performs a Tensor Factorization
+
+        Parameters
+        ---------
+        rank : int
+            Rank of the Tensor Factorization (number of factors to deconvolve the original tensor).
+
+        tf_type : str, default='non_negative_cp'
+            Type of Tensor Factorization.
+            - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
+
+        init : str, default='svd'
+            Initialization method for computing the Tensor Factorization.
+            {‘svd’, ‘random’}
+
+        random_state : int, default=None
+            Seed for randomization.
+
+        verbose : boolean, default=False
+            Whether printing or not steps of the analysis.
+
+        **kwargs : dict
+            Extra arguments for the tensor factorization according to inputs in tensorly.
+
+
+        Returns
+        -------
+        There are no returns, instead the attributes of the Tensor class are updated.
+
+        self.factors : dict
+            Ordered dictionary containing a dataframe with the factor loadings for each dimension/order of the tensor.
+
+        self.rank : int
+            Rank of the Tensor Factorization (number of factors to deconvolve the original tensor).
+        '''
         tensor_dim = len(self.tensor.shape)
         tf = _compute_tensor_factorization(tensor=self.tensor,
                                            rank=rank,
@@ -48,7 +128,8 @@ class BaseTensor():
             order_names = ['Context-{}'.format(i+1) for i in range(tensor_dim-3)] + ['LRs', 'Sender', 'Receiver']
         elif tensor_dim == 3:
             order_names = ['LRs', 'Sender', 'Receiver']
-        else: raise ValueError('Too few dimensions in the tensor')
+        else:
+            raise ValueError('Too few dimensions in the tensor')
         self.factors = OrderedDict(zip(order_names,
                                        [pd.DataFrame(f, index=idx, columns=factor_names) for f, idx in zip(tf.factors, self.order_names)]))
         self.rank = rank
@@ -57,6 +138,65 @@ class BaseTensor():
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', random_state=None,
                              automatic_elbow=True, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
                              verbose=False, **kwargs):
+        '''Elbow analysis on the error achieved by the Tensor Factorization for selecting the number of factors to use.
+        A plot is made with the results.
+
+        Parameters
+        ----------
+        upper_rank : int, default=50
+            Upper bound of ranks to explore with the elbow analysis.
+
+        runs : int, default=20
+            Number of tensor factorization performed for a given rank. Each factorization varies in the seed of
+            initialization.
+
+        tf_type : str, default='non_negative_cp'
+            Type of Tensor Factorization.
+            - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
+
+        init : str, default='svd'
+            Initialization method for computing the Tensor Factorization.
+            {‘svd’, ‘random’}
+
+        random_state : int, default=None
+            Seed for randomization.
+
+        automatic_elbow : boolean, default=True
+            Whether using an automatic strategy to find the elbow. If True, the method implemented by the package kneed
+            is used.
+
+        mask : ndarray list, default=None
+            Helps avoiding missing values during a tensor factorization. A mask should be a boolean array of the same
+            shape as the original tensor that is False/0 where the value is missing and True/1 where it is not.
+
+        ci : str, default='std'
+            Confidence interval for representing the multiple runs in each rank.
+            {'std', '95%'}
+
+        figsize : tuple, default=(4, 2.25)
+            Figure size, width by height
+
+        fontsize : int, default=14
+            Fontsize for axis labels.
+
+        filename : str, default=None
+            Path to save the figure of the elbow analysis. If None, the figure is not saved.
+
+        verbose : boolean, default=False
+            Whether printing or not steps of the analysis.
+
+        **kwargs : dict
+            Extra arguments for the tensor factorization according to inputs in tensorly.
+
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            Figure object made with matplotlib
+
+        loss : list
+            List of normalized errors for each rank. Here the errors are te average across distinct runs for each rank.
+        '''
         # Run analysis
         if verbose:
             print('Running Elbow Analysis')
@@ -81,7 +221,6 @@ class BaseTensor():
                              fontsize=fontsize,
                              filename=filename)
         elif runs > 1:
-
             all_loss = _multiple_runs_elbow_analysis(tensor=self.tensor,
                                                      upper_rank=upper_rank,
                                                      runs=runs,
@@ -119,10 +258,37 @@ class BaseTensor():
 
 
     def get_top_factor_elements(self, order_name, factor_name, top_number=10):
+        '''Obtains the top-elements with higher loadings for a given factor
+
+        Parameters
+        ----------
+        order_name : str
+            Name of the dimension/order in the tensor according to the keys of the dictionary in BaseTensor.factors. The
+            attribute factors is built once the tensor factorization is run.
+
+        factor_name : str
+            Name of one of the factors. E.g., 'Factor 1'
+
+        top_number : int, default=10
+            Number of top-elements to return
+
+
+        Returns
+        -------
+        top_elements : pandas.DataFrame
+            A dataframe with the loadings of the top-elements for the given factor.
+        '''
         top_elements = self.factors[order_name][factor_name].sort_values(ascending=False).head(top_number)
         return top_elements
 
     def export_factor_loadings(self, filename):
+        '''Exports the factor loadings of the tensor into an Excel file
+
+        Parameters
+        ----------
+        filename : str
+            Full path and filename to store the file. E.g., '/home/user/Loadings.xlsx'
+        '''
         writer = pd.ExcelWriter(filename)
         for k, v in self.factors.items():
             v.to_excel(writer, sheet_name=k)
@@ -131,8 +297,70 @@ class BaseTensor():
 
 
 class InteractionTensor(BaseTensor):
+    '''4D-Communication Tensor built from gene expression matrices for different contexts and a list of ligand-receptor
+     pairs
 
-    def __init__(self, rnaseq_matrices, ppi_data, context_names=None, how='inner', communication_score='expression_product',
+    Parameters
+    __________
+    rnaseq_matrices : list
+        A list with dataframes of gene expression wherein the rows are the genes and columns the cell types, tissues or
+        samples.
+
+    ppi_data : pandas.DataFrame
+        A dataframe containing protein-protein interactions (rows). It has to contain at least two columns, one for the
+        first protein partner in the interaction as well as the second protein partner.
+
+    context_names : list, default=None
+        A list of strings containing the names of the corresponding contexts to each rnaseq_matrix. The length of this
+        list must match the length of the list rnaseq_matrices.
+
+    how : str, default='inner'
+        Approach to consider cell types and genes present across multiple contexts.
+        - 'inner' : Considers only cell types and genes that are present in all contexts (intersection).
+        - 'outer' : Considers all cell types and genes present across contexts (union).
+
+    communication_score : str, default='expression_mean'
+        Type of communication score to infer the potential use of a given ligand-receptor pair by a pair of
+        cells/tissues/samples. Available communication_scores are:
+        - 'expression_mean' : Computes the average between the expression of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a ligand from a sender cell and the
+                                expression of a receptor on a receiver cell.
+
+    complex_sep : str, default=None
+        Symbol that separates the protein subunits in a multimeric complex. For example, '&' is the complex_sep for a
+        list of ligand-receptor pairs where a protein partner could be "CD74&CD44".
+
+    upper_letter_comparison : boolean, default=True
+        Whether making uppercase the gene names in the expression matrices and the protein names in the ppi_data to
+        match their names and integrate their respective expression level. Useful when there are inconsistencies
+        in the names between the expression matrix and the ligand-receptor annotations.
+
+    interaction_columns : tuple, default=('A', 'B')
+        Contains the names of the columns where to find the partners in a dataframe of protein-protein interactions. If
+        the list is for ligand-receptor pairs, the first column is for the ligands and the second for the receptors.
+
+    group_ppi_by : str, default=None
+        Column name in the list of PPIs used for grouping individual PPIs into major groups such as signaling pathways.
+
+    group_ppi_method : str, default='gmean'
+        Method for aggregating multiple PPIs into major groups.
+        - 'mean' : Computes the average communication score among all PPIs of the group for a given pair of
+                   cells/tissues/samples
+        - 'gmean' : Computes the geometric mean of the communication scores among all PPIs of the group for a given pair
+                    of cells/tissues/samples
+        - 'sum' : Computes the sum of the communication scores among all PPIs of the group for a given pair of
+                  cells/tissues/samples
+
+    verbose : boolean, default=False
+            Whether printing or not steps of the analysis.
+
+
+    Attributes
+    ----------
+    Same attributes as cell2cell.tensor.BaseTensor
+    '''
+    def __init__(self, rnaseq_matrices, ppi_data, context_names=None, how='inner', communication_score='expression_mean',
                  complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'),
                  group_ppi_by=None, group_ppi_method='gmean', verbose=True):
         # Asserts
@@ -189,6 +417,28 @@ class InteractionTensor(BaseTensor):
 
 
 class PreBuiltTensor(BaseTensor):
+    '''Initializes a cell2cell.tensor.BaseTensor with a prebuilt communication tensor
+
+    Parameters
+    ----------
+    tensor : ndarray list
+        Prebuilt tensor. Could be a list of lists, a numpy array or a tensorly.tensor.
+
+    order_names : list
+        List of lists containing the string names of each element in each of the dimensions or orders in the tensor. For
+        a 4D-Communication tensor, the first list should contain the names of the contexts, the second the names of the
+        ligand-receptor interactions, the third the names of the sender cells and the fourth the names of the receiver
+        cells.
+
+    mask : ndarray list, default=None
+        Helps avoiding missing values during a tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor that is False/0 where the value is missing and True/1 where it is not.
+
+
+    Attributes
+    ----------
+    Same attributes as cell2cell.tensor.BaseTensor
+    '''
     def __init__(self, tensor, order_names, mask=None):
         # Init BaseTensor
         BaseTensor.__init__(self)
@@ -201,6 +451,85 @@ class PreBuiltTensor(BaseTensor):
 def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communication_score='expression_product',
                              complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'),
                              group_ppi_by=None, group_ppi_method='gmean', verbose=True):
+
+    '''Builds a 4D-Communication tensor. Takes the gene expression matrices and the list of PPIs to compute the
+    communication scores between the interacting cells for each PPI. This is done for each context.
+
+    Parameters
+    __________
+    rnaseq_matrices : list
+        A list with dataframes of gene expression wherein the rows are the genes and columns the cell types, tissues or
+        samples.
+
+    ppi_data : pandas.DataFrame
+        A dataframe containing protein-protein interactions (rows). It has to contain at least two columns, one for the
+        first protein partner in the interaction as well as the second protein partner.
+
+    context_names : list, default=None
+        A list of strings containing the names of the corresponding contexts to each rnaseq_matrix. The length of this
+        list must match the length of the list rnaseq_matrices.
+
+    how : str, default='inner'
+        Approach to consider cell types and genes present across multiple contexts.
+        - 'inner' : Considers only cell types and genes that are present in all contexts (intersection).
+        - 'outer' : Considers all cell types and genes present across contexts (union).
+
+    communication_score : str, default='expression_mean'
+        Type of communication score to infer the potential use of a given ligand-receptor pair by a pair of
+        cells/tissues/samples. Available communication_scores are:
+        - 'expression_mean' : Computes the average between the expression of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a ligand from a sender cell and the
+                                expression of a receptor on a receiver cell.
+
+    complex_sep : str, default=None
+        Symbol that separates the protein subunits in a multimeric complex. For example, '&' is the complex_sep for a
+        list of ligand-receptor pairs where a protein partner could be "CD74&CD44".
+
+    upper_letter_comparison : boolean, default=True
+        Whether making uppercase the gene names in the expression matrices and the protein names in the ppi_data to
+        match their names and integrate their respective expression level. Useful when there are inconsistencies
+        in the names between the expression matrix and the ligand-receptor annotations.
+
+    interaction_columns : tuple, default=('A', 'B')
+        Contains the names of the columns where to find the partners in a dataframe of protein-protein interactions. If
+        the list is for ligand-receptor pairs, the first column is for the ligands and the second for the receptors.
+
+    group_ppi_by : str, default=None
+        Column name in the list of PPIs used for grouping individual PPIs into major groups such as signaling pathways.
+
+    group_ppi_method : str, default='gmean'
+        Method for aggregating multiple PPIs into major groups.
+        - 'mean' : Computes the average communication score among all PPIs of the group for a given pair of
+                   cells/tissues/samples
+        - 'gmean' : Computes the geometric mean of the communication scores among all PPIs of the group for a given pair
+                    of cells/tissues/samples
+        - 'sum' : Computes the sum of the communication scores among all PPIs of the group for a given pair of
+                  cells/tissues/samples
+
+    verbose : boolean, default=False
+            Whether printing or not steps of the analysis.
+
+
+    Returns
+    -------
+    tensors : list
+        List of 3D-Communication tensors for each context. This list corresponds to the 4D-Communication tensor.
+
+    genes : list
+        List of genes included in the tensor.
+
+    cells : list
+        List of cells included in the tensor.
+
+    ppi_names: list
+        List of names for each of the PPIs included in the tensor. Used as labels for the elements in the cognate tensor
+        dimension (in the attribute order_names of the InteractionTensor)
+
+    mask_tensor:
+        Mask used to exclude values in the tensor. When using how='outer' it masks missing values (e.g., cell types that
+        are not present in a given context), while using how='inner' makes the mask_tensor to be None.
+    '''
 
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
     df_cols = [list(rnaseq.columns) for rnaseq in rnaseq_matrices]
@@ -264,6 +593,38 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
 
 
 def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_product', interaction_columns=('A', 'B')):
+    '''Computes a 3D-Communication tensor for a given context based on the gene expression matrix and the list of PPIS
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression matrix for a given context, sample or condition. Rows are genes and columns are cell
+        types/tissues/samples.
+
+    ppi_data : pandas.DataFrame
+        A dataframe containing protein-protein interactions (rows). It has to contain at least two columns, one for the
+        first protein partner in the interaction as well as the second protein partner.
+
+    communication_score : str, default='expression_mean'
+        Type of communication score to infer the potential use of a given ligand-receptor pair by a pair of
+        cells/tissues/samples. Available communication_scores are:
+        - 'expression_mean' : Computes the average between the expression of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a ligand from a sender cell and the
+                                expression of a receptor on a receiver cell.
+
+    interaction_columns : tuple, default=('A', 'B')
+        Contains the names of the columns where to find the partners in a dataframe of protein-protein interactions. If
+        the list is for ligand-receptor pairs, the first column is for the ligands and the second for the receptors.
+
+
+    Returns
+    -------
+    ccc_tensor : ndarray list
+        List of directed cell-cell communication matrices, one for each ligand-receptor pair in ppi_data. These matrices
+        contain the communication score for pairs of cells for the corresponding PPI. This tensor represent a
+        3D-communication tensor for the context.
+    '''
     ppi_a = interaction_columns[0]
     ppi_b = interaction_columns[1]
 
@@ -278,6 +639,40 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
 
 
 def aggregate_ccc_tensor(ccc_tensor, ppi_data, group_ppi_by=None, group_ppi_method='gmean'):
+    '''Aggregates communication scores of multiple PPIs into major groups (e.g., pathways) in a communication tensor
+
+    Parameters
+    ----------
+    ccc_tensor : ndarray list
+        List of directed cell-cell communication matrices, one for each ligand-receptor pair in ppi_data. These matrices
+        contain the communication score for pairs of cells for the corresponding PPI. This tensor represent a
+        3D-communication tensor for the context.
+
+    ppi_data : pandas.DataFrame
+        A dataframe containing protein-protein interactions (rows). It has to contain at least two columns, one for the
+        first protein partner in the interaction as well as the second protein partner.
+
+    group_ppi_by : str, default=None
+        Column name in the list of PPIs used for grouping individual PPIs into major groups such as signaling pathways.
+
+    group_ppi_method : str, default='gmean'
+        Method for aggregating multiple PPIs into major groups.
+        - 'mean' : Computes the average communication score among all PPIs of the group for a given pair of
+                   cells/tissues/samples
+        - 'gmean' : Computes the geometric mean of the communication scores among all PPIs of the group for a given pair
+                    of cells/tissues/samples
+        - 'sum' : Computes the sum of the communication scores among all PPIs of the group for a given pair of
+                  cells/tissues/samples
+
+
+    Returns
+    -------
+    aggregated_tensor : ndarray list
+        List of directed cell-cell communication matrices, one for each major group of ligand-receptor pair in ppi_data.
+        These matrices contain the communication score for pairs of cells for the corresponding PPI group.
+        This tensor represent a 3D-communication tensor for the context, but for major groups instead of individual
+        PPIs.
+    '''
     tensor_ = np.array(ccc_tensor)
     aggregated_tensor = []
     for group, df in ppi_data.groupby(group_ppi_by):
@@ -294,7 +689,8 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
 
     Parameters
     ----------
-    interaction_tensor : cell2cell.tensor.InteractionTensor class
+    interaction_tensor : cell2cell.tensor.BaseTensor
+        A communication tensor.
 
     metadata_dicts : list
         A list of dictionaries. Each dictionary represents an order of the tensor. In an interaction tensor these orders
@@ -302,23 +698,28 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
         (they are contained in interaction_tensor.order_names) and the values are the categories that each elements will
         be assigned as metadata.
 
-    fill_with_order_elements : boolean, True by default
+    fill_with_order_elements : boolean, default=True
         Whether using each element of a dimension as its own metadata when a None is passed instead of a dictionary for
         the respective order/dimension. If True, each element in that order will be use itself, that dimension will not
         contain metadata.
+
 
     Returns
     -------
     metadata : list
         A list of pandas.DataFrames that will be used as an input of the cell2cell.plot.tensor_factors_plot.
     '''
-    assert (len(interaction_tensor.tensor.shape) == len(metadata_dicts)), "metadata_dicts should be of the same size as the number of orders/dimensions in the tensor"
+    tensor_dim = len(interaction_tensor.tensor.shape)
+    assert (tensor_dim == len(metadata_dicts)), "metadata_dicts should be of the same size as the number of orders/dimensions in the tensor"
 
-    default_cats = {0 : 'Context',
-                    1 : 'Ligand-receptor pair',
-                    2 : 'Sender cell',
-                    3 : 'Receiver cell'
-                    }
+    if tensor_dim == 4:
+        default_cats = ['Context', 'Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+    elif tensor_dim > 4:
+        default_cats = ['Context-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+    elif tensor_dim == 3:
+        default_cats = ['Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+    else:
+        raise ValueError('Too few dimensions in the tensor')
 
     if fill_with_order_elements:
         metadata = [pd.DataFrame(index=names) for names in interaction_tensor.order_names]
@@ -341,7 +742,46 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
 
 def interactions_to_tensor(interactions, experiment='single_cell', context_names=None, how='inner',
                            communication_score='expression_product', upper_letter_comparison=True, verbose=True):
-    '''Experiment either "bulk" or "single_cell'''
+    '''Takes a list of Interaction pipelines (see classes in cell2cell.analysis.pipelines) and generates a communication
+    tensor.
+
+    Parameters
+    ----------
+    interactions : list
+        List of Interaction pipelines. The Interactions has to be all either BulkInteractions or SingleCellInteractions.
+
+    experiment : str, default='single_cell'
+        Type of Interaction pipelines in the list. Either 'single_cell' or 'bulk'.
+
+    context_names : list
+        List of context names or labels for each of the Interaction pipelines. This list matches the length of
+        interactions and the labels have to follows the same order.
+
+    how : str, default='inner'
+        Approach to consider cell types and genes present across multiple contexts.
+        - 'inner' : Considers only cell types and genes that are present in all contexts (intersection).
+        - 'outer' : Considers all cell types and genes present across contexts (union).
+
+    communication_score : str, default='expression_mean'
+        Type of communication score to infer the potential use of a given ligand-receptor pair by a pair of
+        cells/tissues/samples. Available communication_scores are:
+        - 'expression_mean' : Computes the average between the expression of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a ligand from a sender cell and the
+                                expression of a receptor on a receiver cell.
+
+    upper_letter_comparison : boolean, default=True
+        Whether making uppercase the gene names in the expression matrices and the protein names in the ppi_data to
+        match their names and integrate their respective expression level. Useful when there are inconsistencies
+        in the names between the expression matrix and the ligand-receptor annotations.
+
+
+    Returns
+    -------
+    tensor : cell2cell.tensor.InteractionTensor
+        A 4D-communication tensor.
+
+    '''
     ppis = []
     rnaseq_matrices = []
     complex_sep = interactions[0].complex_sep

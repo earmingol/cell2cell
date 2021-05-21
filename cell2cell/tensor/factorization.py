@@ -9,6 +9,44 @@ from tensorly.decomposition import non_negative_parafac
 
 def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init='svd', random_state=None, mask=None,
                                   verbose=False, **kwargs):
+    '''Performs the Tensor Factorization
+
+    Parameters
+    ---------
+    tensor : ndarray list
+        A tensor that could be a list of lists, a multidimensional numpy array or a tensorly.tensor.
+
+    rank : int
+        Rank of the Tensor Factorization (number of factors to deconvolve the original tensor).
+
+    tf_type : str, default='non_negative_cp'
+        Type of Tensor Factorization.
+        - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
+
+    init : str, default='svd'
+        Initialization method for computing the Tensor Factorization.
+        {‘svd’, ‘random’}
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    mask : ndarray list, default=None
+        Helps avoiding missing values during a tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor that is False/0 where the value is missing and True/1 where it is not.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    **kwargs : dict
+        Extra arguments for the tensor factorization according to inputs in tensorly.
+
+
+    Returns
+    -------
+    cp_tf : CPTensor
+        A tensorly object containing a list of initialized factors of the tensor decomposition where element `i` is of
+        shape (tensor.shape[i], rank).
+    '''
     if mask is not None:
         init = 'random'
     if tf_type == 'non_negative_cp':
@@ -26,6 +64,19 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
 
 
 def _compute_elbow(loss):
+    '''Computes the elbow of a curve
+
+    Parameters
+    ----------
+    loss : list
+        List of lists or tuples with (x, y) coordinates for a curve.
+
+
+    Returns
+    -------
+    rank : int
+        X coordinate where the elbow is located in the curve.
+    '''
     kneedle = KneeLocator(*zip(*loss), S=1.0, curve="convex", direction="decreasing")
     rank = kneedle.elbow
     return rank
@@ -33,6 +84,45 @@ def _compute_elbow(loss):
 
 def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='svd', random_state=None, mask=None,
                         verbose=False, disable_pbar=False, **kwargs):
+    '''Performs an elbow analysis with just one run of a tensor factorization for each rank
+
+    tensor : ndarray list
+        A tensor that could be a list of lists, a multidimensional numpy array or a tensorly.tensor.
+
+    upper_rank : int, default=50
+        Upper bound of ranks to explore with the elbow analysis.
+
+    tf_type : str, default='non_negative_cp'
+        Type of Tensor Factorization.
+        - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
+
+    init : str, default='svd'
+        Initialization method for computing the Tensor Factorization.
+        {‘svd’, ‘random’}
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    mask : ndarray list, default=None
+        Helps avoiding missing values during a tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor that is False/0 where the value is missing and True/1 where it is not.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    disable_pbar : boolean, default=False
+        Whether displaying a tqdm progress bar or not.
+
+    **kwargs : dict
+        Extra arguments for the tensor factorization according to inputs in tensorly.
+
+
+    Returns
+    -------
+    loss : list
+        List of  tuples with (x, y) coordinates for the elbow analysis. X values are the different ranks and Y values
+        are the errors of each decomposition.
+    '''
     loss = []
     for r in tqdm(range(1, upper_rank + 1), disable=disable_pbar):
         tl_object = _compute_tensor_factorization(tensor=tensor,
@@ -50,6 +140,46 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
 
 def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_negative_cp', init='svd', random_state=None,
                                   mask=None, verbose=False, **kwargs):
+    '''Performs an elbow analysis with multiple runs of a tensor factorization for each rank
+
+    tensor : ndarray list
+        A tensor that could be a list of lists, a multidimensional numpy array or a tensorly.tensor.
+
+    upper_rank : int, default=50
+        Upper bound of ranks to explore with the elbow analysis.
+
+    runs : int, default=100
+        Number of tensor factorization performed for a given rank. Each factorization varies in the seed of
+        initialization.
+
+    tf_type : str, default='non_negative_cp'
+        Type of Tensor Factorization.
+        - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
+
+    init : str, default='svd'
+        Initialization method for computing the Tensor Factorization.
+        {‘svd’, ‘random’}
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    mask : ndarray list, default=None
+        Helps avoiding missing values during a tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor that is False/0 where the value is missing and True/1 where it is not.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    **kwargs : dict
+        Extra arguments for the tensor factorization according to inputs in tensorly.
+
+
+    Returns
+    -------
+    all_loss : ndarray
+        Array containing the errors associated with multiple runs for a given rank. This array is of shape
+        (runs, upper_rank).
+    '''
     assert isinstance(runs, int), "runs must be an integer"
     all_loss = []
     for r in tqdm(range(1, upper_rank + 1)):
@@ -75,6 +205,30 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
 
 
 def _compute_norm_error(tensor, tl_object, mask=None):
+    '''Computes the normalized error of a tensor factorization
+
+    The regular error is : ||tensor - reconstructed_tensor||^2; Where  ||.||^2 represent the squared Frobenius.
+    A reconstructed_tensor is computed from transforming the original tensor with the factors of the decomposition.
+    Thus, the normalized error is: ||tensor - reconstructed_tensor||^2 / ||tensor||^2; which has values between 0 and 1.
+
+    Parameters
+    ----------
+    tensor : ndarray list
+        A tensor that could be a list of lists, a multidimensional numpy array or a tensorly.tensor.
+
+    tl_object : CPTensor
+        A tensorly object containing a list of initialized factors of the tensor decomposition where element `i` is of
+        shape (tensor.shape[i], rank).
+
+    mask : ndarray list, default=None
+        Helps avoiding missing values during a tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor that is False/0 where the value is missing and True/1 where it is not.
+
+    Returns
+    -------
+    l : float
+        The normalized error of a tensor decomposition.
+    '''
     assert tl_object is not None, "Before computing the error, please run the function _compute_tensor_factorization to generate the tl_object"
 
     # Compute error
@@ -98,4 +252,5 @@ def _compute_norm_error(tensor, tl_object, mask=None):
 
 
 def normalized_error(reference_tensor, reconstructed_tensor):
+    '''Computes a normalized error between two tensors'''
     return np.linalg.norm(reference_tensor - reconstructed_tensor) / np.linalg.norm(reference_tensor)

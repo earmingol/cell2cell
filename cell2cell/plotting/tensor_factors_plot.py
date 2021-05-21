@@ -9,9 +9,53 @@ from matplotlib import pyplot as plt
 from cell2cell.plotting.aesthetics import generate_legend, get_colors_from_labels, map_colors_to_metadata
 
 
-def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sample_col='#SampleID', group_col='Groups',
+def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sample_col='Element', group_col='Category',
                         meta_cmaps=None, fontsize=20, plot_legend=True, filename=None):
-    '''Metadata is a list of pandas dataframes'''
+    '''Plots the loadings for each element in each dimension of the tensor, generate by a tensor factorization.
+
+    Parameters
+    ----------
+    interaction_tensor : cell2cell.tensor.BaseTensor
+        A communication tensor generated with any of the tensor class in cell2cell.tensor
+
+    order_labels : list, default=None
+        List with the labels of each dimension to use in the plot. If none, the default names given when factorizing
+        the tensor will be used.
+
+    metadata : list, default=None
+        List of pandas dataframes with metadata information for elements of each dimension in the tensor. A column
+        called as the variable `sample_col` contains the name of each element in the tensor while another column called
+        as the variable `group_col` contains the metadata or grouping information of each element.
+
+    sample_col : str, default='Element'
+        Name of the column containing the element names in the metadata.
+
+    group_col : str, default='Category'
+        Name of the column containing the metadata or grouping information for each element in the metadata.
+
+    meta_cmaps : list, default=None
+        A list of colormaps used for coloring elements in each dimension. The length of this list is equal to the number
+        of dimensions of the tensor. If None, all dimensions will be colores with the colormap 'gist_rainbow'.
+
+    fontsize : int, default=20
+        Font size of the tick labels. Axis labels will be 1.2 times the fontsize.
+
+    plot_legend : boolean, default=True
+        Whether ploting the legends for the coloring of each element in their respective dimensions.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not saved.
+
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib
+
+    axes : matplotlib.axes.Axes or array of Axes
+        List of Axes for each subplot in the figure.
+    '''
+    # Prepare inputs for matplotlib
     assert interaction_tensor.factors is not None, "First run the method 'compute_tensor_factorization' in your InteractionTensor"
     dim = len(interaction_tensor.factors)
 
@@ -46,11 +90,11 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
                              #sharey='col'
                              )
 
+    # Factor by factor
     if rank > 1:
-        # Iterates horizontally
-        count = 0
+        # Iterates horizontally (dimension by dimension)
         for ind, (order_factors, axs) in enumerate(zip(factors.values(), axes.T)):
-            # Iterates vertically
+            # Iterates vertically (factor by factor)
             for i, (df_row, ax) in enumerate(zip(order_factors.T.iterrows(), axs)):
                 factor_name = df_row[0]
                 factor = df_row[1]
@@ -84,7 +128,7 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
     fig.align_ylabels(axes[:,0])
     plt.tight_layout()
 
-
+    # Include legends of coloring the elements in each dimension.
     if plot_legend:
         # Set current axis:
         plt.sca(axes[0, -1])
@@ -116,6 +160,32 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
 
 
 def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
+    '''Plots the errors of an elbow analysis with just one run of a tensor factorization for each rank.
+
+    Parameters
+    ----------
+    loss : list
+        List of  tuples with (x, y) coordinates for the elbow analysis. X values are the different ranks and Y values
+        are the errors of each decomposition.
+
+    elbow : int, default=None
+        X coordinate to color the error as red. Usually used to represent the detected elbow.
+
+    figsize : tuple, default=(4, 2.25)
+            Figure size, width by height
+
+    fontsize : int, default=14
+        Fontsize for axis labels.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not saved.
+
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib
+    '''
 
     fig = plt.figure(figsize=figsize)
 
@@ -134,7 +204,36 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
 
 
 def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), fontsize=14, filename=None):
+    '''Plots the errors of an elbow analysis with multiple runs of a tensor factorization for each rank.
 
+    Parameters
+    ----------
+    all_loss : ndarray
+        Array containing the errors associated with multiple runs for a given rank. This array is of shape
+        (runs, upper_rank).
+
+    elbow : int, default=None
+        X coordinate to color the error as red. Usually used to represent the detected elbow.
+
+    ci : str, default='std'
+        Confidence interval for representing the multiple runs in each rank.
+        {'std', '95%'}
+
+    figsize : tuple, default=(4, 2.25)
+            Figure size, width by height
+
+    fontsize : int, default=14
+        Fontsize for axis labels.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not saved.
+
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib
+    '''
     fig = plt.figure(figsize=figsize)
 
     x = list(range(1, all_loss.shape[1]+1))
@@ -168,8 +267,31 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), f
                     bbox_inches='tight')
     return fig
 
+
 def generate_plot_df(interaction_tensor):
-    factor_labels = ['Time', 'LRs', 'Sender', 'Receiver']
+    '''Generates a melt dataframe with loadings for each element in all dimensions across factors
+
+    Parameters
+    ----------
+    interaction_tensor : cell2cell.tensor.BaseTensor
+        A communication tensor generated with any of the tensor class in cell2cell.tensor
+
+    Returns
+    -------
+    plot_df : pandas.DataFrame
+        A dataframe containing loadings for every element of all dimensions across factors from the decomposition.
+        Rows are loadings individual elements of each dimension in a given factor, while columns are the following list
+        ['Factor', 'Variable', 'Value', 'Order']
+    '''
+    tensor_dim = len(interaction_tensor.tensor.shape)
+    if tensor_dim == 4:
+        factor_labels = ['Context', 'LRs', 'Sender', 'Receiver']
+    elif tensor_dim > 4:
+        factor_labels = ['Context-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['LRs', 'Sender', 'Receiver']
+    elif tensor_dim == 3:
+        factor_labels = ['LRs', 'Sender', 'Receiver']
+    else:
+        raise ValueError('Too few dimensions in the tensor')
     plot_df = pd.DataFrame()
     for lab, order_factors in enumerate(interaction_tensor.factors.values()):
         sns_df = order_factors.T
