@@ -142,11 +142,11 @@ def load_go_terms(go_terms_file, verbose=True):
     Load GO terms obo-basic file
     Example: go_terms_file = 'http://purl.obolibrary.org/obo/go/go-basic.obo'
     '''
-    import goenrich
+    import cell2cell.external.goenrich as goenrich
 
     if verbose:
         print("Opening GO terms from {}".format(go_terms_file))
-    go_terms = goenrich.obo.ontology(go_terms_file)
+    go_terms = goenrich.ontology(go_terms_file)
     if verbose:
         print(go_terms_file + ' was correctly loaded')
     return go_terms
@@ -157,12 +157,12 @@ def load_go_annotations(goa_file, experimental_evidence=True, verbose=True):
     Load GO annotation for a given organism.
     Example: goa_file = 'http://current.geneontology.org/annotations/wb.gaf.gz'
     '''
-    import goenrich
+    import cell2cell.external.goenrich as goenrich
 
     if verbose:
         print("Opening GO annotations from {}".format(goa_file))
 
-    goa = goenrich.read.goa(goa_file, experimental_evidence)
+    goa = goenrich.goa(goa_file, experimental_evidence)
     goa_cols = list(goa.columns)
     goa = goa[goa_cols[:3] + [goa_cols[4]]]
     new_cols = ['db', 'Gene', 'Name', 'GO']
