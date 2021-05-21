@@ -33,7 +33,6 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
     else:
         raise ValueError('Not a valid interaction_space')
 
-
     # Figure setups
     if ax is None:
         R = 1.0
@@ -282,7 +281,9 @@ def _build_network(sender_cells, receiver_cells, ligands, receptors, sorted_node
                           (readable_ccc.receptor.isin(receptors))
                           ]
 
-    df = df.loc[df['communication_score'] != excluded_score]
+    df = df.loc[df['communication_score'] > excluded_score]
+
+    assert len(df) > 0, 'There are no links for the subset of cells and ligand-receptor pairs'
 
     for idx, row in df.iterrows():
         # Generate node names

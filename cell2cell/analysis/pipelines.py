@@ -92,7 +92,7 @@ class BulkInteractions:
 
 class SingleCellInteractions:
     compute_pairwise_cci_scores = BulkInteractions.compute_pairwise_cci_scores
-    compuse_pairwise_communication_scores =  BulkInteractions.compute_pairwise_communication_scores
+    compute_pairwise_communication_scores =  BulkInteractions.compute_pairwise_communication_scores
 
     def __init__(self, rnaseq_data, ppi_data, metadata=None, interaction_columns=('A', 'B'),
                  communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
@@ -109,13 +109,20 @@ class SingleCellInteractions:
         self.complex_sep = complex_sep
         self.interaction_columns = interaction_columns
 
+        if isinstance(rnaseq_data, scanpy.AnnData):
+            self.__adata = True
+            genes = list(rnaseq_data.var.index)
+        else:
+            self.__adata = False
+            genes = list(rnaseq_data.index)
+
         # Analysis
         self.analysis_setup['communication_score'] = communication_score
         self.analysis_setup['cci_score'] = cci_score
         self.analysis_setup['cci_type'] = cci_type
 
         # Initialize PPI
-        genes = list(rnaseq_data.index)
+
         ppi_data_ = ppi.filter_ppi_by_proteins(ppi_data=ppi_data,
                                                proteins=genes,
                                                complex_sep=complex_sep,
@@ -138,11 +145,6 @@ class SingleCellInteractions:
 
 
         # Aggregate single-cell RNA-Seq data
-        if isinstance(rnaseq_data, scanpy.AnnData):
-            self.__adata = True
-        else:
-            self.__adata = False
-
         self.aggregated_expression = rnaseq.aggregate_single_cells(rnaseq_data=self.rnaseq_data,
                                                                    metadata=self.metadata,
                                                                    barcode_col=self.index_col,

@@ -26,7 +26,15 @@ pip install cell2cell
 
 ---
 ![plot](https://github.com/earmingol/cell2cell/blob/master/Logo.png?raw=true)
-- A toy example containing main standard analyses is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/Toy-Example.ipynb)
+- A toy example using the under-the-hood methods of cell2cell is
+  [available here](https://github.com/earmingol/cell2cell/blob/master/examples/Toy-Example.ipynb).
+  This case allows personalizing the analyses in a higher level, but it may result **harder to use**.
+- A toy example using an Interaction Pipeline for **bulk data** is 
+  [available here](https://github.com/earmingol/cell2cell/blob/master/examples/Toy-Example-BulkPipeline.ipynb).
+  An Interaction Pipeline makes cell2cell **easier to use**.
+- A toy example using an Interaction Pipeline for **single-cell data** is 
+  [available here](https://github.com/earmingol/cell2cell/blob/master/examples/Toy-Example-SingleCellPipeline.ipynb).
+  An Interaction Pipeline makes cell2cell **easier to use**.  
 - An example of using *cell2cell* to infer cell-cell interactions across the whole
 body of *C. elegans* is [available here](https://github.com/LewisLabUCSD/Celegans-cell2cell)
   

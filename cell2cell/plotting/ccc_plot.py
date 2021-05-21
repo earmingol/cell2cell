@@ -63,7 +63,8 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
 
     # Colors
     if metadata is not None:
-        meta_ = metadata.set_index(sample_col)
+        metadata2 = metadata.reset_index()
+        meta_ = metadata2.set_index(sample_col)
         if excluded_cells is not None:
             meta_ = meta_.loc[~meta_.index.isin(excluded_cells)]
         labels = meta_[group_col].values.tolist()
@@ -73,12 +74,12 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
         else:
             assert all(elem in colors.keys() for elem in set(labels))
 
-        col_colors_L = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata.loc[metadata[sample_col] == x.split(';')[0],
+        col_colors_L = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata2.loc[metadata2[sample_col] == x.split(';')[0],
                                                                                            group_col].values[0]])
         col_colors_L.index = included_cells
         col_colors_L.name = cell_labels[0]
 
-        col_colors_R = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata.loc[metadata[sample_col] == x.split(';')[1],
+        col_colors_R = pd.DataFrame(included_cells)[0].apply(lambda x: colors[metadata2.loc[metadata2[sample_col] == x.split(';')[1],
                                                                                            group_col].values[0]])
         col_colors_R.index = included_cells
         col_colors_R.name = cell_labels[1]
