@@ -40,7 +40,6 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
     **kwargs : dict
         Extra arguments for the tensor factorization according to inputs in tensorly.
 
-
     Returns
     -------
     cp_tf : CPTensor
@@ -71,7 +70,6 @@ def _compute_elbow(loss):
     loss : list
         List of lists or tuples with (x, y) coordinates for a curve.
 
-
     Returns
     -------
     rank : int
@@ -86,6 +84,8 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
                         verbose=False, disable_pbar=False, **kwargs):
     '''Performs an elbow analysis with just one run of a tensor factorization for each rank
 
+    Parameters
+    ----------
     tensor : ndarray list
         A tensor that could be a list of lists, a multidimensional numpy array or a tensorly.tensor.
 
@@ -116,7 +116,6 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
     **kwargs : dict
         Extra arguments for the tensor factorization according to inputs in tensorly.
 
-
     Returns
     -------
     loss : list
@@ -142,6 +141,8 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
                                   mask=None, verbose=False, **kwargs):
     '''Performs an elbow analysis with multiple runs of a tensor factorization for each rank
 
+    Parameters
+    ----------
     tensor : ndarray list
         A tensor that could be a list of lists, a multidimensional numpy array or a tensorly.tensor.
 
@@ -172,7 +173,6 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
 
     **kwargs : dict
         Extra arguments for the tensor factorization according to inputs in tensorly.
-
 
     Returns
     -------
@@ -252,5 +252,24 @@ def _compute_norm_error(tensor, tl_object, mask=None):
 
 
 def normalized_error(reference_tensor, reconstructed_tensor):
-    '''Computes a normalized error between two tensors'''
-    return np.linalg.norm(reference_tensor - reconstructed_tensor) / np.linalg.norm(reference_tensor)
+    '''Computes a normalized error between two tensors
+
+    Parameters
+    ----------
+    reference_tensor : ndarray list
+        A tensor that could be a list of lists, a multidimensional numpy array or a tensorly.tensor. This tensor is the
+        input of a tensor decomposition and used as reference in the normalized error for a new tensor reconstructed
+        from the factors of the tensor decomposition.
+
+    reconstructed_tensor : ndarray list
+        A tensor that could be a list of lists, a multidimensional numpy array or a tensorly.tensor. This tensor is an
+        approximation of the reference_tensor by using the resulting factors of a tensor decomposition to compute it.
+
+    Returns
+    -------
+    norm_error : float
+        The normalized error between a reference tensor and a reconstructed tensor. The error is normalized by dividing
+        by the Frobinius norm of the reference tensor.
+    '''
+    norm_error = np.linalg.norm(reference_tensor - reconstructed_tensor) / np.linalg.norm(reference_tensor)
+    return norm_error

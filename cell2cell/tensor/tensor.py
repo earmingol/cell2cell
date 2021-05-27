@@ -99,7 +99,6 @@ class BaseTensor():
         **kwargs : dict
             Extra arguments for the tensor factorization according to inputs in tensorly.
 
-
         Returns
         -------
         There are no returns, instead the attributes of the Tensor class are updated.
@@ -188,7 +187,6 @@ class BaseTensor():
         **kwargs : dict
             Extra arguments for the tensor factorization according to inputs in tensorly.
 
-
         Returns
         -------
         fig : matplotlib.figure.Figure
@@ -272,7 +270,6 @@ class BaseTensor():
         top_number : int, default=10
             Number of top-elements to return
 
-
         Returns
         -------
         top_elements : pandas.DataFrame
@@ -355,7 +352,6 @@ class InteractionTensor(BaseTensor):
     verbose : boolean, default=False
             Whether printing or not steps of the analysis.
 
-
     Attributes
     ----------
     Same attributes as cell2cell.tensor.BaseTensor
@@ -434,7 +430,6 @@ class PreBuiltTensor(BaseTensor):
         Helps avoiding missing values during a tensor factorization. A mask should be a boolean array of the same
         shape as the original tensor that is False/0 where the value is missing and True/1 where it is not.
 
-
     Attributes
     ----------
     Same attributes as cell2cell.tensor.BaseTensor
@@ -509,7 +504,6 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
 
     verbose : boolean, default=False
             Whether printing or not steps of the analysis.
-
 
     Returns
     -------
@@ -617,7 +611,6 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
         Contains the names of the columns where to find the partners in a dataframe of protein-protein interactions. If
         the list is for ligand-receptor pairs, the first column is for the ligands and the second for the receptors.
 
-
     Returns
     -------
     ccc_tensor : ndarray list
@@ -664,7 +657,6 @@ def aggregate_ccc_tensor(ccc_tensor, ppi_data, group_ppi_by=None, group_ppi_meth
         - 'sum' : Computes the sum of the communication scores among all PPIs of the group for a given pair of
                   cells/tissues/samples
 
-
     Returns
     -------
     aggregated_tensor : ndarray list
@@ -702,7 +694,6 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
         Whether using each element of a dimension as its own metadata when a None is passed instead of a dictionary for
         the respective order/dimension. If True, each element in that order will be use itself, that dimension will not
         contain metadata.
-
 
     Returns
     -------
@@ -774,7 +765,6 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
         Whether making uppercase the gene names in the expression matrices and the protein names in the ppi_data to
         match their names and integrate their respective expression level. Useful when there are inconsistencies
         in the names between the expression matrix and the ligand-receptor annotations.
-
 
     Returns
     -------

@@ -46,7 +46,6 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
     filename : str, default=None
         Path to save the figure of the elbow analysis. If None, the figure is not saved.
 
-
     Returns
     -------
     fig : matplotlib.figure.Figure
@@ -180,7 +179,6 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
     filename : str, default=None
         Path to save the figure of the elbow analysis. If None, the figure is not saved.
 
-
     Returns
     -------
     fig : matplotlib.figure.Figure
@@ -227,7 +225,6 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), f
 
     filename : str, default=None
         Path to save the figure of the elbow analysis. If None, the figure is not saved.
-
 
     Returns
     -------
