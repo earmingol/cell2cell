@@ -11,7 +11,8 @@ from cell2cell.plotting.aesthetics import generate_legend, get_colors_from_label
 
 def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sample_col='Element', group_col='Category',
                         meta_cmaps=None, fontsize=20, plot_legend=True, filename=None):
-    '''Plots the loadings for each element in each dimension of the tensor, generate by a tensor factorization.
+    '''Plots the loadings for each element in each dimension of the tensor, generate by
+    a tensor factorization.
 
     Parameters
     ----------
@@ -19,32 +20,38 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
         A communication tensor generated with any of the tensor class in cell2cell.tensor
 
     order_labels : list, default=None
-        List with the labels of each dimension to use in the plot. If none, the default names given when factorizing
-        the tensor will be used.
+        List with the labels of each dimension to use in the plot. If none, the default
+        names given when factorizing the tensor will be used.
 
     metadata : list, default=None
-        List of pandas dataframes with metadata information for elements of each dimension in the tensor. A column
-        called as the variable `sample_col` contains the name of each element in the tensor while another column called
-        as the variable `group_col` contains the metadata or grouping information of each element.
+        List of pandas dataframes with metadata information for elements of each
+        dimension in the tensor. A column called as the variable `sample_col` contains
+        the name of each element in the tensor while another column called as the
+        variable `group_col` contains the metadata or grouping information of each
+        element.
 
     sample_col : str, default='Element'
         Name of the column containing the element names in the metadata.
 
     group_col : str, default='Category'
-        Name of the column containing the metadata or grouping information for each element in the metadata.
+        Name of the column containing the metadata or grouping information for each
+        element in the metadata.
 
     meta_cmaps : list, default=None
-        A list of colormaps used for coloring elements in each dimension. The length of this list is equal to the number
-        of dimensions of the tensor. If None, all dimensions will be colores with the colormap 'gist_rainbow'.
+        A list of colormaps used for coloring elements in each dimension. The length of
+        this list is equal to the number of dimensions of the tensor. If None, all
+        dimensions will be colores with the colormap 'gist_rainbow'.
 
     fontsize : int, default=20
         Font size of the tick labels. Axis labels will be 1.2 times the fontsize.
 
     plot_legend : boolean, default=True
-        Whether ploting the legends for the coloring of each element in their respective dimensions.
+        Whether plotting the legends for the coloring of each element in their
+        respective dimensions.
 
     filename : str, default=None
-        Path to save the figure of the elbow analysis. If None, the figure is not saved.
+        Path to save the figure of the elbow analysis. If None, the figure is
+        not saved.
 
     Returns
     -------
@@ -159,16 +166,18 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
 
 
 def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
-    '''Plots the errors of an elbow analysis with just one run of a tensor factorization for each rank.
+    '''Plots the errors of an elbow analysis with just one run of a tensor factorization
+    for each rank.
 
     Parameters
     ----------
     loss : list
-        List of  tuples with (x, y) coordinates for the elbow analysis. X values are the different ranks and Y values
-        are the errors of each decomposition.
+        List of  tuples with (x, y) coordinates for the elbow analysis. X values are the
+        different ranks and Y values are the errors of each decomposition.
 
     elbow : int, default=None
-        X coordinate to color the error as red. Usually used to represent the detected elbow.
+        X coordinate to color the error as red. Usually used to represent the detected
+        elbow.
 
     figsize : tuple, default=(4, 2.25)
             Figure size, width by height
@@ -202,16 +211,18 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
 
 
 def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), fontsize=14, filename=None):
-    '''Plots the errors of an elbow analysis with multiple runs of a tensor factorization for each rank.
+    '''Plots the errors of an elbow analysis with multiple runs of a tensor
+    factorization for each rank.
 
     Parameters
     ----------
     all_loss : ndarray
-        Array containing the errors associated with multiple runs for a given rank. This array is of shape
-        (runs, upper_rank).
+        Array containing the errors associated with multiple runs for a given rank. This
+        array is of shape (runs, upper_rank).
 
     elbow : int, default=None
-        X coordinate to color the error as red. Usually used to represent the detected elbow.
+        X coordinate to color the error as red. Usually used to represent the detected
+        elbow.
 
     ci : str, default='std'
         Confidence interval for representing the multiple runs in each rank.
@@ -266,18 +277,21 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), f
 
 
 def generate_plot_df(interaction_tensor):
-    '''Generates a melt dataframe with loadings for each element in all dimensions across factors
+    '''Generates a melt dataframe with loadings for each element in all dimensions
+    across factors
 
     Parameters
     ----------
     interaction_tensor : cell2cell.tensor.BaseTensor
-        A communication tensor generated with any of the tensor class in cell2cell.tensor
+        A communication tensor generated with any of the tensor class in
+        cell2cell.tensor
 
     Returns
     -------
     plot_df : pandas.DataFrame
-        A dataframe containing loadings for every element of all dimensions across factors from the decomposition.
-        Rows are loadings individual elements of each dimension in a given factor, while columns are the following list
+        A dataframe containing loadings for every element of all dimensions across
+        factors from the decomposition. Rows are loadings individual elements of each
+        dimension in a given factor, while columns are the following list
         ['Factor', 'Variable', 'Value', 'Order']
     '''
     tensor_dim = len(interaction_tensor.tensor.shape)
