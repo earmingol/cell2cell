@@ -9,10 +9,7 @@ from tqdm import tqdm
 
 from cell2cell.core import interaction_space as ispace
 from cell2cell.preprocessing import manipulate_dataframes, ppi, rnaseq
-from cell2cell.stats.permutation import compute_pvalue_from_dist
-
-# TODO: Implement  multiple test correction for permutation analysis (FDR, Bonferroni, etc)
-
+from cell2cell.stats import permutation, multitest
 
 class BulkInteractions:
     def __init__(self, rnaseq_data, ppi_data, metadata=None, interaction_columns=('A', 'B'),
@@ -108,6 +105,8 @@ class SingleCellInteractions:
         self.cutoff_setup = dict()
         self.complex_sep = complex_sep
         self.interaction_columns = interaction_columns
+        self.ccc_permutation_pvalues = None
+        self.cci_permutation_pvalues = None
 
         if isinstance(rnaseq_data, scanpy.AnnData):
             self.__adata = True
@@ -161,7 +160,8 @@ class SingleCellInteractions:
                                                               interaction_columns=self.interaction_columns,
                                                               verbose=verbose)
 
-    def permute_cell_labels(self, permutations=100, evaluation='communication', random_state=None, verbose=False):
+    def permute_cell_labels(self, permutations=100, evaluation='communication', fdr_correction=True, random_state=None,
+                            verbose=False):
         if evaluation == 'communication':
             if 'communication_matrix' not in self.interaction_space.interaction_elements.keys():
                 raise ValueError('Run the method compute_pairwise_communication_scores() before permutation analysis.')
@@ -210,13 +210,26 @@ class SingleCellInteractions:
         base_scores = score.values.flatten()
         pvals = np.ones(base_scores.shape)
         for i in range(len(base_scores)):
-            pvals[i] = compute_pvalue_from_dist(obs_value=base_scores[i],
-                                                dist=np.array(randomized_scores)[:, i],
-                                                consider_size=True,
-                                                comparison='different'
-                                                )
+            pvals[i] = permutation.compute_pvalue_from_dist(obs_value=base_scores[i],
+                                                            dist=np.array(randomized_scores)[:, i],
+                                                            consider_size=True,
+                                                            comparison='different'
+                                                            )
         pval_df = pd.DataFrame(pvals.reshape(score.shape), index=score.index, columns=score.columns)
-        self.permutation_pvalues = pval_df
+
+        if fdr_correction:
+            symmetric = manipulate_dataframes.check_symmetry(df=pval_df)
+            if symmetric:
+                pval_df = multitest.compute_fdrcorrection_symmetric_matrix(X=pval_df,
+                                                                           alpha=0.05)
+            else:
+                pval_df = multitest.compute_fdrcorrection_asymmetric_matrix(X=pval_df,
+                                                                            alpha=0.05)
+
+        if evaluation == 'communication':
+            self.ccc_permutation_pvalues = pval_df
+        elif evaluation == 'interactions':
+            self.cci_permutation_pvalues = pval_df
         return pval_df
 
 
