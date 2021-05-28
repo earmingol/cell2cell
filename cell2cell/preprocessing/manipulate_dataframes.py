@@ -65,7 +65,12 @@ def subsample_dataframe(df, n_samples, random_state=None):
 
 
 def check_symmetry(df):
-    return (df.values.transpose() == df.values).all()
+    shape = df.shape
+    if shape[0] == shape[1]:
+        return (df.values.transpose() == df.values).all()
+    else:
+        return False
+
 
 
 def convert_to_distance_matrix(df):
