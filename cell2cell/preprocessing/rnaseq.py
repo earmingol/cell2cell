@@ -66,9 +66,46 @@ def add_complexes_to_expression(rnaseq_data, complexes):
 
 def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', celltype_col='cell_types', method='average',
                            transposed=True):
-    '''
-    rnaseq_data is an expression matrix with genes as rows and single cells as columns. Transposed has to be set True when
-    rows are single cells and columns are genes.
+    '''Aggregates gene expression of single cells into cell types for each gene.
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for a single-cell RNA-seq experiment. Columns are
+        single cells and rows are genes. If columns are genes and rows are
+        single cells, specify transposed=False.
+
+    metadata : pandas.Dataframe
+        Metadata containing the cell types for each single cells in the
+        RNA-seq dataset.
+
+    barcode_col : str, default='barcodes'
+        Column-name for the single cells in the metadata.
+
+    celltype_col : str, default='cell_types'
+        Column-name in the metadata for the grouping single cells into cell types
+        by the selected aggregation method.
+
+    method : str, default='average
+        Specifies the method to use to aggregate gene expression of single
+        cells into their respective cell types. Used to perform the CCI
+        analysis since it is on the cell types rather than single cells.
+        Options are:
+        - 'nn_cell_fraction' : Among the single cells composing a cell type, it
+            calculates the fraction of single cells with non-zero count values
+            of a given gene.
+        - 'average' : Computes the average gene expression among the single cells
+            composing a cell type for a given gene.
+
+    transposed : boolean, default=True
+        Whether the rnaseq_data is already organized with columns as
+        single cells and rows as genes.
+
+    Returns
+    -------
+    agg_df : pandas.DataFrame
+        Dataframe containing the gene expression values that were aggregated
+        by cell types. Columns are cell types and rows are genes.
     '''
     assert metadata is not None, "Please provide metadata containing the barcodes and cell-type annotation."
     assert method in ['average', 'nn_cell_fraction'], "{} is not a valid option for method".format(method)

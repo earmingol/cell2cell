@@ -357,8 +357,9 @@ class SingleCellInteractions:
         List of protein-protein interactions (or ligand-receptor pairs) used
         for inferring the cell-cell interactions and communication.
 
-    metadata : pandas.Dataframe, default=None
-        Metadata associated with the samples in the RNA-seq dataset.
+    metadata : pandas.Dataframe
+        Metadata containing the cell types for each single cells in the
+        RNA-seq dataset.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a
@@ -434,7 +435,8 @@ class SingleCellInteractions:
         a AnnData object, columns are genes and rows are single cells.
 
     metadata : pandas.DataFrame
-        Metadata associated with the samples in the RNA-seq dataset.
+        Metadata containing the cell types for each single cells in the
+        RNA-seq dataset.
 
     index_col : str
         Column-name for the single cells in the metadata.
@@ -544,7 +546,7 @@ class SingleCellInteractions:
     compute_pairwise_cci_scores = BulkInteractions.compute_pairwise_cci_scores
     compute_pairwise_communication_scores =  BulkInteractions.compute_pairwise_communication_scores
 
-    def __init__(self, rnaseq_data, ppi_data, metadata=None, interaction_columns=('A', 'B'),
+    def __init__(self, rnaseq_data, ppi_data, metadata, interaction_columns=('A', 'B'),
                  communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
                  expression_threshold=0.20, aggregation_method='nn_cell_fraction', barcode_col='barcodes',
                  celltype_col='cell_types', complex_sep=None, verbose=False):
