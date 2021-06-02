@@ -13,7 +13,74 @@ from cell2cell.plotting.aesthetics import map_colors_to_metadata
 
 def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata=None, sample_col='#SampleID',
                    group_col='Groups', meta_cmap='gist_rainbow', colors=None, excluded_cells=None, title='',
-                   cbar_title='CCI score', cbar_fontsize='18', filename=None, **kwargs):
+                   cbar_title='CCI score', cbar_fontsize=18, filename=None, **kwargs):
+    '''Generates a clustermap (heatmap + dendrograms from a hierarchical
+    clustering) based on CCI scores of cell-cell pairs.
+
+    Parameters
+    ----------
+    interaction_space : cell2cell.core.interaction_space.InteractionSpace
+        Interaction space that contains all a distance matrix after running the
+        the method compute_pairwise_cci_scores. Alternatively, this object
+        can be a numpy-array or a pandas DataFrame. Also, a
+        SingleCellInteractions or a BulkInteractions object after running
+        the method compute_pairwise_cci_scores.
+
+    method : str, default='ward'
+        Clustering method for computing a linkage as in
+        scipy.cluster.hierarchy.linkage
+
+    optimal_leaf : boolean, default=True
+        Whether sorting the leaf of the dendrograms to have a minimal distance
+        between successive leaves. For more information, see
+        scipy.cluster.hierarchy.optimal_leaf_ordering
+
+    metadata : pandas.Dataframe, default=None
+        Metadata associated with the cells, cell types or samples in the
+        matrix containing CCI scores. If None, cells will not be colored
+        by major groups.
+
+    sample_col : str, default='#SampleID'
+        Column in the metadata for the cells, cell types or samples
+        in the matrix containing CCI scores.
+
+    group_col : str, default='Groups'
+        Column in the metadata containing the major groups of cells, cell types
+        or samples in the matrix with CCI scores.
+
+    meta_cmap : str, default='gist_rainbow'
+        Name of the color palette for coloring the major groups of cells.
+
+    colors : dict, default=None
+        Dictionary containing tuples in the RGBA format for indicating colors
+        of major groups of cells. If colors is specified, meta_cmap will be
+        ignored.
+
+    excluded_cells : list, default=None
+        List containing cell names that are present in the interaction_space
+        object but that will be excluded from this plot.
+
+    title : str, default=''
+        Title of the clustermap.
+
+    cbar_title : str, default='CCI score'
+        Title for the colorbar, depending on the score employed.
+
+    cbar_fontsize : int, default=18
+        Font size for the colorbar title as well as labels for axes X and Y.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
+
+    **kwargs : dict
+        Dictionary containing arguments for the seaborn.clustermap function.
+
+    Returns
+    -------
+    hier : seaborn.matrix.ClusterGrid
+        A seaborn ClusterGrid instance.
+    '''
     if hasattr(interaction_space, 'distance_matrix'):
         print('Interaction space detected as an InteractionSpace class')
         distance_matrix = interaction_space.distance_matrix
@@ -107,6 +174,35 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
 
 
 def _get_distance_matrix_linkages(df, kwargs, method='ward', optimal_ordering=True, symmetric=None):
+    '''Computes linkages for the CCI matrix.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Contains the CCI scores in a form of distances (that is, smaller
+        values represent stronger interactions). Diagonal must be filled
+        by zeros.
+
+    kwargs : dict
+        Dictionary containing arguments for the seaborn.clustermap function.
+
+    method : str, default='ward'
+        Clustering method for computing a linkage as in
+        scipy.cluster.hierarchy.linkage
+
+    optimal_ordering : boolean, default=True
+        Whether sorting the leaf of the dendrograms to have a minimal distance
+        between successive leaves. For more information, see
+        scipy.cluster.hierarchy.optimal_leaf_ordering
+
+    symmetric : boolean, default=None
+        Whether df is symmetric.
+
+    Returns
+    -------
+    linkage : ndarray
+        The hierarchical clustering of cells encoded as a linkage matrix.
+    '''
     if symmetric is None:
         symmetric = check_symmetry(df)
 
@@ -130,6 +226,29 @@ def _get_distance_matrix_linkages(df, kwargs, method='ward', optimal_ordering=Tr
 
 
 def _triangularize_distance_matrix(df, linkage=None, symmetric=None, **kwargs):
+    '''Generates a mask to plot the upper triangle of the CCI matrix.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Contains the CCI scores. Must be a symmetric matrix.
+
+    linkage : ndarray, default=None
+        The hierarchical clustering of cells encoded as a linkage matrix.
+
+    symmetric : boolean, default=None
+        Whether df is symmetric.
+
+    **kwargs : dict
+        Dictionary containing arguments for the seaborn.clustermap function.
+
+    Returns
+    -------
+    mask : ndarray
+        Mask that contains ones in the places to be hidden in the clustermap.
+        Only the diagonal and the upper triangle are not masked (contain
+        zeros).
+    '''
     if symmetric is None:
         symmetric = check_symmetry(df)
 
@@ -161,7 +280,48 @@ def _triangularize_distance_matrix(df, linkage=None, symmetric=None, **kwargs):
 
 
 def _plot_triangular_clustermap(df, symmetric=None, linkage=None, mask=None, col_colors=None, row_colors=None,
-                                title='', cbar_title='CCI score', cbar_fontsize='12', **kwargs):
+                                title='', cbar_title='CCI score', cbar_fontsize=12, **kwargs):
+    '''Plots a triangular clustermap based on a mask.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Contains the CCI scores. Must be a symmetric matrix.
+
+    linkage : ndarray, default=None
+        The hierarchical clustering of cells encoded as a linkage matrix.
+
+    mask : ndarray, default=None
+        Mask that contains ones in the places to be hidden in the clustermap.
+        Only the diagonal and the upper triangle are not masked (contain
+        zeros). If None, a mask will be computed based on the CCI matrix
+        symmetry.
+
+    col_colors : dict, default=None
+        Dictionary containing tuples in the RGBA format for indicating colors
+        of major groups of cells in the columns.
+
+    row_colors : dict, default=None
+        Dictionary containing tuples in the RGBA format for indicating colors
+        of major groups of cells in the rows.
+
+    title : str, default=''
+        Title of the clustermap.
+
+    cbar_title : str, default='CCI score'
+        Title for the colorbar, depending on the score employed.
+
+    cbar_fontsize : int, default=12
+        Font size for the colorbar title as well as labels for axes X and Y.
+
+    **kwargs : dict
+        Dictionary containing arguments for the seaborn.clustermap function.
+
+    Returns
+    -------
+    hier : seaborn.matrix.ClusterGrid
+        A seaborn ClusterGrid instance.
+    '''
     if symmetric is None:
         symmetric = check_symmetry(df)
 
@@ -197,6 +357,24 @@ def _plot_triangular_clustermap(df, symmetric=None, linkage=None, mask=None, col
 
 
 def _move_xticks_triangular_clustermap(clustermap, symmetric=True):
+    '''Moves xticks to the diagonal when plotting a symmetric matrix
+    in the form of a upper triangle.
+
+    Parameters
+    ---------
+    clustermap : seaborn.matrix.ClusterGrid
+        A seaborn ClusterGrid instance.
+
+    symmetric : boolean, default=None
+        Whether the CCI matrix plotted in the clustermap is symmetric.
+
+    Returns
+    -------
+    clustermap : seaborn.matrix.ClusterGrid
+        A seaborn ClusterGrid instance, with the xticks moved to the
+        diagonal if the CCI matrix was symmetric. If not, the same
+        input clustermap is returned, but with rotated xtick labels.
+    '''
     if symmetric:
     # Apply offset transform to all xticklabels.
         clustermap.ax_row_dendrogram.set_visible(False)
