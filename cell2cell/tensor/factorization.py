@@ -125,8 +125,8 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
     Returns
     -------
     loss : list
-        List of  tuples with (x, y) coordinates for the elbow analysis. X values are the
-        different ranks and Y values are the errors of each decomposition.
+        List of  tuples with (x, y) coordinates for the elbow analysis. X values are
+        the different ranks and Y values are the errors of each decomposition.
     '''
     loss = []
     for r in tqdm(range(1, upper_rank + 1), disable=disable_pbar):
@@ -186,8 +186,8 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
     Returns
     -------
     all_loss : ndarray
-        Array containing the errors associated with multiple runs for a given rank. This
-        array is of shape (runs, upper_rank).
+        Array containing the errors associated with multiple runs for a given rank.
+        This array is of shape (runs, upper_rank).
     '''
     assert isinstance(runs, int), "runs must be an integer"
     all_loss = []

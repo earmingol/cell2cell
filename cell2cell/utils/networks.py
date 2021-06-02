@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 import networkx as nx
 
-# TODO: Add an export function for Cytoscape
+# TODO: Add an export function for Cytoscape
 
 def generate_network_from_adjacency(adjacency_matrix, package='networkx'):
     if package == 'networkx':

@@ -11,7 +11,7 @@ from cell2cell.preprocessing.ppi import get_genes_from_complexes
 from cell2cell.preprocessing.rnaseq import add_complexes_to_expression
 from cell2cell.preprocessing.ppi import filter_ppi_by_proteins
 from cell2cell.tensor.factorization import _compute_tensor_factorization, _run_elbow_analysis, _multiple_runs_elbow_analysis, _compute_elbow
-from cell2cell.plotting.tensor_factors_plot import plot_elbow, plot_multiple_run_elbow
+from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow
 
 
 class BaseTensor():
@@ -27,15 +27,16 @@ class BaseTensor():
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a ligand
-                                from a sender cell and the expression of a receptor on
-                                a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a
+                                ligand from a sender cell and the expression of a
+                                receptor on a receiver cell.
 
     how : str
         Approach to consider cell types and genes present across multiple contexts.
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts (union).
+        - 'outer' : Considers all cell types and genes present across contexts
+                    (union).
 
     tensor : tensorly.tensor
         Tensor object created with the library tensorly.
@@ -337,7 +338,8 @@ class InteractionTensor(BaseTensor):
         Approach to consider cell types and genes present across multiple contexts.
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts (union).
+        - 'outer' : Considers all cell types and genes present across contexts
+                    (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -346,20 +348,20 @@ class InteractionTensor(BaseTensor):
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a ligand
-                                from a sender cell and the expression of a receptor on
-                                a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a
+                                ligand from a sender cell and the expression of a
+                                receptor on a receiver cell.
 
     complex_sep : str, default=None
-        Symbol that separates the protein subunits in a multimeric complex. For example,
-        '&' is the complex_sep for a list of ligand-receptor pairs where a protein
-        partner could be "CD74&CD44".
+        Symbol that separates the protein subunits in a multimeric complex.
+        For example, '&' is the complex_sep for a list of ligand-receptor pairs
+        where a protein partner could be "CD74&CD44".
 
     upper_letter_comparison : boolean, default=True
         Whether making uppercase the gene names in the expression matrices and the
-        protein names in the ppi_data to match their names and integrate their respective
-        expression level. Useful when there are inconsistencies in the names between the
-        expression matrix and the ligand-receptor annotations.
+        protein names in the ppi_data to match their names and integrate their
+        respective expression level. Useful when there are inconsistencies in the
+        names between the expression matrix and the ligand-receptor annotations.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a dataframe of
@@ -372,8 +374,8 @@ class InteractionTensor(BaseTensor):
 
     group_ppi_method : str, default='gmean'
         Method for aggregating multiple PPIs into major groups.
-        - 'mean' : Computes the average communication score among all PPIs of the group
-                   for a given pair of cells/tissues/samples
+        - 'mean' : Computes the average communication score among all PPIs of the
+                   group for a given pair of cells/tissues/samples
         - 'gmean' : Computes the geometric mean of the communication scores among all
                     PPIs of the group for a given pair of cells/tissues/samples
         - 'sum' : Computes the sum of the communication scores among all PPIs of the
@@ -503,7 +505,8 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         Approach to consider cell types and genes present across multiple contexts.
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts (union).
+        - 'outer' : Considers all cell types and genes present across contexts
+                    (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -512,20 +515,20 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a ligand
-                                from a sender cell and the expression of a receptor on
-                                a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a
+                                ligand from a sender cell and the expression of a
+                                receptor on a receiver cell.
 
     complex_sep : str, default=None
-        Symbol that separates the protein subunits in a multimeric complex. For example,
-        '&' is the complex_sep for a list of ligand-receptor pairs where a protein
-        partner could be "CD74&CD44".
+        Symbol that separates the protein subunits in a multimeric complex.
+        For example, '&' is the complex_sep for a list of ligand-receptor pairs
+        where a protein partner could be "CD74&CD44".
 
     upper_letter_comparison : boolean, default=True
         Whether making uppercase the gene names in the expression matrices and the
-        protein names in the ppi_data to match their names and integrate their respective
-        expression level. Useful when there are inconsistencies in the names between the
-        expression matrix and the ligand-receptor annotations.
+        protein names in the ppi_data to match their names and integrate their
+        respective expression level. Useful when there are inconsistencies in the
+        names between the expression matrix and the ligand-receptor annotations.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a dataframe of
@@ -538,8 +541,8 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
 
     group_ppi_method : str, default='gmean'
         Method for aggregating multiple PPIs into major groups.
-        - 'mean' : Computes the average communication score among all PPIs of the group
-                   for a given pair of cells/tissues/samples
+        - 'mean' : Computes the average communication score among all PPIs of the
+                   group for a given pair of cells/tissues/samples
         - 'gmean' : Computes the geometric mean of the communication scores among all
                     PPIs of the group for a given pair of cells/tissues/samples
         - 'sum' : Computes the sum of the communication scores among all PPIs of the
@@ -551,8 +554,8 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
     Returns
     -------
     tensors : list
-        List of 3D-Communication tensors for each context. This list corresponds to the
-        4D-Communication tensor.
+        List of 3D-Communication tensors for each context. This list corresponds to
+        the 4D-Communication tensor.
 
     genes : list
         List of genes included in the tensor.
@@ -567,8 +570,8 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
 
     mask_tensor:
         Mask used to exclude values in the tensor. When using how='outer' it masks
-        missing values (e.g., cell types that are not present in a given context), while
-        using how='inner' makes the mask_tensor to be None.
+        missing values (e.g., cell types that are not present in a given context),
+        while using how='inner' makes the mask_tensor to be None.
     '''
 
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
@@ -639,8 +642,8 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
     Parameters
     ----------
     rnaseq_data : pandas.DataFrame
-        Gene expression matrix for a given context, sample or condition. Rows are genes
-        and columns are cell types/tissues/samples.
+        Gene expression matrix for a given context, sample or condition. Rows are
+        genes and columns are cell types/tissues/samples.
 
     ppi_data : pandas.DataFrame
         A dataframe containing protein-protein interactions (rows). It has to
@@ -654,9 +657,9 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a ligand
-                                from a sender cell and the expression of a receptor on
-                                a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a
+                                ligand from a sender cell and the expression of a
+                                receptor on a receiver cell.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a dataframe of
@@ -707,8 +710,8 @@ def aggregate_ccc_tensor(ccc_tensor, ppi_data, group_ppi_by=None, group_ppi_meth
 
     group_ppi_method : str, default='gmean'
         Method for aggregating multiple PPIs into major groups.
-        - 'mean' : Computes the average communication score among all PPIs of the group
-                   for a given pair of cells/tissues/samples
+        - 'mean' : Computes the average communication score among all PPIs of the
+                   group for a given pair of cells/tissues/samples
         - 'gmean' : Computes the geometric mean of the communication scores among all
                     PPIs of the group for a given pair of cells/tissues/samples
         - 'sum' : Computes the sum of the communication scores among all PPIs of the
@@ -718,10 +721,10 @@ def aggregate_ccc_tensor(ccc_tensor, ppi_data, group_ppi_by=None, group_ppi_meth
     -------
     aggregated_tensor : ndarray list
         List of directed cell-cell communication matrices, one for each major group of
-        ligand-receptor pair in ppi_data. These matrices contain the communication score
-        for pairs of cells for the corresponding PPI group. This tensor represent a
-        3D-communication tensor for the context, but for major groups instead of
-        individual PPIs.
+        ligand-receptor pair in ppi_data. These matrices contain the communication
+        score for pairs of cells for the corresponding PPI group. This tensor
+        represent a 3D-communication tensor for the context, but for major groups
+        instead of individual PPIs.
     '''
     tensor_ = np.array(ccc_tensor)
     aggregated_tensor = []
@@ -744,11 +747,11 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
         A communication tensor.
 
     metadata_dicts : list
-        A list of dictionaries. Each dictionary represents an order of the tensor. In an
-        interaction tensor these orders should be contexts, LR pairs, sender cells and
-        receiver cells. The keys are the elements in each order (they are contained in
-        interaction_tensor.order_names) and the values are the categories that each
-        elements will be assigned as metadata.
+        A list of dictionaries. Each dictionary represents an order of the tensor. In
+        an interaction tensor these orders should be contexts, LR pairs, sender cells
+        and receiver cells. The keys are the elements in each order (they are
+        contained in interaction_tensor.order_names) and the values are the categories
+        that each elements will be assigned as metadata.
 
     fill_with_order_elements : boolean, default=True
         Whether using each element of a dimension as its own metadata when a None is
@@ -809,14 +812,16 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
         Type of Interaction pipelines in the list. Either 'single_cell' or 'bulk'.
 
     context_names : list
-        List of context names or labels for each of the Interaction pipelines. This list
-        matches the length of interactions and the labels have to follows the same order.
+        List of context names or labels for each of the Interaction pipelines. This
+        list matches the length of interactions and the labels have to follows the
+        same order.
 
     how : str, default='inner'
         Approach to consider cell types and genes present across multiple contexts.
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts (union).
+        - 'outer' : Considers all cell types and genes present across contexts
+                    (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -825,15 +830,15 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a ligand
-                                from a sender cell and the expression of a receptor on
-                                a receiver cell.
+        - 'expresion_product' : Computes the product between the expression of a
+                                ligand from a sender cell and the expression of a
+                                receptor on a receiver cell.
 
     upper_letter_comparison : boolean, default=True
         Whether making uppercase the gene names in the expression matrices and the
-        protein names in the ppi_data to match their names and integrate their respective
-        expression level. Useful when there are inconsistencies in the names between the
-        expression matrix and the ligand-receptor annotations.
+        protein names in the ppi_data to match their names and integrate their
+        respective expression level. Useful when there are inconsistencies in the
+        names between the expression matrix and the ligand-receptor annotations.
 
     Returns
     -------

@@ -6,4 +6,4 @@ from cell2cell.plotting.cci_plot import clustermap_cci
 from cell2cell.plotting.circos_plot import circos_plot
 from cell2cell.plotting.dot_plot import dot_plot
 from cell2cell.plotting.pcoa_plot import pcoa_3dplot
-from cell2cell.plotting.tensor_factors_plot import tensor_factors_plot
+from cell2cell.plotting.tensor_plot import tensor_factors_plot

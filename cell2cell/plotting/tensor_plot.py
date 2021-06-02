@@ -17,11 +17,12 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
     Parameters
     ----------
     interaction_tensor : cell2cell.tensor.BaseTensor
-        A communication tensor generated with any of the tensor class in cell2cell.tensor
+        A communication tensor generated with any of the tensor class in
+        cell2cell.tensor
 
     order_labels : list, default=None
-        List with the labels of each dimension to use in the plot. If none, the default
-        names given when factorizing the tensor will be used.
+        List with the labels of each dimension to use in the plot. If none, the
+        default names given when factorizing the tensor will be used.
 
     metadata : list, default=None
         List of pandas dataframes with metadata information for elements of each
@@ -38,8 +39,8 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
         element in the metadata.
 
     meta_cmaps : list, default=None
-        A list of colormaps used for coloring elements in each dimension. The length of
-        this list is equal to the number of dimensions of the tensor. If None, all
+        A list of colormaps used for coloring elements in each dimension. The length
+        of this list is equal to the number of dimensions of the tensor. If None, all
         dimensions will be colores with the colormap 'gist_rainbow'.
 
     fontsize : int, default=20
@@ -172,8 +173,8 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
     Parameters
     ----------
     loss : list
-        List of  tuples with (x, y) coordinates for the elbow analysis. X values are the
-        different ranks and Y values are the errors of each decomposition.
+        List of  tuples with (x, y) coordinates for the elbow analysis. X values are
+        the different ranks and Y values are the errors of each decomposition.
 
     elbow : int, default=None
         X coordinate to color the error as red. Usually used to represent the detected
@@ -186,7 +187,8 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
         Fontsize for axis labels.
 
     filename : str, default=None
-        Path to save the figure of the elbow analysis. If None, the figure is not saved.
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
 
     Returns
     -------
@@ -217,8 +219,8 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), f
     Parameters
     ----------
     all_loss : ndarray
-        Array containing the errors associated with multiple runs for a given rank. This
-        array is of shape (runs, upper_rank).
+        Array containing the errors associated with multiple runs for a given rank.
+        This array is of shape (runs, upper_rank).
 
     elbow : int, default=None
         X coordinate to color the error as red. Usually used to represent the detected
@@ -235,7 +237,8 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), f
         Fontsize for axis labels.
 
     filename : str, default=None
-        Path to save the figure of the elbow analysis. If None, the figure is not saved.
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
 
     Returns
     -------

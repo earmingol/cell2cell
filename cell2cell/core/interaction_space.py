@@ -49,7 +49,7 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
 
     Returns
     -------
-    interaction_space : dict
+    interaction_elements : dict
         Dictionary containing all the pairwise interaction ('pairs' key), cell dictionary ('cells' key) containing all
         cells/tissues/organs with their associated datasets (rna_seq, binary_ppi, etc) and a Cell-Cell Interaction Matrix
         that scores the possible interaction between each pair of cells ('cci_matrix key) for the respective interaction
@@ -206,17 +206,30 @@ class InteractionSpace():
         return cci_value
 
     def compute_pairwise_cci_scores(self, cci_score=None, use_ppi_score=False, verbose=True):
-        '''
-        Function that computes...
+        '''Computes overall CCI scores for each pair of cells.
 
         Parameters
         ----------
+        cci_score : str, default=None
+            Scoring function to aggregate the communication scores between
+            a pair of cells. It computes an overall potential of cell-cell
+            interactions. If None, it will use the one stored in the
+            attribute analysis_setup of this object. Options:
+            - 'bray_curtis' : Bray-Curtis-like score
+            - 'jaccard' : Jaccard-like score
+            - 'count' : Number of LR pairs that the pair of cells use
 
+        use_ppi_score : boolean, default=False
+            Whether using a weight of LR pairs specified in the ppi_data
+            to compute the scores.
+
+        verbose : boolean, default=True
+            Whether printing or not steps of the analysis.
 
         Returns
         -------
-
-
+        self.interaction_elements['cci_matrix'] : pandas.DataFrame
+            Contains CCI scores for each pair of cells
         '''
         if cci_score is None:
             cci_score = self.cci_score
@@ -258,7 +271,7 @@ class InteractionSpace():
 
     def pair_communication_score(self, cell1, cell2, communication_score='expression_thresholding',
                                  use_ppi_score=False, verbose=True):
-        # TODO: Implement communication scores
+        # TODO: Implement communication scores
         if verbose:
             print("Computing communication score between {} and {}".format(cell1.type, cell2.type))
 
@@ -292,17 +305,70 @@ class InteractionSpace():
 
     def compute_pairwise_communication_scores(self, communication_score=None, use_ppi_score=False, ref_ppi_data=None,
                                               interaction_columns=('A', 'B'), cells=None, cci_type=None, verbose=True):
-        '''
-        Function that computes...
+        '''Computes the communication scores for each LR pairs in
+        a given pair of sender-receiver cell
 
         Parameters
-        ----------
+        ---------
+        communication_score : str, default=None
+            Type of communication score to infer the potential use of
+            a given ligand-receptor pair by a pair of cells/tissues/samples.
+            If None, the score stored in the attribute analysis_setup
+            will be used.
+            Available communication_scores are:
+        - 'expresion_thresholding' : Computes the joint presence of a
+                                     ligand from a sender cell and of
+                                     a receptor on a receiver cell from
+                                     binarizing their gene expression levels.
+        - 'expression_mean' : Computes the average between the expression
+                              of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
+        - 'expresion_product' : Computes the product between the expression
+                                of a ligand from a sender cell and the
+                                expression of a receptor on a receiver cell.
 
+        use_ppi_score : boolean, default=False
+            Whether using a weight of LR pairs specified in the ppi_data
+            to compute the scores.
+
+        ref_ppi_data : pandas.DataFrame, default=None
+            Reference list of protein-protein interactions (or
+            ligand-receptor pairs) used for inferring the cell-cell
+            interactions and communication. It could be the same as
+            'ppi_data' if ppi_data is not bidirectional (that is,
+            contains ProtA-ProtB interaction as well as ProtB-ProtA
+            interaction). ref_ppi must be undirected (contains only
+            ProtA-ProtB and not ProtB-ProtA interaction). If None
+            the one stored in the attribute ref_ppi will be used.
+
+        interaction_columns : tuple, default=None
+            Contains the names of the columns where to find the
+            partners in a dataframe of protein-protein interactions.
+            If the list is for ligand-receptor pairs, the first column
+            is for the ligands and the second for the receptors. If
+            None, the one stored in the attribute interaction_columns
+            will be used
+
+        cells : list=None
+            List of cells to consider.
+
+        cci_type : str, default=None
+            Type of interaction between two cells. Used to specify
+            if we want to consider a LR pair in both directions.
+            It can be:
+                - 'undirected'
+                - 'directed
+            If None, the one stored in the attribute analysis_setup
+            will be used.
+
+        verbose : boolean, default=True
+            Whether printing or not steps of the analysis.
 
         Returns
         -------
-
-
+        self.interaction_elements['communication_matrix'] : pandas.DataFrame
+            Contains communication scores for each LR pair in a
+            given pair of sender-receiver cells.
         '''
         if communication_score is None:
             communication_score = self.communication_score
