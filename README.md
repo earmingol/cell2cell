@@ -26,7 +26,7 @@ pip install cell2cell
 
 ---
 ![plot](https://github.com/earmingol/cell2cell/blob/master/Logo.png?raw=true)
-- A toy example using the under-the-hood methods of cell2cell is
+- A toy example using the **under-the-hood methods of cell2cell** is
   [available here](https://github.com/earmingol/cell2cell/blob/master/examples/Toy-Example.ipynb).
   This case allows personalizing the analyses in a higher level, but it may result **harder to use**.
 - A toy example using an Interaction Pipeline for **bulk data** is 
@@ -35,13 +35,13 @@ pip install cell2cell
 - A toy example using an Interaction Pipeline for **single-cell data** is 
   [available here](https://github.com/earmingol/cell2cell/blob/master/examples/Toy-Example-SingleCellPipeline.ipynb).
   An Interaction Pipeline makes cell2cell **easier to use**.  
-- An example of using *cell2cell* to infer cell-cell interactions across the whole
-body of *C. elegans* is [available here](https://github.com/LewisLabUCSD/Celegans-cell2cell)
+- An example of using *cell2cell* to infer cell-cell interactions across the **whole
+body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celegans-cell2cell)
   
 ---
 
 ![plot](https://github.com/earmingol/cell2cell/blob/master/LogoTensor.png?raw=true)
-- A capsule containing jupyter notebooks for running Tensor-cell2cell on datasets of COVID-19 an the embryonic development
-  of *C. elegans* is [available in codeocean.com]()
+- A capsule containing jupyter notebooks for running Tensor-cell2cell (cell2cell v0.4.2) on datasets of **COVID-19 and the embryonic development
+  of *C. elegans*** is [available in codeocean.com]()
 
 ---
