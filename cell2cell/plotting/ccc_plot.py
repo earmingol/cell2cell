@@ -3,7 +3,6 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-import cell2cell.analysis
 from cell2cell.clustering import compute_linkage
 from cell2cell.clustering.cluster_interactions import compute_distance
 from cell2cell.plotting.aesthetics import get_colors_from_labels
@@ -13,7 +12,92 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
                    meta_cmap='gist_rainbow', colors=None, cell_labels=('SENDER-CELL','RECEIVER-CELL'),
                    metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
                    only_used_lr=True, cbar_title='Presence', cbar_fontsize=12, row_fontsize=8, filename=None, **kwargs):
+    '''Generates a clustermap (heatmap + dendrograms from a hierarchical
+    clustering) based on CCC scores for each LR pair in every cell-cell pair.
 
+    Parameters
+    ----------
+    interaction_space : cell2cell.core.interaction_space.InteractionSpace
+        Interaction space that contains all a distance matrix after running the
+        the method compute_pairwise_cci_scores. Alternatively, this object
+        can be a numpy-array or a pandas DataFrame. Also, a
+        SingleCellInteractions or a BulkInteractions object after running
+        the method compute_pairwise_cci_scores.
+
+    metadata : pandas.Dataframe, default=None
+        Metadata associated with the cells, cell types or samples in the
+        matrix containing CCC scores. If None, cells will not be colored
+        by major groups.
+
+    sample_col : str, default='#SampleID'
+        Column in the metadata for the cells, cell types or samples
+        in the matrix containing CCC scores.
+
+    group_col : str, default='Groups'
+        Column in the metadata containing the major groups of cells, cell types
+        or samples in the matrix with CCC scores.
+
+    meta_cmap : str, default='gist_rainbow'
+        Name of the color palette for coloring the major groups of cells.
+
+    colors : dict, default=None
+        Dictionary containing tuples in the RGBA format for indicating colors
+        of major groups of cells. If colors is specified, meta_cmap will be
+        ignored.
+
+    cell_labels : tuple, default=('SENDER-CELL','RECEIVER-CELL')
+        A tuple containing the labels for indicating the group colors of
+        sender and receiver cells if metadata or colors are provided.
+
+    metric : str, default='jaccard'
+        The distance metric to use. The distance function can be 'braycurtis',
+        'canberra', 'chebyshev', 'cityblock', 'correlation', 'cosine', 'dice',
+        'euclidean', 'hamming', 'jaccard', 'jensenshannon', 'kulsinski',
+        'mahalanobis', 'matching', 'minkowski', 'rogerstanimoto', 'russellrao',
+        'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule'.
+
+    method : str, default='ward'
+        Clustering method for computing a linkage as in
+        scipy.cluster.hierarchy.linkage
+
+    optimal_leaf : boolean, default=True
+        Whether sorting the leaf of the dendrograms to have a minimal distance
+        between successive leaves. For more information, see
+        scipy.cluster.hierarchy.optimal_leaf_ordering
+
+    excluded_cells : list, default=None
+        List containing cell names that are present in the interaction_space
+        object but that will be excluded from this plot.
+
+    title : str, default=''
+        Title of the clustermap.
+
+    only_used_lr : boolean, default=True
+        Whether displaying or not only LR pairs that were used at least by
+        one pair of cells. If True, those LR pairs that were not used will
+        not be displayed.
+
+    cbar_title : str, default='CCI score'
+        Title for the colorbar, depending on the score employed.
+
+    cbar_fontsize : int, default=12
+        Font size for the colorbar title as well as labels for axes X and Y.
+
+    row_fontsize : int, default=8
+        Font size for the rows in the clustermap (ligand-receptor pairs).
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
+
+    **kwargs : dict
+        Dictionary containing arguments for the seaborn.clustermap function.
+
+    Returns
+    -------
+    fig : seaborn.matrix.ClusterGrid
+        A seaborn ClusterGrid instance.
+    '''
     if hasattr(interaction_space, 'interaction_elements'):
         print('Interaction space detected as an InteractionSpace class')
         if 'communication_matrix' not in interaction_space.interaction_elements.keys():

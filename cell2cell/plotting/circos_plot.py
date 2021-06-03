@@ -16,9 +16,91 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
                 sample_col='#SampleID', group_col='Groups', meta_cmap='Set2', cells_cmap='Pastel1', colors=None, ax=None,
                 figsize=(10,10), fontsize=14, legend=True, ligand_label_color='dimgray', receptor_label_color='dimgray',
                 filename=None):
-    '''
-    Generates the circos plot in the exact order that sender and receiver cells were provided. Similarly, ligands
-    and receptors are sorted by the order they were input.
+    '''Generates the circos plot in the exact order that sender and
+    receiver cells are provided. Similarly, ligands and receptors are
+    sorted by the order they are input.
+
+    Parameters
+    ----------
+    interaction_space : cell2cell.core.interaction_space.InteractionSpace
+        Interaction space that contains all a distance matrix after running the
+        the method compute_pairwise_cci_scores. Alternatively, this object
+        can be a numpy-array or a pandas DataFrame. Also, a
+        SingleCellInteractions or a BulkInteractions object after running
+        the method compute_pairwise_cci_scores.
+
+    sender_cells : list
+        List of cells to be included as senders.
+
+    receiver_cells : list
+        List of cells to be included as receivers.
+
+    ligands : list
+        List of genes/proteins to be included as ligands produced by the
+        sender cells.
+
+    receptors : list
+        List of genes/proteins to be included as receptors produced by the
+        receiver cells.
+
+    excluded_score : float, default=0
+        Rows that have a communication score equal or lower to this will
+        be dropped from the network.
+
+    metadata : pandas.Dataframe, default=None
+        Metadata associated with the cells, cell types or samples in the
+        matrix containing CCC scores. If None, cells will be color only by
+        individual cells.
+
+    sample_col : str, default='#SampleID'
+        Column in the metadata for the cells, cell types or samples
+        in the matrix containing CCC scores.
+
+    group_col : str, default='Groups'
+        Column in the metadata containing the major groups of cells, cell types
+        or samples in the matrix with CCC scores.
+
+    meta_cmap : str, default='Set2'
+        Name of the matplotlib color palette for coloring the major groups
+        of cells.
+
+    cells_cmap : str, default='Pastel1'
+        Name of the color palette for coloring individual cells.
+
+    colors : dict, default=None
+        Dictionary containing tuples in the RGBA format for indicating colors
+        of major groups of cells. If colors is specified, meta_cmap will be
+        ignored.
+
+    ax : matplotlib.axes.Axes, default=None
+        Axes instance for a plot.
+
+    figsize : tuple, default=(10, 10)
+        Size of the figure (width*height), each in inches.
+
+    fontsize : int, default=14
+        Font size for ligand and receptor labels.
+
+    legend : boolean, default=True
+        Whether including legends for cell and cell group colors as well
+        as ligand/receptor colors.
+
+    ligand_label_color : str, default='dimgray'
+        Name of the matplotlib color palette for coloring the labels of
+        ligands.
+
+    receptor_label_color : str, default='dimgray'
+        Name of the matplotlib color palette for coloring the labels of
+        receptors.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
+
+    Returns
+    -------
+    ax : matplotlib.axes.Axes
+        Axes instance containing a circos plot.
     '''
     if hasattr(interaction_space, 'interaction_elements'):
         if 'communication_matrix' not in interaction_space.interaction_elements.keys():
@@ -197,6 +279,27 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
 
 
 def get_arc_angles(G, sorting_feature=None):
+    '''Obtains the angles of polar coordinates to plot nodes as arcs of
+     a circumference.
+
+    Parameters
+    ----------
+    G : networkx.Graph or networkx.DiGraph
+        A networkx graph.
+
+    sorting_feature : str, default=None
+        A node attribute present in the dictionary associated with
+        each node. The values associated with this attributed will
+        be used for sorting the nodes.
+
+    Returns
+    -------
+    angles : dict
+        A dictionary containing the angles for positioning the
+        nodes in polar coordinates. Keys are the node names and
+        values are tuples with angles for the start and end of
+        the arc that represents a node.
+    '''
     elements = list(set(G.nodes()))
     n_elements = len(elements)
 
@@ -214,6 +317,29 @@ def get_arc_angles(G, sorting_feature=None):
 
 
 def get_cartesian(theta, radius, center=(0,0), angle='radians'):
+    '''Performs a polar to cartesian coordinates conversion.
+
+    Parameters
+    ----------
+    theta : float or ndarray
+        An angle for a polar coordinate.
+
+    radius : float
+        The radius in a polar coordinate.
+
+    center : tuple, default=(0,0)
+        The center of the circle in the cartesian coordinates.
+
+    angle : str, default='radians'
+        Type of angle that theta is. Options are:
+         - 'degrees' : from 0 to 360
+         - 'radians' : from 0 to 2*numpy.pi
+
+    Returns
+    -------
+    (x, y) : tuple
+        Cartesian coordinates for X and Y axis respective.
+    '''
     if angle == 'degrees':
         theta_ = 2.0*np.pi*theta/360.
     elif angle == 'radians':
@@ -226,6 +352,26 @@ def get_cartesian(theta, radius, center=(0,0), angle='radians'):
 
 
 def get_readable_ccc_matrix(ccc_matrix):
+    '''Transforms a CCC matrix from an InteractionSpace instance
+    into a readable dataframe.
+
+    Parameters
+    ----------
+    ccc_matrix : pandas.DataFrame
+        A dataframe containing the communication scores for a given combination
+        between a pair of sender-receiver cells and a ligand-receptor pair.
+        Columns are pairs of cells and rows LR pairs.
+
+    Returns
+    -------
+    readable_ccc : pandas.DataFrame
+        A dataframe containing flat information in each row about communication
+        scores for a given pair of cells and a specific LR pair. A row contains
+        the sender and receiver cells as well as the ligand and the receptor
+        participating in an interaction and their respective communication
+        score. Columns are: ['sender', 'receiver', 'ligand', 'receptor',
+        'communication_score']
+    '''
     readable_ccc = ccc_matrix.copy()
     readable_ccc.index.name = 'LR'
     readable_ccc.reset_index(inplace=True)
@@ -241,10 +387,37 @@ def get_readable_ccc_matrix(ccc_matrix):
 
 
 def sort_nodes(sender_cells, receiver_cells, ligands, receptors):
+    '''Sorts cells by senders first and alphabetically and creates pairs of
+    senders-ligands. If senders and receivers share cells, it creates pairs
+    of senders-receptors for those shared cells. Then sorts receivers cells
+    and creates pairs of receivers-receptors, for those cells that are not
+    shared with senders.
+
+    Parameters
+    ----------
+    sender_cells : list
+        List of sender cells to sort.
+
+    receiver_cells : list
+        List of receiver cells to sort.
+
+    ligands : list
+        List of ligands to sort.
+
+    receptors : list
+        List of receptors to sort.
+
+    Returns
+    -------
+    sorted_nodes : dict
+        A dictionary where keys are the nodes of cells-proteins and values
+        are the position they obtained (a ranking from 0 to N, where N is
+        the total number of nodes).
+    '''
     sorted_nodes = dict()
     count = 0
 
-    both = set(sender_cells) & set(receiver_cells)
+    both = set(sender_cells) & set(receiver_cells) # Intersection
     for c in sender_cells:
         for p in ligands:
             sorted_nodes[(c + '^' + p)] = count
@@ -264,16 +437,66 @@ def sort_nodes(sender_cells, receiver_cells, ligands, receptors):
 
 
 def determine_small_radius(coordinate_dict):
+    '''Computes the radius of a circle whose diameter is the distance
+    between the center of two nodes.
+
+    Parameters
+    ----------
+    coordinate_dict : dict
+        A dictionary containing the coordinates to plot each node.
+
+    Returns
+    -------
+    radius : float
+        The half of the distance between the center of two nodes.
+    '''
     # Cartesian coordinates
     keys = list(coordinate_dict.keys())
     circle1 = np.asarray(coordinate_dict[keys[0]])
     circle2 = np.asarray(coordinate_dict[keys[1]])
     diff = circle1 - circle2
     distance = np.sqrt(diff[0]**2 + diff[1]**2)
-    return distance / 2.0
+    radius = distance / 2.0
+    return radius
 
 
 def _build_network(sender_cells, receiver_cells, ligands, receptors, sorted_nodes, readable_ccc, excluded_score=0):
+    '''Generates a directed network given a subset of sender and receiver cells
+    as well as a ligands and receptors.
+
+    Parameters
+    ----------
+    sender_cells : list
+        List of cells to be included as senders.
+
+    receiver_cells : list
+        List of cells to be included as receivers.
+
+    ligands : list
+        List of genes/proteins to be included as ligands produced by the
+        sender cells.
+
+    receptors : list
+        List of genes/proteins to be included as receptors produced by the
+        receiver cells.
+
+    readable_ccc : pandas.DataFrame
+        A dataframe containing ligand-receptor interactions by a pair
+        of specific sender-receiver cells and their communication score
+        as rows. Columns are ['sender', 'receiver', 'ligand', 'receptor',
+        'communication_score']
+
+    excluded_score : float, default=0
+        Rows that have a communication score equal or lower to this will
+        be dropped from the network.
+
+    Returns
+    -------
+    G : networkx.DiGraph
+        Directed graph that contains nodes as sender-cell^ligand
+        and receiver-cell^receptor, and links that goes from a
+        pair of sender-cell^ligand to a pair of receiver-cell^receptor.
+    '''
     G = nx.DiGraph()
     df = readable_ccc.loc[(readable_ccc.sender.isin(sender_cells)) & \
                           (readable_ccc.receiver.isin(receiver_cells)) & \
@@ -309,6 +532,33 @@ def _build_network(sender_cells, receiver_cells, ligands, receptors, sorted_node
 
 
 def get_node_colors(G, coloring_feature=None, cmap='viridis'):
+    '''Generates colors for each node in a network given one of their
+    properties.
+
+    Parameters
+    ----------
+    G : networkx.Graph
+        A graph containing a list of nodes
+
+    coloring_feature : str, default=None
+        A node attribute present in the dictionary associated with
+        each node. The values associated with this attributed will
+        be used for coloring the nodes.
+
+    cmap : str, default='viridis'
+        Name of a matplotlib color palette for coloring the nodes.
+
+    Returns
+    -------
+    node_colors : dict
+        A dictionary wherein each key is a node and values are
+        tuples containing colors in the RGBA format.
+
+    feature_colores : dict
+        A dictionary wherein each key is a value for the attribute
+        of nodes in the coloring_feature property and values are
+        tuples containing colors in the RGBA format.
+    '''
     if coloring_feature is None:
         raise ValueError('Node feature not specified!')
 
@@ -333,6 +583,24 @@ def get_node_colors(G, coloring_feature=None, cmap='viridis'):
 
 
 def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fontsize=14):
+    '''Adds legends to circos plot.
+
+    Parameters
+    ----------
+    cell_legend : dict
+        Dictionary containing the colors for the cells.
+
+    signal_legend : dict, default=None
+        Dictionary containing the colors for the LR pairs in a given pair
+        of cells. Corresponds to the colors of the links.
+
+    meta_legend : dict, default=None
+        Dictionary containing the colors for the cells given their major
+        groups.
+
+    fontsize : int, default=14
+        Size of the labels in the legend.
+    '''
     legend_fontsize = int(fontsize * 0.9)
 
     # Cell legend

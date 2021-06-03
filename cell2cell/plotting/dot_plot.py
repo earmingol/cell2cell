@@ -8,10 +8,56 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def dot_plot(sc_interactions, evaluation='communication', significance=0.05, senders=None, receivers=None,
              figsize=(16, 9), tick_size=8, cmap='PuOr', filename=None):
+    '''Generates a dot plot for the CCI or communication scores given their
+    P-values. Size of the dots are given by the -log10(P-value) and colors
+    by the value of the CCI or communication score.
+
+    Parameters
+    ----------
+    sc_interactions : cell2cell.analysis.pipelines.SingleCellInteractions
+        Interaction class with all necessary methods to run the cell2cell
+        pipeline on a single-cell RNA-seq dataset. The method
+        permute_cell_labels() must be run before generating this plot.
+
+    evaluation : str, default='communication'
+        P-values of CCI or communication scores used for this plot.
+        - 'interactions' : For CCI scores
+        - 'communication' : For communication scores
+
+    significance : float, default=0.05
+        The significance threshold to be plotted. LR pairs or cell-cell
+        pairs with at least one P-value below this threshold will be
+        considered.
+
+    senders : list, default=None
+        Optional filter to plot specific sender cells.
+
+    receivers : list, default=None
+        Optional filter to plot specific receiver cells.
+
+    figsize : tuple, default=(16, 9)
+        Size of the figure (width*height), each in inches.
+
+    tick_size : int, default=8
+        Specifies the size of ticklabels as well as the maximum size
+        of the dots.
+
+    cmap : str, default='PuOr'
+        A matplotlib color palette name.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib
+    '''
     if evaluation == 'communication':
         if not (hasattr(sc_interactions, 'ccc_permutation_pvalues')):
             raise ValueError(
-                'Run the method permute_cell_labels()with evaluation="communication" before plotting communication P-values.')
+                'Run the method permute_cell_labels() with evaluation="communication" before plotting communication P-values.')
         else:
             pvals = sc_interactions.ccc_permutation_pvalues
             scores = sc_interactions.interaction_space.interaction_elements['communication_matrix']
@@ -125,6 +171,7 @@ def dot_plot(sc_interactions, evaluation='communication', significance=0.05, sen
         ax2.annotate(extra+ str(np.round(v, 4)), (i, 0.5))
     ax2.axis('off')
     ax2.set_title('log10(P-value) sizes')
+
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches='tight')
     return fig

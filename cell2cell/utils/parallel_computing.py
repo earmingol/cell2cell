@@ -8,8 +8,18 @@ from multiprocessing import cpu_count
 # GENERAL
 def agents_number(n_jobs):
     '''
-    This function computes the number of available agents based on the number of jobs provided.
+    This function computes the number of available agents based on
+    the number of jobs provided.
 
+    Parameters
+    ---------
+    n_jobs : int
+        Number of threads for parallelization.
+
+    Returns
+    -------
+    agents : int
+        Number of threads that the computer can really provide.
     '''
     if n_jobs < 0:
         agents = cpu_count() + 1 + n_jobs
