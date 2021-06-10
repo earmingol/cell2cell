@@ -56,6 +56,9 @@ class BaseTensor():
         ligand-receptor interactions, the third the names of the sender cells and the
         fourth the names of the receiver cells.
 
+    order_labels : list
+        List of labels for dimensions or orders in the tensor.
+
     tl_object : ndarray list
         A tensorly object containing a list of initialized factors of the tensor
         decomposition where element `i` is of shape (tensor.shape[i], rank).
@@ -81,6 +84,7 @@ class BaseTensor():
         self.genes = None
         self.cells = None
         self.order_names = [None, None, None, None]
+        self.order_labels = None
         self.tl_object = None
         self.factors = None
         self.rank = None
@@ -137,15 +141,19 @@ class BaseTensor():
 
         self.tl_object = tf
         factor_names = ['Factor {}'.format(i) for i in range(1, rank+1)]
-        if tensor_dim == 4:
-            order_names = ['Context', 'LRs', 'Sender', 'Receiver']
-        elif tensor_dim > 4:
-            order_names = ['Context-{}'.format(i+1) for i in range(tensor_dim-3)] + ['LRs', 'Sender', 'Receiver']
-        elif tensor_dim == 3:
-            order_names = ['LRs', 'Sender', 'Receiver']
+        if self.order_labels is None:
+            if tensor_dim == 4:
+                order_labels = ['Context', 'LRs', 'Sender', 'Receiver']
+            elif tensor_dim > 4:
+                order_labels = ['Context-{}'.format(i+1) for i in range(tensor_dim-3)] + ['LRs', 'Sender', 'Receiver']
+            elif tensor_dim == 3:
+                order_labels = ['LRs', 'Sender', 'Receiver']
+            else:
+                raise ValueError('Too few dimensions in the tensor')
         else:
-            raise ValueError('Too few dimensions in the tensor')
-        self.factors = OrderedDict(zip(order_names,
+            assert len(self.order_labels) == tensor_dim, "The length of order_labels must match the number of orders/dimensions in the tensor"
+            order_labels = self.order_labels
+        self.factors = OrderedDict(zip(order_labels,
                                        [pd.DataFrame(f, index=idx, columns=factor_names) for f, idx in zip(tf.factors, self.order_names)]))
         self.rank = rank
 
@@ -329,6 +337,9 @@ class InteractionTensor(BaseTensor):
         contain at least two columns, one for the first protein partner in the
         interaction as well as the second protein partner.
 
+    order_labels : list, default=None
+        List of labels for dimensions or orders in the tensor.
+
     context_names : list, default=None
         A list of strings containing the names of the corresponding contexts to each
         rnaseq_matrix. The length of this list must match the length of the list
@@ -388,9 +399,9 @@ class InteractionTensor(BaseTensor):
     ----------
     Same attributes as cell2cell.tensor.BaseTensor
     '''
-    def __init__(self, rnaseq_matrices, ppi_data, context_names=None, how='inner', communication_score='expression_mean',
-                 complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'),
-                 group_ppi_by=None, group_ppi_method='gmean', verbose=True):
+    def __init__(self, rnaseq_matrices, ppi_data, order_labels=None, context_names=None, how='inner',
+                 communication_score='expression_mean', complex_sep=None, upper_letter_comparison=True,
+                 interaction_columns=('A', 'B'), group_ppi_by=None, group_ppi_method='gmean', verbose=True):
         # Asserts
         if group_ppi_by is not None:
             assert group_ppi_by in ppi_data.columns, "Using {} for grouping PPIs is not possible. Not present among columns in ppi_data".format(group_ppi_by)
@@ -440,6 +451,7 @@ class InteractionTensor(BaseTensor):
         self.tensor = tl.tensor(tensor)
         self.genes = genes
         self.cells = cells
+        self.order_labels = order_labels
         self.order_names = [context_names, ppi_names, self.cells, self.cells]
         self.mask = mask
 
@@ -468,13 +480,15 @@ class PreBuiltTensor(BaseTensor):
     ----------
     Same attributes as cell2cell.tensor.BaseTensor
     '''
-    def __init__(self, tensor, order_names, mask=None):
+    def __init__(self, tensor, order_names, order_labels=None, mask=None):
         # Init BaseTensor
         BaseTensor.__init__(self)
 
         self.tensor = tl.tensor(tensor)
         self.order_names = order_names
+        self.order_labels = order_labels
         self.mask = mask
+        assert len(self.tensor.shape) == len(self.order_labels), "The length of order_labels must match the number of orders/dimensions in the tensor"
 
 
 def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communication_score='expression_product',
@@ -768,14 +782,18 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
     tensor_dim = len(interaction_tensor.tensor.shape)
     assert (tensor_dim == len(metadata_dicts)), "metadata_dicts should be of the same size as the number of orders/dimensions in the tensor"
 
-    if tensor_dim == 4:
-        default_cats = ['Context', 'Ligand-receptor pair', 'Sender cell', 'Receiver cell']
-    elif tensor_dim > 4:
-        default_cats = ['Context-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-receptor pair', 'Sender cell', 'Receiver cell']
-    elif tensor_dim == 3:
-        default_cats = ['Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+    if interaction_tensor.order_labels is None:
+        if tensor_dim == 4:
+            default_cats = ['Context', 'Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+        elif tensor_dim > 4:
+            default_cats = ['Context-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+        elif tensor_dim == 3:
+            default_cats = ['Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+        else:
+            raise ValueError('Too few dimensions in the tensor')
     else:
-        raise ValueError('Too few dimensions in the tensor')
+        assert len(interaction_tensor.order_labels) == tensor_dim, "The length of order_labels must match the number of orders/dimensions in the tensor"
+        default_cats = interaction_tensor.order_labels
 
     if fill_with_order_elements:
         metadata = [pd.DataFrame(index=names) for names in interaction_tensor.order_names]

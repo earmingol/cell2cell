@@ -298,14 +298,18 @@ def generate_plot_df(interaction_tensor):
         ['Factor', 'Variable', 'Value', 'Order']
     '''
     tensor_dim = len(interaction_tensor.tensor.shape)
-    if tensor_dim == 4:
-        factor_labels = ['Context', 'LRs', 'Sender', 'Receiver']
-    elif tensor_dim > 4:
-        factor_labels = ['Context-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['LRs', 'Sender', 'Receiver']
-    elif tensor_dim == 3:
-        factor_labels = ['LRs', 'Sender', 'Receiver']
+    if interaction_tensor.order_labels is None:
+        if tensor_dim == 4:
+            factor_labels = ['Context', 'LRs', 'Sender', 'Receiver']
+        elif tensor_dim > 4:
+            factor_labels = ['Context-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['LRs', 'Sender', 'Receiver']
+        elif tensor_dim == 3:
+            factor_labels = ['LRs', 'Sender', 'Receiver']
+        else:
+            raise ValueError('Too few dimensions in the tensor')
     else:
-        raise ValueError('Too few dimensions in the tensor')
+        assert len(interaction_tensor.order_labels) == tensor_dim, "The length of order_labels must match the number of orders/dimensions in the tensor"
+        factor_labels = interaction_tensor.order_labels
     plot_df = pd.DataFrame()
     for lab, order_factors in enumerate(interaction_tensor.factors.values()):
         sns_df = order_factors.T
