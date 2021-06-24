@@ -154,7 +154,7 @@ class BaseTensor():
             assert len(self.order_labels) == tensor_dim, "The length of order_labels must match the number of orders/dimensions in the tensor"
             order_labels = self.order_labels
         self.factors = OrderedDict(zip(order_labels,
-                                       [pd.DataFrame(f, index=idx, columns=factor_names) for f, idx in zip(tf.factors, self.order_names)]))
+                                       [pd.DataFrame(tl.to_numpy(f), index=idx, columns=factor_names) for f, idx in zip(tf.factors, self.order_names)]))
         self.rank = rank
 
 
@@ -392,6 +392,10 @@ class InteractionTensor(BaseTensor):
         - 'sum' : Computes the sum of the communication scores among all PPIs of the
                   group for a given pair of cells/tissues/samples
 
+    device : str, default=None
+        Device to use when backend is pytorch. Options are:
+         {'cpu', 'cuda:0', None}
+
     verbose : boolean, default=False
             Whether printing or not steps of the analysis.
 
@@ -401,7 +405,8 @@ class InteractionTensor(BaseTensor):
     '''
     def __init__(self, rnaseq_matrices, ppi_data, order_labels=None, context_names=None, how='inner',
                  communication_score='expression_mean', complex_sep=None, upper_letter_comparison=True,
-                 interaction_columns=('A', 'B'), group_ppi_by=None, group_ppi_method='gmean', verbose=True):
+                 interaction_columns=('A', 'B'), group_ppi_by=None, group_ppi_method='gmean', device=None,
+                 verbose=True):
         # Asserts
         if group_ppi_by is not None:
             assert group_ppi_by in ppi_data.columns, "Using {} for grouping PPIs is not possible. Not present among columns in ppi_data".format(group_ppi_by)
@@ -448,7 +453,13 @@ class InteractionTensor(BaseTensor):
         # Save variables for this class
         self.communication_score = communication_score
         self.how = how
-        self.tensor = tl.tensor(tensor)
+        if device is None:
+            self.tensor = tl.tensor(tensor)
+        else:
+            if tl.get_backend() == 'pytorch':
+                self.tensor = tl.tensor(tensor, device=device)
+            else:
+                self.tensor = tl.tensor(tensor)
         self.genes = genes
         self.cells = cells
         self.order_labels = order_labels
@@ -476,15 +487,25 @@ class PreBuiltTensor(BaseTensor):
         a boolean array of the same shape as the original tensor that is False/0 where
         the value is missing and True/1 where it is not.
 
+    device : str, default=None
+        Device to use when backend is pytorch. Options are:
+         {'cpu', 'cuda:0', None}
+
     Attributes
     ----------
     Same attributes as cell2cell.tensor.BaseTensor
     '''
-    def __init__(self, tensor, order_names, order_labels=None, mask=None):
+    def __init__(self, tensor, order_names, order_labels=None, mask=None, device=None):
         # Init BaseTensor
         BaseTensor.__init__(self)
 
-        self.tensor = tl.tensor(tensor)
+        if device is None:
+            self.tensor = tl.tensor(tensor)
+        else:
+            if tl.get_backend() == 'pytorch':
+                self.tensor = tl.tensor(tensor, device=device)
+            else:
+                self.tensor = tl.tensor(tensor)
         self.order_names = order_names
         self.order_labels = order_labels
         self.mask = mask

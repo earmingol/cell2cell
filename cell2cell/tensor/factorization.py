@@ -5,6 +5,7 @@ from tqdm.auto import tqdm
 from kneed import KneeLocator
 
 from tensorly.decomposition import non_negative_parafac
+import tensorly as tl
 
 
 def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init='svd', random_state=None, mask=None,
@@ -247,7 +248,9 @@ def _compute_norm_error(tensor, tl_object, mask=None):
     # Compute error
     rec_ = tl_object.to_tensor()
     if mask is not None:
-        tensor_ = tensor * mask + rec_ * (1 - mask)
+        mask_ = tl.tensor(mask)
+        diff = tl.tensor(1. - mask)
+        tensor_ = tensor * mask_ + rec_ * (diff)
     else:
         tensor_ = tensor
 
@@ -287,5 +290,5 @@ def normalized_error(reference_tensor, reconstructed_tensor):
         The error is normalized by dividing by the Frobinius norm of the reference
         tensor.
     '''
-    norm_error = np.linalg.norm(reference_tensor - reconstructed_tensor) / np.linalg.norm(reference_tensor)
-    return norm_error
+    norm_error = tl.norm(reference_tensor - reconstructed_tensor) / tl.norm(reference_tensor)
+    return tl.to_numpy(norm_error)
