@@ -338,7 +338,8 @@ class InteractionTensor(BaseTensor):
         interaction as well as the second protein partner.
 
     order_labels : list, default=None
-        List of labels for dimensions or orders in the tensor.
+        List containing the labels for each order or dimension of the tensor. For
+        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver cells]
 
     context_names : list, default=None
         A list of strings containing the names of the corresponding contexts to each
@@ -482,6 +483,10 @@ class PreBuiltTensor(BaseTensor):
         ligand-receptor interactions, the third the names of the sender cells and the
         fourth the names of the receiver cells.
 
+    order_labels : list, default=None
+        List containing the labels for each order or dimension of the tensor. For
+        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver cells]
+
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
         a boolean array of the same shape as the original tensor that is False/0 where
@@ -507,7 +512,10 @@ class PreBuiltTensor(BaseTensor):
             else:
                 self.tensor = tl.tensor(tensor)
         self.order_names = order_names
-        self.order_labels = order_labels
+        if order_labels is None:
+            self.order_labels = ['Dimension-{}'.format(i+1) for i in range(self.tensor.shape)]
+        else:
+            self.order_labels = order_labels
         self.mask = mask
         assert len(self.tensor.shape) == len(self.order_labels), "The length of order_labels must match the number of orders/dimensions in the tensor"
 
