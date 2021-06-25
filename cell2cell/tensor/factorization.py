@@ -247,9 +247,10 @@ def _compute_norm_error(tensor, tl_object, mask=None):
 
     # Compute error
     rec_ = tl_object.to_tensor()
+    context = tl.context(tensor)
     if mask is not None:
-        mask_ = tl.tensor(mask)
-        diff = tl.tensor(1. - mask)
+        mask_ = tl.tensor(mask, **context)
+        diff = tl.tensor(1. - mask, **context)
         tensor_ = tensor * mask_ + rec_ * (diff)
     else:
         tensor_ = tensor
