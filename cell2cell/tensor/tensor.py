@@ -227,6 +227,10 @@ class BaseTensor():
         if verbose:
             print('Running Elbow Analysis')
 
+        if mask is None:
+            if self.mask is not None:
+                mask = self.mask
+
         if runs == 1:
             loss = _run_elbow_analysis(tensor=self.tensor,
                                        upper_rank=upper_rank,
