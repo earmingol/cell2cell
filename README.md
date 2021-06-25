@@ -45,7 +45,7 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
   of *C. elegans*** is [available in codeocean.com]()
 - **Do you have precomputed communication scores?** Re-use them as a prebuilt tensor as [exemplified here](https://github.com/earmingol/cell2cell/blob/master/examples/Loading-PreBuiltTensor.ipynb).
   This allows reusing previous tensors you built or even plugging in communication scores from other tools.
-- **Run Tensor-cell2cell much faster!** An example to perform the analysis using a Nvidia GPU is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/GPU-Example.ipynb)
+- **Run Tensor-cell2cell much faster!** An example to perform the analysis using a **Nvidia GPU** is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/GPU-Example.ipynb)
 
 
 ---
