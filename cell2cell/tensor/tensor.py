@@ -456,16 +456,21 @@ class InteractionTensor(BaseTensor):
         self.how = how
         if device is None:
             self.tensor = tl.tensor(tensor)
+            self.mask = mask
         else:
             if tl.get_backend() == 'pytorch':
                 self.tensor = tl.tensor(tensor, device=device)
+                if mask is not None:
+                    self.mask = tl.tensor(mask, device=device)
+                else:
+                    self.mask = mask
             else:
                 self.tensor = tl.tensor(tensor)
+                self.mask = mask
         self.genes = genes
         self.cells = cells
         self.order_labels = order_labels
         self.order_names = [context_names, ppi_names, self.cells, self.cells]
-        self.mask = mask
 
 
 class PreBuiltTensor(BaseTensor):
@@ -506,17 +511,22 @@ class PreBuiltTensor(BaseTensor):
 
         if device is None:
             self.tensor = tl.tensor(tensor)
+            self.mask = mask
         else:
             if tl.get_backend() == 'pytorch':
                 self.tensor = tl.tensor(tensor, device=device)
+                if mask is not None:
+                    self.mask = tl.tensor(mask, device=device)
+                else:
+                    self.mask = mask
             else:
                 self.tensor = tl.tensor(tensor)
+                self.mask = mask
         self.order_names = order_names
         if order_labels is None:
             self.order_labels = ['Dimension-{}'.format(i+1) for i in range(self.tensor.shape)]
         else:
             self.order_labels = order_labels
-        self.mask = mask
         assert len(self.tensor.shape) == len(self.order_labels), "The length of order_labels must match the number of orders/dimensions in the tensor"
 
 
