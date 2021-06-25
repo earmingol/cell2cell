@@ -43,6 +43,8 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
 ![plot](https://github.com/earmingol/cell2cell/blob/master/LogoTensor.png?raw=true)
 - A capsule containing jupyter notebooks for running Tensor-cell2cell (cell2cell v0.4.2) on datasets of **COVID-19 and the embryonic development
   of *C. elegans*** is [available in codeocean.com]()
+- **Do you have precomputed communication scores?** Re-use them as a prebuilt tensor as [exemplified here](https://github.com/earmingol/cell2cell/blob/master/examples/Loading-PreBuiltTensor.ipynb).
+  This allows reusing previous tensors you built or even plugging in communication scores from other tools.
 - **Run Tensor-cell2cell much faster!** An example to perform the analysis using a Nvidia GPU is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/GPU-Example.ipynb)
 
 
