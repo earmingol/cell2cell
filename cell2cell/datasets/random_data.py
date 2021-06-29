@@ -12,21 +12,28 @@ from cell2cell.preprocessing import rnaseq, ppi
 
 def generate_random_rnaseq(size, row_names, random_state=None, verbose=True):
     '''
-    This function generates a RNA-seq datasets-set that is genes wise normally distributed, in TPM units (each column).
-    All row values for a given columns sum up to 1 million.
+    Generates a RNA-seq dataset that is normally distributed gene-wise and size
+    normalized (each column sums up to a million).
 
     Parameters
     ----------
     size : int
-        Number of samples (columns).
+        Number of cell-types/tissues/samples (columns).
 
     row_names : array-like
         List containing the name of genes (rows).
 
+    random_state : int, default=None
+        Seed for randomization.
+
+    verbose : boolean, default=True
+        Whether printing or not steps of the analysis.
+
     Returns
     -------
     df : pandas.DataFrame
-        Dataframe containing gene expression given the list of genes for each sample.
+        Dataframe containing gene expression given the list
+        of genes for each cell-type/tissue/sample.
     '''
     if verbose:
         print('Generating random RNA-seq dataset.')
@@ -47,10 +54,43 @@ def generate_random_rnaseq(size, row_names, random_state=None, verbose=True):
 
 
 def generate_random_ppi(max_size, interactors_A, interactors_B=None, random_state=None, verbose=True):
+    '''Generates a random list of protein-protein interactions.
+
+    Parameters
+    ----------
+    max_size : int
+        Maximum size of interactions to obtain. Since the PPIs
+        are obtained by independently resampling interactors A and B
+        rather than creating all possible combinations (it may demand too much
+        memory), some PPIs can be duplicated and when dropping them
+        results into a smaller number of PPIs than the max_size.
+
+    interactors_A : list
+        A list of protein names to include in the first column of
+        the PPIs.
+
+    interactors_B : list, default=None
+        A list of protein names to include in the second columns
+        of the PPIs. If None, interactors_A will be used as
+        interactors_B too.
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    verbose : boolean, default=True
+        Whether printing or not steps of the analysis.
+
+    Returns
+    -------
+    ppi_data : pandas.DataFrame
+        DataFrame containing a list of protein-protein interactions.
+        It has three columns: 'A', 'B', and 'score' for interactors
+        A, B and weights of interactions, respectively.
+    '''
     if interactors_B is not None:
-        assert max_size <= len(interactors_A)*len(interactors_B)
+        assert max_size <= len(interactors_A)*len(interactors_B), "The maximum size can't be greater than all combinations between partners A and B"
     else:
-        assert max_size <= len(interactors_A)**2
+        assert max_size <= len(interactors_A)**2, "The maximum size can't be greater than all combinations of partners A"
 
 
     if verbose:
@@ -96,22 +136,64 @@ def generate_random_ppi(max_size, interactors_A, interactors_B=None, random_stat
     return ppi_data
 
 
-def generate_random_cci_scores(cell_number, labels=None, random_state=None):
+def generate_random_cci_scores(cell_number, labels=None, symmetric=True, random_state=None):
+    '''Generates a square cell-cell interaction
+    matrix with random scores.
+
+    Parameters
+    ----------
+    cell_number : int
+        Number of cells.
+
+    labels : list, default=None
+        List containing labels for each cells. Length of
+        this list must match the cell_number.
+
+    symmetric : boolean, default=True
+        Whether generating a symmetric CCI matrix.
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    Returns
+    -------
+    cci_matrix : pandas.DataFrame
+        Matrix with rows and columns as cells. Values
+        represent a random CCI score between 0 and 1.
+    '''
     if labels is not None:
-        assert len(labels) == cell_number
+        assert len(labels) == cell_number, "Lenght of labels must match cell_number"
     else:
         labels = ['Cell-{}'.format(n) for n in range(1, cell_number+1)]
 
     if random_state is not None:
         np.random.seed(random_state)
     cci_scores = np.random.random((cell_number, cell_number))
-    cci_scores = (cci_scores + cci_scores.T) / 2
+    if symmetric:
+        cci_scores = (cci_scores + cci_scores.T) / 2.
     cci_matrix = pd.DataFrame(cci_scores, index=labels, columns=labels)
 
     return cci_matrix
 
 
 def generate_random_metadata(cell_labels, group_number):
+    '''Randomly assigns groups to cell labels.
+
+    Parameters
+    ----------
+    cell_labels : list
+        A list of cell labels.
+
+    group_number : int
+        Number of major groups of cells.
+
+    Returns
+    -------
+    metadata : pandas.DataFrame
+        DataFrame containing the major groups that each cell
+        received randomly (under column 'Group'). Cells are
+        under the column 'Cell'.
+    '''
     metadata = pd.DataFrame()
     metadata['Cell'] = cell_labels
 

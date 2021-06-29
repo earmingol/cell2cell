@@ -8,8 +8,9 @@ from multiprocessing import cpu_count
 # GENERAL
 def agents_number(n_jobs):
     '''
-    This function computes the number of available agents based on
-    the number of jobs provided.
+    Computes the number of agents/cores/threads that the
+    computer can really provide given a number of
+    jobs/threads requested.
 
     Parameters
     ---------
@@ -38,7 +39,7 @@ def agents_number(n_jobs):
 # CORE FUNCTIONS
 def parallel_spatial_ccis(inputs):
     '''
-    Parallel computing in cell2cell2.experiments.SpatialSingleCellExperiment
+    Parallel computing in cell2cell2.analysis.pipelines.SpatialSingleCellInteractions
     '''
     # TODO: Implement this for enabling spatial analysis and compute interactions in parallel
 

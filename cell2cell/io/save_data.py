@@ -6,8 +6,18 @@ import pickle
 
 
 def export_variable_with_pickle(variable, filename):
-    '''
-    Export a large size variable in a python readable way using pickle.
+    '''Exports a large size variable in a python readable way
+    using pickle.
+
+    Parameters
+    ----------
+    variable : a python variable
+        Variable to export
+
+    filename : str
+        Complete path to the file wherein the variable will be
+        stored. For example:
+        /home/user/variable.pkl
     '''
 
     max_bytes = 2 ** 31 - 1

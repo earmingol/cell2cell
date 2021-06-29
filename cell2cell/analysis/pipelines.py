@@ -40,7 +40,7 @@ class BulkInteractions:
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
-        - 'expresion_thresholding' : Computes the joint presence of a ligand from a
+        - 'expression_thresholding' : Computes the joint presence of a ligand from a
                                      sender cell and of a receptor on a receiver cell
                                      from binarizing their gene expression levels.
         - 'expression_mean' : Computes the average between the expression of a ligand
@@ -250,7 +250,7 @@ class BulkInteractions:
         -------
         self.interaction_space.interaction_elements['cci_matrix'] :
         pandas.DataFrame
-            Contains CCI scores for each pair of cells
+            Contains CCI scores for each pair of cells.
         '''
         self.interaction_space.compute_pairwise_cci_scores(cci_score=cci_score,
                                                            use_ppi_score=use_ppi_score,
@@ -300,7 +300,7 @@ class BulkInteractions:
             If the list is for ligand-receptor pairs, the first column
             is for the ligands and the second for the receptors. If
             None, the one stored in the attribute interaction_columns
-            will be used
+            will be used.
 
         cells : list=None
             List of cells to consider.
@@ -371,7 +371,7 @@ class SingleCellInteractions:
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
-        - 'expresion_thresholding' : Computes the joint presence of a ligand from a
+        - 'expression_thresholding' : Computes the joint presence of a ligand from a
                                      sender cell and of a receptor on a receiver cell
                                      from binarizing their gene expression levels.
         - 'expression_mean' : Computes the average between the expression of a ligand
@@ -450,9 +450,9 @@ class SingleCellInteractions:
         inferring the cell-cell interactions and communication.
 
     complex_sep : str
-        Gene expression data for a single-cell RNA-seq experiment. If it is a
-        dataframe columns are single cells and rows are genes, while if it is
-        a AnnData object, columns are genes and rows are single cells.
+        Symbol that separates the protein subunits in a multimeric complex.
+        For example, '&' is the complex_sep for a list of ligand-receptor pairs
+        where a protein partner could be "CD74&CD44".
 
     ref_ppi : pandas.DataFrame
         Reference list of protein-protein interactions (or ligand-receptor pairs) used

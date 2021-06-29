@@ -5,38 +5,43 @@ from __future__ import absolute_import
 import pandas as pd
 
 class Cell:
-    '''
-    Specific cell/tissue/organ element containing associated RNAseq datasets.
+    '''Specific cell-type/tissue/organ element in a RNAseq dataset.
 
     Parameters
     ----------
-    sc_rnaseq_data : pandas DataFrame object
-        Object containing a column for the RNAseq values (usually TPM). Gene ids are the indexes of this DataFrame.
+    sc_rnaseq_data : pandas.DataFrame
+        A gene expression matrix. Contains only one column that
+        corresponds to cell-type/tissue/sample, while the genes
+        are rows and the specific. Column name will be the label
+        of the instance.
 
-    verbose : boolean, True by default
-        Value to indicate if stdout will be printed.
+    verbose : boolean, default=True
+        Whether printing or not steps of the analysis.
 
     Attributes
     ----------
     id : int
-        Identifier number of the each instance generated.
+        ID number of the instance generated.
 
     type : str
-        Identifier name of the respective cell/tissue/organ that RNAseq datasets belongs to.
+        Name of the respective cell-type/tissue/sample.
 
-    rnaseq_data : pandas DataFrame object
+    rnaseq_data : pandas.DataFrame
         Copy of sc_rnaseq_data.
 
-    binary_ppi : pandas DataFrame object
-        Object containing a ppi table, but the values in each cell corresponds to the binary expression of the respective
-        protein/gene in the original ppi table. Each protein name has been replaced by the respective expression value
-        in sc_rnaseq_data.
+    weighted_ppi : pandas.DataFrame
+        Dataframe created from a list of protein-protein interactions,
+        here the columns of the interacting proteins are replaced by
+        a score or a preprocessed gene expression of the respective
+        proteins.
     '''
-    _id_counter = 0
+    _id_counter = 0  # Number of active instances
+    _id = 0 # Unique ID
 
     def __init__(self, sc_rnaseq_data, verbose=True):
-        self.id = Cell._id_counter
+        self.id = Cell._id
         Cell._id_counter += 1
+        Cell._id += 1
 
         self.type = str(sc_rnaseq_data.columns[-1])
 
@@ -62,25 +67,27 @@ class Cell:
 
 def get_cells_from_rnaseq(rnaseq_data, cell_columns=None, verbose=True):
     '''
-    Creates new instances of Cells based on the RNAseq datasets and the cell/tissue/organ types provided.
+    Creates new instances of Cell based on the RNAseq data of each
+    cell-type/tissue/sample in a gene expression matrix.
 
     Parameters
     ----------
-    rnaseq_data : pandas DataFrame object
-        Object containing a multiple columns for the RNAseq values (usually TPM), where each one represents a
-        cell/tissue/organ type. Gene ids are the indexes of this DataFrame.
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for a RNA-seq experiment. Columns are
+        cell-types/tissues/samples and rows are genes.
 
-    cell columns : array-like
-        List of strings containing the names of cell types in RNAseq datasets.
+    cell_columns : array-like, default=None
+        List of names of cell-types/tissues/samples in the dataset
+        to be used. If None, all columns will be used.
 
-    verbose : boolean, True by default
-        Value to indicate if stdout will be printed.
+    verbose : boolean, default=True
+        Whether printing or not steps of the analysis.
 
     Returns
     -------
     cells : dict
-        Dictionary containing all Cell instances generated from RNAseq datasets to represent each cell/tissue/organ type.
-        The keys of this dictionary are the names of the corresponding Cell instance.
+        Dictionary containing all Cell instances generated from a RNAseq dataset.
+        The keys of this dictionary are the names of the corresponding Cell instances.
     '''
     if verbose:
         print("Generating objects according to RNAseq datasets provided")

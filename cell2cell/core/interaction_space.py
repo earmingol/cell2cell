@@ -11,6 +11,35 @@ import pandas as pd
 
 
 def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=True):
+    '''Generates a list of pairs of interacting cell-types/tissues/samples.
+
+    Parameters
+    ----------
+    cells : list
+        A lyst of cell-type/tissue/sample names.
+
+    cci_type : str,
+        Type of interactions. Options are:
+            - 'directed' : Directed cell-cell interactions, so pair A-B is different
+                to pair B-A and both are considered.
+            - 'undirected0 : Undirected cell-cell interactions, so pair A-B is equal
+                to pair B-A and just one of them is considered.
+
+    self_interaction : boolean, default=True
+        Whether considering autocrine interactions (pair A-A, B-B, etc).
+
+    remove_duplicates : booleanm default=True
+        Whether removing duplicates when a list of cells is passed and names are
+        duplicated. If False and a list [A, A, B] is passed, pairs could be
+        [A-A, A-A, A-B, A-A, A-A, A-B, B-A, B-A, B-B] when self_interaction is True
+        and cci_type is 'directed'. In the same scenario but when remove_duplicates
+        is True, the resulting list would be [A-A, A-B, B-A, B-B].
+
+    Returns
+    -------
+    pairs : list
+        List with pairs of interacting cell-types/tissues/samples.
+    '''
     if self_interaction:
         if cci_type == 'directed':
             pairs = list(itertools.product(cells, cells))
@@ -39,21 +68,59 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
 
 def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirected', cci_matrix_template=None,
                                   complex_sep=None, interaction_columns=('A', 'B'), verbose=True):
-    '''Create all elements of pairwise interactions needed to perform the analyses.
-    All these variables are used by the class InteractionSpace.
+    '''Create all elements needed to perform the analyses of pairwise
+    cell-cell interactions/communication. Corresponds to the interaction
+    elements used by the class InteractionSpace.
 
     Parameters
     ----------
+    modified_rnaseq_data : pandas.DataFrame
+        Preprocessed gene expression data for a bulk or single-cell RNA-seq experiment.
+        Columns are are cell-types/tissues/samples and rows are genes. The preprocessing
+        may correspond to scoring the gene expression as binary or continuous values
+        depending on the scoring function for cell-cell interactions/communication.
 
+    ppi_data : pandas.DataFrame
+        List of protein-protein interactions (or ligand-receptor pairs) used for
+        inferring the cell-cell interactions and communication.
 
+    cci_type : str, default='undirected'
+        Specifies whether computing the cci_score in a directed or undirected
+        way. For a pair of cells A and B, directed means that the ligands are
+        considered only from cell A and receptors only from cell B or viceversa.
+        While undirected simultaneously considers signaling from cell A to
+        cell B and from cell B to cell A.
+
+    cci_matrix_template : pandas.DataFrame, default=None
+        A matrix of shape MxM where M are cell-types/tissues/samples. This
+        is used as template for storing CCI scores. It may be useful
+        for specifying which pairs of cells to consider.
+
+    complex_sep : str, default=None
+        Symbol that separates the protein subunits in a multimeric complex.
+        For example, '&' is the complex_sep for a list of ligand-receptor pairs
+        where a protein partner could be "CD74&CD44".
+
+    interaction_columns : tuple, default=('A', 'B')
+        Contains the names of the columns where to find the partners in a
+        dataframe of protein-protein interactions. If the list is for
+        ligand-receptor pairs, the first column is for the ligands and the second
+        for the receptors.
+
+    verbose : boolean, default=True
+        Whether printing or not steps of the analysis.
 
     Returns
     -------
     interaction_elements : dict
-        Dictionary containing all the pairwise interaction ('pairs' key), cell dictionary ('cells' key) containing all
-        cells/tissues/organs with their associated datasets (rna_seq, binary_ppi, etc) and a Cell-Cell Interaction Matrix
-        that scores the possible interaction between each pair of cells ('cci_matrix key) for the respective interaction
-        type.
+        Dictionary containing all the pairs of cells considered (under
+        the key of 'pairs'), Cell instances (under key 'cells')
+        which include all cells/tissues/organs with their associated datasets
+        (rna_seq, weighted_ppi, etc) and a Cell-Cell Interaction Matrix
+        to store CCI scores(under key 'cci_matrix'). A communication matrix
+        is also stored in this object when the communication scores are
+        computed in the InteractionSpace class (under key
+        'communication_score')
     '''
 
     if verbose:
@@ -111,12 +178,134 @@ class InteractionSpace():
 
     Parameters
     ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for a bulk RNA-seq experiment or a single-cell
+        experiment after aggregation into cell types. Columns are
+        cell-types/tissues/samples and rows are genes.
 
+    ppi_data : pandas.DataFrame
+        List of protein-protein interactions (or ligand-receptor pairs) used
+        for inferring the cell-cell interactions and communication.
+
+    gene_cutoffs : dict
+        Contains two keys: 'type' and 'parameter'. The first key represent the
+        way to use a cutoff or threshold, while parameter is the value used
+        to binarize the expression values.
+
+        The key 'type' can be:
+            - 'local_percentile' : computes the value of a given percentile, for each
+                gene independently. In this case, the parameter corresponds to the
+                percentile to compute, as a float value between 0 and 1.
+            - 'global_percentile' : computes the value of a given percentile from all
+                genes and samples simultaneously. In this case, the parameter
+                corresponds to the percentile to compute, as a float value between
+                0 and 1. All genes have the same cutoff.
+            - 'file' : load a cutoff table from a file. Parameter in this case is the
+                path of that file. It must contain the same genes as index and same
+                samples as columns.
+            - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
+                for each gene in each sample. This allows to use specific cutoffs for
+                each sample. The columns here must be the same as the ones in the
+                rnaseq_data.
+            - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
+                for each gene in only one column. These cutoffs will be applied to
+                all samples.
+            - 'constant_value' : binarizes the expression. Evaluates whether
+                expression is greater than the value input in the parameter.
+
+    communication_score : str, default='expression_thresholding'
+        Type of communication score used to detect active ligand-receptor
+        pairs between each pair of cell. See
+        cell2cell.core.communication_scores for more details. It can be:
+            - 'expression_thresholding'
+            - 'expression_product'
+            - 'expression_mean'
+
+    cci_score : str, default='bray_curtis'
+        Scoring function to aggregate the communication scores. See
+        cell2cell.core.cci_scores for more details. It can be:
+            - 'bray_curtis'
+            - 'jaccard'
+            - 'count'
+
+    cci_type : str, default='undirected'
+        Type of interaction between two cells. If it is undirected, all ligands
+        and receptors are considered from both cells. If it is directed, ligands
+        from one cell and receptors from the other are considered separately with
+        respect to ligands from the second cell and receptor from the first one.
+        So, it can be:
+            - 'undirected'
+            - 'directed
+
+    cci_matrix_template : pandas.DataFrame, default=None
+        A matrix of shape MxM where M are cell-types/tissues/samples. This
+        is used as template for storing CCI scores. It may be useful
+        for specifying which pairs of cells to consider.
+
+    complex_sep : str, default=None
+        Symbol that separates the protein subunits in a multimeric complex.
+        For example, '&' is the complex_sep for a list of ligand-receptor pairs
+        where a protein partner could be "CD74&CD44".
+
+    interaction_columns : tuple, default=('A', 'B')
+        Contains the names of the columns where to find the partners in a
+        dataframe of protein-protein interactions. If the list is for
+        ligand-receptor pairs, the first column is for the ligands and the second
+        for the receptors.
+
+    verbose : boolean, default=True
+        Whether printing or not steps of the analysis.
 
     Attributes
     ----------
+    communication_score : str
+        Type of communication score used to detect active ligand-receptor
+        pairs between each pair of cell. See
+        cell2cell.core.communication_scores for more details. It can be:
+            - 'expression_thresholding'
+            - 'expression_product'
+            - 'expression_mean'
 
+    cci_score : str
+        Scoring function to aggregate the communication scores. See
+        cell2cell.core.cci_scores for more details. It can be:
+            - 'bray_curtis'
+            - 'jaccard'
+            - 'count'
 
+    cci_type : str
+        Type of interaction between two cells. If it is undirected, all ligands
+        and receptors are considered from both cells. If it is directed, ligands
+        from one cell and receptors from the other are considered separately with
+        respect to ligands from the second cell and receptor from the first one.
+        So, it can be:
+            - 'undirected'
+            - 'directed
+
+    ppi_data : pandas.DataFrame
+        List of protein-protein interactions (or ligand-receptor pairs) used
+        for inferring the cell-cell interactions and communication.
+
+    modified_rnaseq_data : pandas.DataFrame
+        Preprocessed gene expression data for a bulk or single-cell RNA-seq experiment.
+        Columns are are cell-types/tissues/samples and rows are genes. The preprocessing
+        may correspond to scoring the gene expression as binary or continuous values
+        depending on the scoring function for cell-cell interactions/communication.
+
+    interaction_elements : dict
+        Dictionary containing all the pairs of cells considered (under
+        the key of 'pairs'), Cell instances (under key 'cells')
+        which include all cells/tissues/organs with their associated datasets
+        (rna_seq, weighted_ppi, etc) and a Cell-Cell Interaction Matrix
+        to store CCI scores(under key 'cci_matrix'). A communication matrix
+        is also stored in this object when the communication scores are
+        computed in the InteractionSpace class (under key
+        'communication_score')
+
+    distance_matrix : pandas.DataFrame
+        Contains distances for each pair of cells, computed from
+        the CCI scores previously obtained (and stored in
+        interaction_elements['cci_matrix'].
     '''
 
     def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, communication_score='expression_thresholding',
@@ -149,8 +338,8 @@ class InteractionSpace():
             self.ppi_data = self.ppi_data.assign(score=1.0)
 
         self.modified_rnaseq = integrate_data.get_modified_rnaseq(rnaseq_data=rnaseq_data,
+                                                                  cutoffs=cutoff_values,
                                                                   communication_score=self.communication_score,
-                                                                  cutoffs=cutoff_values
                                                                   )
 
         self.interaction_elements = generate_interaction_elements(modified_rnaseq=self.modified_rnaseq,
@@ -164,27 +353,40 @@ class InteractionSpace():
 
     def pair_cci_score(self, cell1, cell2, cci_score='bray_curtis', use_ppi_score=False, verbose=True):
         '''
-        Function that performs the interaction analysis of a pair of cells.
+        Computes a CCI score for a pair of cells.
 
         Parameters
         ----------
-        cell1 : Cell class
-            Cell instance generated from RNAseq datasets.
+        cell1 : cell2cell.core.cell.Cell
+            First cell-type/tissue/sample to compute the communication
+            score. In a directed interaction, this is the sender.
 
-        cell2 : Cell class
-            Cell instance generated from RNAseq datasets.
+        cell2 : cell2cell.core.cell.Cell
+            Second cell-type/tissue/sample to compute the communication
+            score. In a directed interaction, this is the receiver.
 
-        type : str, 'binary' by default
-            Function type to compute the interaction. In this case calculation based on binary gene expressions is perform.
+        cci_score : str, default='bray_curtis'
+            Scoring function to aggregate the communication scores between
+            a pair of cells. It computes an overall potential of cell-cell
+            interactions. If None, it will use the one stored in the
+            attribute analysis_setup of this object. Options:
+            - 'bray_curtis' : Bray-Curtis-like score
+            - 'jaccard' : Jaccard-like score
+            - 'count' : Number of LR pairs that the pair of cells uses
 
-        verbose : boolean, True by default
-            It shows printings of function if True.
+        use_ppi_score : boolean, default=False
+            Whether using a weight of LR pairs specified in the ppi_data
+            to compute the scores.
+
+        verbose : boolean, default=True
+            Whether printing or not steps of the analysis.
 
         Returns
         -------
         cci_score : float
-            Score for a the interaction of the specified pair of cells. This score is computed considering all the inter-cell protein-protein
-            interactions of the pair of cells.
+            Overall score for the interaction between a pair of
+            cell-types/tissues/samples. In this case it is a
+            Jaccard-like score.
         '''
 
         if verbose:
@@ -217,7 +419,7 @@ class InteractionSpace():
             attribute analysis_setup of this object. Options:
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
-            - 'count' : Number of LR pairs that the pair of cells use
+            - 'count' : Number of LR pairs that the pair of cells uses
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
@@ -271,6 +473,49 @@ class InteractionSpace():
 
     def pair_communication_score(self, cell1, cell2, communication_score='expression_thresholding',
                                  use_ppi_score=False, verbose=True):
+        '''Computes a communication score for each protein-protein interaction
+        between a pair of cells.
+
+        Parameters
+        ----------
+        cell1 : cell2cell.core.cell.Cell
+            First cell-type/tissue/sample to compute the communication
+            score. In a directed interaction, this is the sender.
+
+        cell2 : cell2cell.core.cell.Cell
+            Second cell-type/tissue/sample to compute the communication
+            score. In a directed interaction, this is the receiver.
+
+        communication_score : str, default=None
+            Type of communication score to infer the potential use of
+            a given ligand-receptor pair by a pair of cells/tissues/samples.
+            If None, the score stored in the attribute analysis_setup
+            will be used.
+            Available communication_scores are:
+            - 'expresion_thresholding' : Computes the joint presence of a
+                                         ligand from a sender cell and of
+                                         a receptor on a receiver cell from
+                                         binarizing their gene expression levels.
+            - 'expression_mean' : Computes the average between the expression
+                                  of a ligand from a sender cell and the
+                                  expression of a receptor on a receiver cell.
+            - 'expresion_product' : Computes the product between the expression
+                                    of a ligand from a sender cell and the
+                                    expression of a receptor on a receiver cell.
+
+        use_ppi_score : boolean, default=False
+            Whether using a weight of LR pairs specified in the ppi_data
+            to compute the scores.
+
+        verbose : boolean, default=True
+            Whether printing or not steps of the analysis.
+
+        Returns
+        -------
+        communication_scores : numpy.array
+            An array with the communication scores for each intercellular
+            PPI.
+        '''
         # TODO: Implement communication scores
         if verbose:
             print("Computing communication score between {} and {}".format(cell1.type, cell2.type))
@@ -316,16 +561,16 @@ class InteractionSpace():
             If None, the score stored in the attribute analysis_setup
             will be used.
             Available communication_scores are:
-        - 'expresion_thresholding' : Computes the joint presence of a
-                                     ligand from a sender cell and of
-                                     a receptor on a receiver cell from
-                                     binarizing their gene expression levels.
-        - 'expression_mean' : Computes the average between the expression
-                              of a ligand from a sender cell and the
-                              expression of a receptor on a receiver cell.
-        - 'expresion_product' : Computes the product between the expression
-                                of a ligand from a sender cell and the
-                                expression of a receptor on a receiver cell.
+            - 'expresion_thresholding' : Computes the joint presence of a
+                                         ligand from a sender cell and of
+                                         a receptor on a receiver cell from
+                                         binarizing their gene expression levels.
+            - 'expression_mean' : Computes the average between the expression
+                                  of a ligand from a sender cell and the
+                                  expression of a receptor on a receiver cell.
+            - 'expresion_product' : Computes the product between the expression
+                                    of a ligand from a sender cell and the
+                                    expression of a receptor on a receiver cell.
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data

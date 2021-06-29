@@ -19,10 +19,10 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
     ----------
     interaction_space : cell2cell.core.interaction_space.InteractionSpace
         Interaction space that contains all a distance matrix after running the
-        the method compute_pairwise_cci_scores. Alternatively, this object
-        can be a numpy-array or a pandas DataFrame. Also, a
+        the method compute_pairwise_communication_scores. Alternatively, this
+        object can be a numpy-array or a pandas DataFrame. Also, a
         SingleCellInteractions or a BulkInteractions object after running
-        the method compute_pairwise_cci_scores.
+        the method compute_pairwise_communication_scores.
 
     metadata : pandas.Dataframe, default=None
         Metadata associated with the cells, cell types or samples in the

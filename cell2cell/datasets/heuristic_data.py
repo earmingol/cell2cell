@@ -4,6 +4,20 @@ from __future__ import absolute_import
 
 
 class HeuristicGOTerms:
+    '''GO terms for contact and secreted proteins.
+
+    Attributes
+    ----------
+    contact_go_terms : list
+        List of GO terms associated with proteins that
+        participate in contact interactions (usually
+        on the surface of cells).
+
+    mediator_go_terms : list
+        List of GO terms associated with secreted
+        proteins that mediate intercellular interactions
+        or communication.
+    '''
     def __init__(self):
         self.contact_go_terms = ['GO:0007155',  # Cell adhesion
                                  'GO:0022608',  # Multicellular organism adhesion

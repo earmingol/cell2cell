@@ -3,27 +3,33 @@ import scipy.stats as st
 
 def hypergeom_representation(sample_size, class_in_sample, population_size, class_in_population):
     '''
-    This function performs an analysis of enrichment/depletion based on observation in a sample. It computes a p-value
-    given a hypergeometric distribution.
+    Performs an analysis of enrichment/depletion based on observation
+    in a sample. It computes a p-value given a hypergeometric
+    distribution.
 
     Parameters
     ----------
     sample_size : int
-        Size of the sample obtained or number of elements obtained from the analysis.
+        Size of the sample obtained or number of elements
+        obtained from the analysis.
 
     class_in_sample : int
-        Number of elements of a given class that are contained in the sample. This is the class to be tested.
+        Number of elements of a given class that are
+        contained in the sample. This is the class to be tested.
 
     population_size : int
-        Size of the sampling space. That is, the total number of possible elements to be chosen when sampling.
+        Size of the sampling space. That is, the total number
+        of possible elements to be chosen when sampling.
 
     class_in_population : int
-        Number of elements of a given class that are contained in the population. This is the class to be tested.
+        Number of elements of a given class that are contained
+        in the population. This is the class to be tested.
 
     Returns
     -------
     p_vals : tuple
-        A tuple containing the p-values for depletion and enrichment analysis, respectively.
+        A tuple containing the p-values for depletion and
+        enrichment analysis, respectively.
     '''
     # Computing the number of elements that are not in the same class
     nonclass_in_sample = sample_size - class_in_sample
@@ -46,27 +52,32 @@ def hypergeom_representation(sample_size, class_in_sample, population_size, clas
 
 def fisher_representation(sample_size, class_in_sample, population_size, class_in_population):
     '''
-    This function performs an analysis of enrichment/depletion based on observation in a sample. It computes a p-value
-    given a hypergeometric distribution.
+    Performs an analysis of enrichment/depletion based on observation
+    in a sample. It computes a p-value given a fisher exact test.
 
     Parameters
     ----------
     sample_size : int
-        Size of the sample obtained or number of elements obtained from the analysis.
+        Size of the sample obtained or number of elements
+        obtained from the analysis.
 
     class_in_sample : int
-        Number of elements of a given class that are contained in the sample. This is the class to be tested.
+        Number of elements of a given class that are
+        contained in the sample. This is the class to be tested.
 
     population_size : int
-        Size of the sampling space. That is, the total number of possible elements to be chosen when sampling.
+        Size of the sampling space. That is, the total number
+        of possible elements to be chosen when sampling.
 
     class_in_population : int
-        Number of elements of a given class that are contained in the population. This is the class to be tested.
+        Number of elements of a given class that are contained
+        in the population. This is the class to be tested.
 
     Returns
     -------
     results : dict
-        A dictionary containing the odds and p-values for depletion and enrichment analysis.
+        A dictionary containing the odd ratios and p-values for
+        depletion and enrichment analysis.
     '''
     # Computing the number of elements that are not in the same class
     nonclass_in_sample = sample_size - class_in_sample

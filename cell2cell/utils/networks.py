@@ -7,6 +7,25 @@ import networkx as nx
 # TODO: Add an export function for Cytoscape
 
 def generate_network_from_adjacency(adjacency_matrix, package='networkx'):
+    '''
+    Generates a network or graph object from an adjacency matrix.
+
+    Parameters
+    ----------
+    adjacency_matrix : pandas.DataFrame
+        An adjacency matrix, where in rows and columns are nodes
+        and values represents a weight for the respective edge.
+
+    package : str, default='networkx'
+        Package or python library to built the network.
+        Implemented optios are {'networkx'}. Soon will be
+        available for 'igraph'.
+
+    Returns
+    -------
+    network : graph-like
+        A graph object built with a python-library for networks.
+    '''
     if package == 'networkx':
         network = nx.from_pandas_adjacency(adjacency_matrix)
     elif package == 'igraph':
@@ -26,7 +45,31 @@ def generate_network_from_adjacency(adjacency_matrix, package='networkx'):
 
 def export_network_to_gephi(cci_matrix, filename, format='excel', network_type='Undirected'):
     '''
-    Export a CCI matrix into a spreadsheet readable by Gephi.
+    Exports a CCI matrix into a spreadsheet that is readable
+    by the software Gephi.
+
+    Parameters
+    ----------
+    cci_matrix : pandas.DataFrame
+        Squared matrix containing cell-cell interactions scores.
+        Rows and columns are cell-types/tissues/samples. Usually
+        obtained from
+        cell2cell.core.interaction_space.InteractionSpace.interaction_elements['cci_matrix']
+        or cell2cell.analysis.pipeline.SingleCellInteractions.interaction_space.interaction_elements['cci_matrix']
+        or cell2cell.analysis.pipeline.BulkInteractions.interaction_space.interaction_elements['cci_matrix']
+
+    filename : str, default=None
+        Path to save the network into a Gephi-readable format.
+
+    format : str, default='excel'
+        Format to export the spreadsheet. Options are:
+        - 'excel' : An excel file, either .xls or .xlsx
+        - 'csv' : Comma separated value format
+        - 'tsv' : Tab separated value format
+
+    network_type : str, default='Undirected'
+        Type of edges in the network. They could be either
+        'Undirected' or 'Directed'.
     '''
     # This allows to pass a network directly or an adjacency matrix
     if type(cci_matrix) != nx.classes.graph.Graph:

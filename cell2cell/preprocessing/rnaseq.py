@@ -8,6 +8,22 @@ import pandas as pd
 
 ### Pre-process RNAseq datasets
 def drop_empty_genes(rnaseq_data):
+    '''Drops genes that are all zeroes and/or without
+    expression values for all cell-types/tissues/samples.
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for RNA-seq experiment. Columns are
+        cell-types/tissues/samples and rows are genes.
+
+    Returns
+    -------
+    data : pandas.DataFrame
+        A gene expression data for RNA-seq experiment without
+        empty genes. Columns are
+        cell-types/tissues/samples and rows are genes.
+    '''
     data = rnaseq_data.copy()
     data = data.dropna(how='all')
     data = data.fillna(0)  # Put zeros to all missing values
@@ -16,6 +32,22 @@ def drop_empty_genes(rnaseq_data):
 
 
 def log10_transformation(rnaseq_data, addition = 1e-6):
+    '''Log-transforms gene expression values in a
+    gene expression matrix for a RNA-seq experiment.
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for RNA-seq experiment. Columns are
+        cell-types/tissues/samples and rows are genes.
+
+    Returns
+    -------
+    data : pandas.DataFrame
+        A gene expression data for RNA-seq experiment with
+        log-transformed values. Values are log10(expression + addition).
+        Columns are cell-types/tissues/samples and rows are genes.
+    '''
     ### Apply this only after applying "drop_empty_genes" function
     data = rnaseq_data.copy()
     data = data.apply(lambda x: np.log10(x + addition))
@@ -23,9 +55,31 @@ def log10_transformation(rnaseq_data, addition = 1e-6):
     return data
 
 
-def scale_expression_by_sum(rnaseq_data, axis=0,sum_value=1e6):
+def scale_expression_by_sum(rnaseq_data, axis=0, sum_value=1e6):
     '''
-    This function scale all samples to sum up the same value.
+    Normalizes all samples to sum up the same scale factor.
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for RNA-seq experiment. Columns are
+        cell-types/tissues/samples and rows are genes.
+
+    axis : int, default=0
+        Axis to perform the global-scaling normalization. Options
+        are {0 for normalizing across rows (column-wise) or 1 for
+        normalizing across columns (row-wise)}.
+
+    sum_value : float, default=1e6
+        Scaling factor. Normalized axis will sum up this value.
+
+    Returns
+    -------
+    scaled_data : pandas.DataFrame
+        A gene expression data for RNA-seq experiment with
+        scaled values. All rows or columns, depending on the specified
+        axis sum up to the same value. Columns are
+        cell-types/tissues/samples and rows are genes.
     '''
     data = rnaseq_data.values
     data = sum_value * np.divide(data, np.nansum(data, axis=axis))
@@ -35,8 +89,25 @@ def scale_expression_by_sum(rnaseq_data, axis=0,sum_value=1e6):
 
 def divide_expression_by_max(rnaseq_data, axis=1):
     '''
-    This function divides each gene value given the max value. Axis = 0 is the max of each sample, while axis = 1
-    indicates that each gene is divided by its max value across samples.
+    Normalizes each gene value given the max value across an axis.
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for RNA-seq experiment. Columns are
+        cell-types/tissues/samples and rows are genes.
+
+    axis : int, default=0
+        Axis to perform the max-value normalization. Options
+        are {0 for normalizing across rows (column-wise) or 1 for
+        normalizing across columns (row-wise)}.
+
+    Returns
+    -------
+    new_data : pandas.DataFrame
+        A gene expression data for RNA-seq experiment with
+        normalized values. Columns are
+        cell-types/tissues/samples and rows are genes.
     '''
     new_data = rnaseq_data.div(rnaseq_data.max(axis=axis), axis=int(not axis))
     new_data = new_data.fillna(0.0).replace(np.inf, 0.0)
@@ -45,8 +116,25 @@ def divide_expression_by_max(rnaseq_data, axis=1):
 
 def divide_expression_by_mean(rnaseq_data, axis=1):
     '''
-    This function divides each gene value given the mean value. Axis = 0 is the max of each sample, while axis = 1
-    indicates that each gene is divided by its median value across samples.
+    Normalizes each gene value given the mean value across an axis.
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for RNA-seq experiment. Columns are
+        cell-types/tissues/samples and rows are genes.
+
+    axis : int, default=0
+        Axis to perform the mean-value normalization. Options
+        are {0 for normalizing across rows (column-wise) or 1 for
+        normalizing across columns (row-wise)}.
+
+    Returns
+    -------
+    new_data : pandas.DataFrame
+        A gene expression data for RNA-seq experiment with
+        normalized values. Columns are
+        cell-types/tissues/samples and rows are genes.
     '''
     new_data = rnaseq_data.div(rnaseq_data.mean(axis=axis), axis=int(not axis))
     new_data = new_data.fillna(0.0).replace(np.inf, 0.0)
@@ -54,6 +142,29 @@ def divide_expression_by_mean(rnaseq_data, axis=1):
 
 
 def add_complexes_to_expression(rnaseq_data, complexes):
+    '''
+    Adds multimeric complexes into the gene expression matrix.
+    Their gene expressions are the minimum expression value
+    among the respective subunits composing them.
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression data for RNA-seq experiment. Columns are
+        cell-types/tissues/samples and rows are genes.
+
+    complexes : dict
+        Dictionary where keys are the complex names in the list of PPIs, while
+        values are list of subunits for the respective complex names.
+
+    Returns
+    -------
+    tmp_rna : pandas.DataFrame
+        Gene expression data for RNA-seq experiment containing multimeric
+        complex names. Their gene expressions are the minimum expression value
+        among the respective subunits composing them. Columns are
+        cell-types/tissues/samples and rows are genes.
+    '''
     tmp_rna = rnaseq_data.copy()
     for k, v in complexes.items():
         if all(g in tmp_rna.index for g in v):
@@ -73,7 +184,7 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
     rnaseq_data : pandas.DataFrame
         Gene expression data for a single-cell RNA-seq experiment. Columns are
         single cells and rows are genes. If columns are genes and rows are
-        single cells, specify transposed=False.
+        single cells, specify transposed=True.
 
     metadata : pandas.Dataframe
         Metadata containing the cell types for each single cells in the
@@ -98,8 +209,8 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
             composing a cell type for a given gene.
 
     transposed : boolean, default=True
-        Whether the rnaseq_data is already organized with columns as
-        single cells and rows as genes.
+        Whether the rnaseq_data is organized with columns as
+        genes and rows as single cells.
 
     Returns
     -------

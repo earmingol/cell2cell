@@ -24,10 +24,9 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
     ----------
     interaction_space : cell2cell.core.interaction_space.InteractionSpace
         Interaction space that contains all a distance matrix after running the
-        the method compute_pairwise_cci_scores. Alternatively, this object
-        can be a numpy-array or a pandas DataFrame. Also, a
-        SingleCellInteractions or a BulkInteractions object after running
-        the method compute_pairwise_cci_scores.
+        the method compute_pairwise_communication_scores. Alternatively, this
+        object can a SingleCellInteractions or a BulkInteractions object after
+        running the method compute_pairwise_communication_scores.
 
     sender_cells : list
         List of cells to be included as senders.

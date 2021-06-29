@@ -6,22 +6,28 @@ import numpy as np
 
 
 def compute_jaccard_like_cci_score(cell1, cell2, ppi_score=None):
-    '''
-    Function that calculates an extended jaccard-like score for the interaction between two cells based on the
-    interactions of their proteins with the proteins of the other cell.
+    '''Calculates a Jaccard-like score for the interaction between
+    two cells based on their intercellular protein-protein
+    interactions such as ligand-receptor interactions.
 
     Parameters
     ----------
-    cell1 : Cell class
-        First cell/tissue/organ type to compute interaction between a pair of them.
+    cell1 : cell2cell.core.cell.Cell
+        First cell-type/tissue/sample to compute interaction
+        between a pair of them. In a directed interaction,
+        this is the sender.
 
-    cell2 : Cell class
-        Second cell/tissue/organ type to compute interaction between a pair of them.
+    cell2 : cell2cell.core.cell.Cell
+        Second cell-type/tissue/sample to compute interaction
+        between a pair of them. In a directed interaction,
+        this is the receiver.
 
     Returns
     -------
     cci_score : float
-        Score for the interaction of the of the pair of cells based on the abundance of gene/proteins in the ppi network.
+        Overall score for the interaction between a pair of
+        cell-types/tissues/samples. In this case it is a
+        Jaccard-like score.
     '''
     c1 = cell1.weighted_ppi['A'].values
     c2 = cell2.weighted_ppi['B'].values
@@ -47,22 +53,28 @@ def compute_jaccard_like_cci_score(cell1, cell2, ppi_score=None):
 
 
 def compute_braycurtis_like_cci_score(cell1, cell2, ppi_score=None):
-    '''
-    Function that calculates an extended bray-curtis-like score for the interaction between two cells based on the
-    interactions of their proteins with the proteins of the other cell.
+    '''Calculates a Bray-Curtis-like score for the interaction between
+    two cells based on their intercellular protein-protein
+    interactions such as ligand-receptor interactions.
 
     Parameters
     ----------
-    cell1 : Cell class
-        First cell/tissue/organ type to compute interaction between a pair of them.
+    cell1 : cell2cell.core.cell.Cell
+        First cell-type/tissue/sample to compute interaction
+        between a pair of them. In a directed interaction,
+        this is the sender.
 
-    cell2 : Cell class
-        Second cell/tissue/organ type to compute interaction between a pair of them.
+    cell2 : cell2cell.core.cell.Cell
+        Second cell-type/tissue/sample to compute interaction
+        between a pair of them. In a directed interaction,
+        this is the receiver.
 
     Returns
     -------
     cci_score : float
-        Score for the interaction of the of the pair of cells based on the abundance of gene/proteins in the ppi network.
+        Overall score for the interaction between a pair of
+        cell-types/tissues/samples. In this case is a
+        Bray-Curtis-like score.
     '''
     c1 = cell1.weighted_ppi['A'].values
     c2 = cell2.weighted_ppi['B'].values
@@ -88,22 +100,27 @@ def compute_braycurtis_like_cci_score(cell1, cell2, ppi_score=None):
 
 
 def compute_count_score(cell1, cell2, ppi_score=None):
-    '''
-    Function that calculates an dot score for the interaction between two cells based on the
-    interactions of their proteins with the proteins of the other cell.
+    '''Calculates the number of active protein-protein interactions
+    for the interaction between two cells, which could be the number
+    of active ligand-receptor interactions.
 
     Parameters
     ----------
-    cell1 : Cell class
-        First cell/tissue/organ type to compute interaction between a pair of them.
+    cell1 : cell2cell.core.cell.Cell
+        First cell-type/tissue/sample to compute interaction
+        between a pair of them. In a directed interaction,
+        this is the sender.
 
-    cell2 : Cell class
-        Second cell/tissue/organ type to compute interaction between a pair of them.
+    cell2 : cell2cell.core.cell.Cell
+        Second cell-type/tissue/sample to compute interaction
+        between a pair of them. In a directed interaction,
+        this is the receiver.
 
     Returns
     -------
     cci_score : float
-        Score for the interaction of the of the pair of cells based on the abundance of gene/proteins in the ppi network.
+        Overall score for the interaction between a pair of
+        cell-types/tissues/samples.
     '''
     c1 = cell1.weighted_ppi['A'].values
     c2 = cell2.weighted_ppi['B'].values
@@ -123,21 +140,28 @@ def compute_count_score(cell1, cell2, ppi_score=None):
 
 
 def matmul_jaccard_like(A_scores, B_scores, ppi_score=None):
-    '''All cell-pair scores from two matrices. A_scores contains the communication scores for the partners on the left
-     column of the PPI network and B_score contains the same but for the partners in the right column.
+    '''Computes Jaccard-like scores using matrices of proteins by
+    cell-types/tissues/samples.
 
-     Parameters
-     __________
-     A_scores : array
-        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+    Parameters
+    __________
+    A_scores : array-like
+        Matrix of size NxM, where N are the proteins in the first
+        column of a list of PPIs and M are the
+        cell-types/tissues/samples.
 
-    B_scores : array
-        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+    B_scores : array-like
+        Matrix of size NxM, where N are the proteins in the first
+        column of a list of PPIs and M are the
+        cell-types/tissues/samples.
 
     Returns
     -------
-    jaccard : array
-        Matrix MxM, representing the CCI score for all cell pairs
+    jaccard : numpy.array
+        Matrix MxM, representing the CCI score for all pairs of
+        cell-types/tissues/samples. In directed interactions,
+        the vertical axis (axis 0) represents the senders, while
+        the horizontal axis (axis 1) represents the receivers.
     '''
     if ppi_score is None:
         ppi_score = np.array([1.0] * A_scores.shape[0])
@@ -154,21 +178,28 @@ def matmul_jaccard_like(A_scores, B_scores, ppi_score=None):
 
 
 def matmul_bray_curtis_like(A_scores, B_scores, ppi_score=None):
-    '''All cell-pair scores from two matrices. A_scores contains the communication scores for the partners on the left
-     column of the PPI network and B_score contains the same but for the partners in the right column.
+    '''Computes Bray-Curtis-like scores using matrices of proteins by
+    cell-types/tissues/samples.
 
-     Parameters
-     __________
-     A_scores : array
-        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+    Parameters
+    __________
+    A_scores : array-like
+        Matrix of size NxM, where N are the proteins in the first
+        column of a list of PPIs and M are the
+        cell-types/tissues/samples.
 
-    B_scores : array
-        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+    B_scores : array-like
+        Matrix of size NxM, where N are the proteins in the first
+        column of a list of PPIs and M are the
+        cell-types/tissues/samples.
 
     Returns
     -------
-    bray_curtis : array
-        Matrix MxM, representing the CCI score for all cell pairs
+    bray_curtis : numpy.array
+        Matrix MxM, representing the CCI score for all pairs of
+        cell-types/tissues/samples. In directed interactions,
+        the vertical axis (axis 0) represents the senders, while
+        the horizontal axis (axis 1) represents the receivers.
     '''
     if ppi_score is None:
         ppi_score = np.array([1.0] * A_scores.shape[0])
@@ -185,21 +216,29 @@ def matmul_bray_curtis_like(A_scores, B_scores, ppi_score=None):
 
 
 def matmul_count_active(A_scores, B_scores, ppi_score=None):
-    '''All cell-pair scores from two matrices. A_scores contains the communication scores for the partners on the left
-     column of the PPI network and B_score contains the same but for the partners in the right column.
+    '''Computes the count of active protein-protein interactions
+    used for intercellular communication using matrices of proteins by
+    cell-types/tissues/samples.
 
-     Parameters
-     __________
-     A_scores : array
-        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+    Parameters
+    __________
+    A_scores : array-like
+        Matrix of size NxM, where N are the proteins in the first
+        column of a list of PPIs and M are the
+        cell-types/tissues/samples.
 
-    B_scores : array
-        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+    B_scores : array-like
+        Matrix of size NxM, where N are the proteins in the first
+        column of a list of PPIs and M are the
+        cell-types/tissues/samples.
 
     Returns
     -------
-    counts : array
-        Matrix MxM, representing the CCI score for all cell pairs
+    counts : numpy.array
+        Matrix MxM, representing the CCI score for all pairs of
+        cell-types/tissues/samples. In directed interactions,
+        the vertical axis (axis 0) represents the senders, while
+        the horizontal axis (axis 1) represents the receivers.
     '''
     if ppi_score is None:
         ppi_score = np.array([1.0] * A_scores.shape[0])
@@ -210,21 +249,28 @@ def matmul_count_active(A_scores, B_scores, ppi_score=None):
 
 
 def matmul_cosine(A_scores, B_scores, ppi_score=None):
-    '''All cell-pair scores from two matrices. A_scores contains the communication scores for the partners on the left
-     column of the PPI network and B_score contains the same but for the partners in the right column.
+    '''Computes cosine-similarity scores using matrices of proteins by
+    cell-types/tissues/samples.
 
-     Parameters
-     __________
-     A_scores : array
-        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+    Parameters
+    __________
+    A_scores : array-like
+        Matrix of size NxM, where N are the proteins in the first
+        column of a list of PPIs and M are the
+        cell-types/tissues/samples.
 
-    B_scores : array
-        Matrix of size NxM, where N is the number of PPIs and M is the number of individual cells.
+    B_scores : array-like
+        Matrix of size NxM, where N are the proteins in the first
+        column of a list of PPIs and M are the
+        cell-types/tissues/samples.
 
     Returns
     -------
-    counts : array
-        Matrix MxM, representing the CCI score for all cell pairs
+    cosine : numpy.array
+        Matrix MxM, representing the CCI score for all pairs of
+        cell-types/tissues/samples. In directed interactions,
+        the vertical axis (axis 0) represents the senders, while
+        the horizontal axis (axis 1) represents the receivers.
     '''
     if ppi_score is None:
         ppi_score = np.array([1.0] * A_scores.shape[0])
