@@ -4,7 +4,9 @@ import numpy as np
 from tqdm.auto import tqdm
 from kneed import KneeLocator
 
-from tensorly.decomposition import non_negative_parafac
+from cell2cell.external import non_negative_parafac
+# Replace previous line with line below once the random_state is available for init='random'
+#from tensorly.decomposition import non_negative_parafac
 import tensorly as tl
 
 

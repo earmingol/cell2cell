@@ -96,7 +96,7 @@ setup(name='cell2cell',
                         'scikit-learn',
                         'tqdm',
                         'statsmodels',
-                        'tensorly',
+                        'tensorly == 0.5.1',
                         'kneed',
                         'scanpy'
                         ],
