@@ -51,4 +51,5 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
 ---
 ## Common issues
 - When running Tensor-cell2cell (```InteractionTensor.compute_tensor_factorization()``` or ```InteractionTensor.elbow_rank_selection()```), a common error is
-associated with Memory. This happens when the input is ```init='svd'```. To avoid this issue, just replace it by ```init='random'```.
+associated with Memory. This may happen when the tensor is big enough to make the computer run out of memory when the input of any previous function is
+  ```init='svd'```. To avoid this issue, just replace it by ```init='random'```.
