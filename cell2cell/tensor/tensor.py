@@ -625,7 +625,7 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         elements in the cognate tensor dimension (in the attribute order_names of the
         InteractionTensor)
 
-    mask_tensor:
+    mask_tensor: numpy.array
         Mask used to exclude values in the tensor. When using how='outer' it masks
         missing values (e.g., cell types that are not present in a given context),
         while using how='inner' makes the mask_tensor to be None.
