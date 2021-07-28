@@ -55,5 +55,5 @@ associated with Memory. This may happen when the tensor is big enough to make th
   ```init='svd'```. To avoid this issue, just replace it by ```init='random'```.
   
 ## Ligand-Receptor pairs
-- A repository with previously published lists of ligand-receptor pairs [is available here].(https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs).
+- A repository with previously published lists of ligand-receptor pairs [is available here](https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs).
   You can use any of these lists as an input of cell2cell.
