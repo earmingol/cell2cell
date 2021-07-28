@@ -51,5 +51,9 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
 ---
 ## Common issues
 - When running Tensor-cell2cell (```InteractionTensor.compute_tensor_factorization()``` or ```InteractionTensor.elbow_rank_selection()```), a common error is
-associated with Memory. This may happen when the tensor is big enough to make the computer run out of memory when the input of any previous function is
+associated with Memory. This may happen when the tensor is big enough to make the computer run out of memory when the input of the functions in the parentheses is
   ```init='svd'```. To avoid this issue, just replace it by ```init='random'```.
+  
+## Ligand-Receptor pairs
+- A repository with previously published lists of ligand-receptor pairs [is available here].(https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs).
+  You can use any of these lists as an input of cell2cell.
