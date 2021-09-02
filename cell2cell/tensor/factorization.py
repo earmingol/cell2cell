@@ -37,8 +37,8 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
 
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
-        a boolean array of the same shape as the original tensor that is False/0 where
-        the value is missing and True/1 where it is not.
+        a boolean array of the same shape as the original tensor and should be 0
+        where the values are missing and 1 everywhere else.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -113,8 +113,8 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
 
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
-        a boolean array of the same shape as the original tensor that is False/0 where
-        the value is missing and True/1 where it is not.
+        a boolean array of the same shape as the original tensor and should be 0
+        where the values are missing and 1 everywhere else.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -177,8 +177,8 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
 
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
-        a boolean array of the same shape as the original tensor that is False/0 where
-        the value is missing and True/1 where it is not.
+        a boolean array of the same shape as the original tensor and should be 0
+        where the values are missing and 1 everywhere else.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -237,8 +237,8 @@ def _compute_norm_error(tensor, tl_object, mask=None):
 
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
-        a boolean array of the same shape as the original tensor that is False/0 where
-        the value is missing and True/1 where it is not.
+        a boolean array of the same shape as the original tensor and should be 0
+        where the values are missing and 1 everywhere else.
 
     Returns
     -------

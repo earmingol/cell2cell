@@ -73,8 +73,8 @@ class BaseTensor():
 
     mask : ndarray list
         Helps avoiding missing values during a tensor factorization. A mask should be
-        a boolean array of the same shape as the original tensor that is False/0 where
-        the value is missing and True/1 where it is not.
+        a boolean array of the same shape as the original tensor and should be 0
+        where the values are missing and 1 everywhere else.
     '''
     def __init__(self):
         # Save variables for this class
@@ -190,8 +190,8 @@ class BaseTensor():
 
         mask : ndarray list, default=None
             Helps avoiding missing values during a tensor factorization. A mask should be
-            a boolean array of the same shape as the original tensor that is False/0 where
-            the value is missing and True/1 where it is not.
+            a boolean array of the same shape as the original tensor and should be 0
+            where the values are missing and 1 everywhere else.
 
         ci : str, default='std'
             Confidence interval for representing the multiple runs in each rank.
@@ -498,8 +498,8 @@ class PreBuiltTensor(BaseTensor):
 
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
-        a boolean array of the same shape as the original tensor that is False/0 where
-        the value is missing and True/1 where it is not.
+        a boolean array of the same shape as the original tensor and should be 0
+        where the values are missing and 1 everywhere else.
 
     device : str, default=None
         Device to use when backend is pytorch. Options are:
