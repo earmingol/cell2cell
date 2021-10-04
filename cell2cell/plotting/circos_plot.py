@@ -172,11 +172,12 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
         labels = meta[group_col].unique().tolist()
         if colors is None:
             colors = get_colors_from_labels(labels, cmap=meta_cmap)
-        meta['Color'] = meta[group_col].map(colors)
+        meta['Color'] = [colors[idx] for idx in meta[group_col]]
     else:
         meta = pd.DataFrame(index=cells)
+    # Colors for cells, not major groups
     colors = get_colors_from_labels(cells, cmap=cells_cmap)
-    meta['Cells-Color'] = meta.index.map(colors)
+    meta['Cells-Color'] = [colors[idx] for idx in meta.index]
     # signal_colors = {'ligand' : 'brown', 'receptor' : 'black'}
     signal_colors = {'ligand' : ligand_label_color, 'receptor' : receptor_label_color}
 
