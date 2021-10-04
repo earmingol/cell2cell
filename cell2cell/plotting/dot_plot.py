@@ -117,13 +117,23 @@ def dot_plot(sc_interactions, evaluation='communication', significance=0.05, sen
             color = np.asarray(cmap(norm(scores[[col]].loc[[idx]].values.item()))).reshape(1, -1)
             size = (max_size(df[[col]].loc[[idx]].values.item()) * tick_size * 2) ** 2
             ax.scatter(j, i, s=size, c=color)
+
+    # Change tick labels
+    xlabels = [' --> '.join(str(c).split(';')) \
+               for c in df.columns]
+    ylabels = [' --> '.join(str(r).replace('(', '').replace(')', '').replace("'", "").split(', ')) \
+               for r in df.index]
+
     ax.set_xticks(ticks=range(0, len(df.columns)))
-    ax.set_xticklabels(labels=list(df.columns),
+    ax.set_xticklabels(xlabels,
                        fontsize=tick_size,
-                       rotation=90, ha='center', va='top'
-                       )
+                       rotation=90,
+                       rotation_mode='anchor',
+                       va='center',
+                       ha='right')
+
     ax.set_yticks(ticks=range(0, len(df.index)))
-    ax.set_yticklabels(labels=list(df.index),
+    ax.set_yticklabels(ylabels,
                        fontsize=tick_size,
                        rotation=0, ha='right', va='center'
                        )
