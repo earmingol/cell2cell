@@ -87,6 +87,9 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
     row_fontsize : int, default=8
         Font size for the rows in the clustermap (ligand-receptor pairs).
 
+    col_fontsize : int, default=8
+        Font size for the columns in the clustermap (sender-receiver cell pairs).
+
     filename : str, default=None
         Path to save the figure of the elbow analysis. If None, the figure is not
         saved.
