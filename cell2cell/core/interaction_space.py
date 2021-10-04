@@ -468,7 +468,10 @@ class InteractionSpace():
         if cci_score != 'count':
             self.distance_matrix = self.interaction_elements['cci_matrix'].apply(lambda x: 1 - x)
         else:
-            self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'].max().max()).apply(lambda x: 1 - x)
+            #self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'].max().max()).apply(lambda x: 1 - x)
+            # Regularized distance
+            mean = np.nanmean(self.interaction_elements['cci_matrix'])
+            self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'] + mean).apply(lambda x: 1 - x)
         np.fill_diagonal(self.distance_matrix.values, 0.0)  # Make diagonal zero (delete autocrine-interactions)
 
     def pair_communication_score(self, cell1, cell2, communication_score='expression_thresholding',
