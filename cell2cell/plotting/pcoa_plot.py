@@ -136,6 +136,13 @@ def pcoa_3dplot(interaction_space, metadata=None, sample_col='#SampleID', group_
     else:
         assert all(elem in colors.keys() for elem in set(labels))
 
+    # Make sure all data is in ordination
+    for pc in ['PC1', 'PC2', 'PC3']:
+        if pc not in ordination['samples'].columns:
+            ordination['samples'][pc] = [0.] * ordination['samples'].shape[0]
+        if pc not in ordination['proportion_explained'].index:
+            ordination['proportion_explained'][pc] = 0.
+
     # Plot each data point with respective color
     for i, cell_type in enumerate(sorted(meta_[group_col].unique())):
         cells = list(meta_.loc[meta_[group_col] == cell_type].index)
