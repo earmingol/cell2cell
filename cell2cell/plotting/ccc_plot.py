@@ -11,7 +11,8 @@ from cell2cell.plotting.aesthetics import get_colors_from_labels
 def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', group_col='Groups',
                    meta_cmap='gist_rainbow', colors=None, cell_labels=('SENDER-CELL','RECEIVER-CELL'),
                    metric='jaccard', method='ward', optimal_leaf=True, excluded_cells=None, title='',
-                   only_used_lr=True, cbar_title='Presence', cbar_fontsize=12, row_fontsize=8, filename=None, **kwargs):
+                   only_used_lr=True, cbar_title='Presence', cbar_fontsize=12, row_fontsize=8, col_fontsize=8,
+                   filename=None, **kwargs):
     '''Generates a clustermap (heatmap + dendrograms from a hierarchical
     clustering) based on CCC scores for each LR pair in every cell-cell pair.
 
@@ -211,7 +212,8 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
                for i in fig.ax_heatmap.yaxis.get_majorticklabels()]
 
     fig.ax_heatmap.set_xticklabels(xlabels,
-                                   rotation=45,
+                                   fontsize=col_fontsize,
+                                   rotation=90,
                                    rotation_mode='anchor',
                                    va='center',
                                    ha='right')
