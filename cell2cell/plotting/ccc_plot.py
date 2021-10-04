@@ -204,6 +204,19 @@ def clustermap_ccc(interaction_space, metadata=None, sample_col='#SampleID', gro
     cbar.ax.set_ylabel(cbar_title, fontsize=cbar_fontsize)
     cbar.ax.yaxis.set_label_position("left")
 
+    # Change tick labels
+    xlabels = [' --> '.join(i.get_text().split(';')) \
+               for i in fig.ax_heatmap.xaxis.get_majorticklabels()]
+    ylabels = [' --> '.join(i.get_text().replace('(', '').replace(')', '').replace("'", "").split(', ')) \
+               for i in fig.ax_heatmap.yaxis.get_majorticklabels()]
+
+    fig.ax_heatmap.set_xticklabels(xlabels,
+                                   rotation=45,
+                                   rotation_mode='anchor',
+                                   va='center',
+                                   ha='right')
+    fig.ax_heatmap.set_yticklabels(ylabels)
+
     # Save Figure
     if filename is not None:
         plt.savefig(filename,
