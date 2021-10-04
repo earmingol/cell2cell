@@ -41,8 +41,11 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
 ---
 
 ![plot](https://github.com/earmingol/cell2cell/blob/master/LogoTensor.png?raw=true)
-- A capsule containing jupyter notebooks for running Tensor-cell2cell on datasets of **COVID-19 and the embryonic development
-  of *C. elegans*** is [available in codeocean.com](https://doi.org/10.24433/CO.0051950.v1)
+- A capsule containing jupyter notebooks for reproducing the results in the manuscript of Tensor-cell2cell  is [available in codeocean.com](https://doi.org/10.24433/CO.0051950.v1).
+  It specifically contains analyses on datasets of **COVID-19 and the embryonic development
+  of *C. elegans***, such as the evaluation of changes in
+  cell-cell communication dependent on [different severities of COVID-19](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v1.0/results.5f6a2e3f-70d2-4547-a1c2-7304335758d9/06-BALF-Tensor-Factorization.html),
+  and changes dependent on [multiple time points of the *C. elegans* development](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v1.0/results.5f6a2e3f-70d2-4547-a1c2-7304335758d9/08-Celegans-Tensor-Factorization.html)
 - **Do you have precomputed communication scores?** Re-use them as a prebuilt tensor as [exemplified here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Loading-PreBuiltTensor.ipynb).
   This allows reusing previous tensors you built or even plugging in communication scores from other tools.
 - **Run Tensor-cell2cell much faster!** An example to perform the analysis using a **Nvidia GPU** is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/GPU-Example.ipynb)
