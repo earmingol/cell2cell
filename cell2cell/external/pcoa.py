@@ -381,3 +381,31 @@ def pcoa_biplot(ordination, y):
                                        columns=coordinates.columns.copy())
 
     return ordination
+
+
+def _check_ordination(ordination):
+    '''Completes ordination to have all values for the first three
+    coordinates.
+
+    Parameters
+    ----------
+    ordination : OrdinationResults
+        The modified input object that includes projected features onto the
+        ordination space in the ``features`` attribute.
+    Returns
+    -------
+    ordination : OrdinationResults
+        The modified input object that includes projected features onto the
+        ordination space in the ``features`` attribute. Contains values for
+        the three first coordinates. If they were missing in the original
+        ordination, now will be completed with a value of zero.
+    '''
+    # Make sure all data is in ordination
+    for pc in ['PC1', 'PC2', 'PC3']:
+        if pc not in ordination['samples'].columns:
+            ordination['samples'][pc] = [0.] * ordination['samples'].shape[0]
+        if pc not in ordination['proportion_explained'].index:
+            ordination['proportion_explained'][pc] = 0.
+        if pc not in ordination['eigvals'].index:
+            ordination['eigvals'][pc] = 0.
+    return ordination

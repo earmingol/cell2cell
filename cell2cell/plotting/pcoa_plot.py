@@ -5,7 +5,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from cell2cell.external import pcoa
+from cell2cell.external import pcoa, _check_ordination
 from cell2cell.plotting.aesthetics import get_colors_from_labels
 
 
@@ -113,6 +113,7 @@ def pcoa_3dplot(interaction_space, metadata=None, sample_col='#SampleID', group_
 
     # PCoA
     ordination = pcoa(df, method=pcoa_method)
+    ordination = _check_ordination(ordination)
     ordination['samples'].index = df.index
 
     # Biplot
@@ -135,13 +136,6 @@ def pcoa_3dplot(interaction_space, metadata=None, sample_col='#SampleID', group_
         colors = get_colors_from_labels(labels, cmap=meta_cmap)
     else:
         assert all(elem in colors.keys() for elem in set(labels))
-
-    # Make sure all data is in ordination
-    for pc in ['PC1', 'PC2', 'PC3']:
-        if pc not in ordination['samples'].columns:
-            ordination['samples'][pc] = [0.] * ordination['samples'].shape[0]
-        if pc not in ordination['proportion_explained'].index:
-            ordination['proportion_explained'][pc] = 0.
 
     # Plot each data point with respective color
     for i, cell_type in enumerate(sorted(meta_[group_col].unique())):
