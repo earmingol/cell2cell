@@ -145,7 +145,7 @@ def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation
     return rnaseq_data
 
 
-def load_metadata(metadata_file, cell_labels, sample_col=None, **kwargs):
+def load_metadata(metadata_file, cell_labels=None, index_col=None, **kwargs):
     '''Loads a metadata table for a given list of cells.
 
     Parameters
@@ -154,14 +154,15 @@ def load_metadata(metadata_file, cell_labels, sample_col=None, **kwargs):
         Absolute path to a file containing a metadata table for
         cell-types/tissues/samples in a RNA-seq dataset.
 
-    cell_labels : list
-        List of labels for cell-types/tissues/samples which must match
-        the names in the metadata table.
+    cell_labels : list, default=None
+        List of cell-types/tissues/samples to consider. Names must
+        match the labels in the metadata table. These names must
+        be contained in the values of the column indicated
+        by index_col.
 
-    sample_col : str, default=None
-        Column name of a column indicating which cell-type/tissue/sample
-        is associated with the metadata in a given row. If None, the
-        first column is assumed to contain that information.
+    index_col : str, default=None
+        Column to be consider the index of the metadata.
+        If None, the index will be the numbers of the rows.
 
     **kwargs : dict
         Extra arguments for loading files the function
@@ -173,9 +174,16 @@ def load_metadata(metadata_file, cell_labels, sample_col=None, **kwargs):
         Metadata for the cell-types/tissues/samples provided.
     '''
     meta = load_table(metadata_file, **kwargs)
-    if sample_col is None:
-        sample_col = list(meta.columns)[0]
-    meta = meta.loc[meta[sample_col].isin(cell_labels)].reset_index()
+    if index_col is None:
+        index_col = list(meta.columns)[0]
+        indexing = False
+    else:
+        indexing = True
+    if cell_labels is not None:
+        meta = meta.loc[meta[index_col].isin(cell_labels)]
+
+    if indexing:
+        meta.set_index(index_col, inplace=True)
     return meta
 
 
