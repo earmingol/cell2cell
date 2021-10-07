@@ -85,7 +85,8 @@ def compute_fdrcorrection_asymmetric_matrix(X, alpha=0.1):
     rej, adj_pvals = fdrcorrection(pvals, alpha=alpha)
 
     # Reorder_data
-    adj_X = adj_pvals.reshape(-1, a.shape[1])
+    #adj_X = adj_pvals.reshape(-1, a.shape[1])
+    adj_X = adj_pvals.reshape(a.shape) # Allows using tensors
 
     if pandas:
         adj_X = pd.DataFrame(adj_X, index=index, columns=columns)
