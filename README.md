@@ -1,13 +1,14 @@
 # Inferring cell-cell interactions from transcriptomes with *cell2cell*
 [![PyPI Version][pb]][pypi]
-[![PyPI Downloads][db]][pypi]
+[![Downloads](https://pepy.tech/badge/cell2cell/month)](https://pepy.tech/project/cell2cell)
 
 [pb]: https://badge.fury.io/py/cell2cell.svg
 [pypi]: https://pypi.org/project/cell2cell/
-[db]: https://img.shields.io/pypi/dm/cell2cell?label=pypi%20downloads
 
 ## Installation
-Create a new conda environment:
+**First, [install Anaconda following this tutorial](https://docs.anaconda.com/anaconda/install/)**
+
+Once installed, create a new conda environment:
 ```
 conda create -n cell2cell -y python=3.7 jupyter
 ```
@@ -62,3 +63,17 @@ associated with Memory. This may happen when the tensor is big enough to make th
 ## Ligand-Receptor pairs
 - A repository with previously published lists of ligand-receptor pairs [is available here](https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs).
   You can use any of these lists as an input of cell2cell.
+
+## Citation
+
+- **cell2cell** should be cited using this pre-print in bioRxiv:
+  - Armingol E., Joshi C.J., Baghdassarian H., Shamie I., Ghaddar A., Chan J.,
+   Her H.L., O’Rourke E.J., Lewis N.E. 
+   [Inferring the spatial code of cell-cell interactions and communication across a whole animal body](https://doi.org/10.1101/2020.11.22.392217).
+    *bioRxiv*, (2020). **DOI: 10.1101/2020.11.22.392217**
+
+
+- **Tensor-cell2cell** should be cited using this pre-print in bioRxiv:
+  - Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Knight R., Lewis N.E.
+  [Context-aware deconvolution of cell-cell communication with Tensor-cell2cell](https://doi.org/10.1101/2021.09.20.461129)
+  *bioRxiv*, (2021). **DOI: 10.1101/2021.09.20.461129**
