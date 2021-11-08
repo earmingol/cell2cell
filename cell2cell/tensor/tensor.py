@@ -5,6 +5,7 @@ import pandas as pd
 import tensorly as tl
 
 from collections import OrderedDict
+from tqdm.auto import tqdm
 
 from cell2cell.core.communication_scores import compute_ccc_matrix, aggregate_ccc_matrices
 from cell2cell.preprocessing.ppi import get_genes_from_complexes
@@ -63,6 +64,11 @@ class BaseTensor():
         A tensorly object containing a list of initialized factors of the tensor
         decomposition where element `i` is of shape (tensor.shape[i], rank).
 
+    norm_tl_object : ndarray list
+        A tensorly object containing a list of initialized factors of the tensor
+        decomposition where element `i` is of shape (tensor.shape[i], rank). This
+        results from normalizing the factor loadings of the tl_object.
+
     factors : dict
         Ordered dictionary containing a dataframe with the factor loadings for each
         dimension/order of the tensor.
@@ -75,6 +81,10 @@ class BaseTensor():
         Helps avoiding missing values during a tensor factorization. A mask should be
         a boolean array of the same shape as the original tensor and should be 0
         where the values are missing and 1 everywhere else.
+
+    explained_variance_ratio_ : ndarray
+        Percentage of variance explained by each of the factors. Only present when
+        "normalize_loadings" is True. Otherwise, it is None.
     '''
     def __init__(self):
         # Save variables for this class
@@ -86,12 +96,14 @@ class BaseTensor():
         self.order_names = [None, None, None, None]
         self.order_labels = None
         self.tl_object = None
+        self.norm_tl_object = None
         self.factors = None
         self.rank = None
         self.mask = None
+        self.explained_variance_ratio_ = None
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
-                                     **kwargs):
+                                     runs=10, normalize_loadings=False, **kwargs):
         '''Performs a Tensor Factorization
 
         Parameters
@@ -114,6 +126,14 @@ class BaseTensor():
         verbose : boolean, default=False
             Whether printing or not steps of the analysis.
 
+        runs : int, default=10
+            Number of models to choose among and find the lowest error.
+            This helps to avoid local minima.
+
+        normalize_loadings : boolean, default=False
+            Whether normalizing the loadings in each factor to unit
+            Euclidean length.
+
         **kwargs : dict
             Extra arguments for the tensor factorization according to inputs in tensorly.
 
@@ -130,16 +150,39 @@ class BaseTensor():
             tensor).
         '''
         tensor_dim = len(self.tensor.shape)
-        tf = _compute_tensor_factorization(tensor=self.tensor,
-                                           rank=rank,
-                                           tf_type=tf_type,
-                                           init=init,
-                                           random_state=random_state,
-                                           mask=self.mask,
-                                           verbose=verbose,
-                                           **kwargs)
+        best_err = np.inf
+        tf = None
+
+        if kwargs is None:
+            kwargs = {'return_errors' : True}
+        else:
+            kwargs['return_errors'] = True
+
+        for run in tqdm(range(runs), disable=(runs==1)):
+            if random_state is not None:
+                random_state_ = random_state + run
+            else:
+                random_state_ = None
+            local_tf, errors = _compute_tensor_factorization(tensor=self.tensor,
+                                                             rank=rank,
+                                                             tf_type=tf_type,
+                                                             init=init,
+                                                             random_state=random_state_,
+                                                             mask=self.mask,
+                                                             verbose=verbose,
+                                                             **kwargs)
+
+            if best_err > errors[-1]:
+                best_err = errors[-1]
+                tf = local_tf
+
+        if runs > 1:
+            print('Best model has a normalized error of: {}'.format(np.round(best_err, 3)))
 
         self.tl_object = tf
+        if normalize_loadings:
+            self.norm_tl_object = tl.cp_tensor.cp_normalize(self.tl_object)
+
         factor_names = ['Factor {}'.format(i) for i in range(1, rank+1)]
         if self.order_labels is None:
             if tensor_dim == 4:
@@ -153,8 +196,19 @@ class BaseTensor():
         else:
             assert len(self.order_labels) == tensor_dim, "The length of order_labels must match the number of orders/dimensions in the tensor"
             order_labels = self.order_labels
+
+        if normalize_loadings:
+            (weights, factors) = self.norm_tl_object
+            w_order = weights.argsort()[::-1]
+            factors = [f[:, w_order] for f in factors]
+            self.explained_variance_ratio_ = weights[w_order] / sum(weights)
+
+        else:
+            (weights, factors) = self.tl_object
+            self.explained_variance_ratio_ = None
+
         self.factors = OrderedDict(zip(order_labels,
-                                       [pd.DataFrame(tl.to_numpy(f), index=idx, columns=factor_names) for f, idx in zip(tf.factors, self.order_names)]))
+                                       [pd.DataFrame(tl.to_numpy(f), index=idx, columns=factor_names) for f, idx in zip(factors, self.order_names)]))
         self.rank = rank
 
 
