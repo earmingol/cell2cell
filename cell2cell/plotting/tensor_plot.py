@@ -9,8 +9,9 @@ from matplotlib import pyplot as plt
 from cell2cell.plotting.aesthetics import generate_legend, get_colors_from_labels, map_colors_to_metadata
 
 
-def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sample_col='Element', group_col='Category',
-                        meta_cmaps=None, fontsize=20, plot_legend=True, filename=None):
+def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=None, metadata=None,
+                        sample_col='Element', group_col='Category', meta_cmaps=None, fontsize=20, plot_legend=True,
+                        filename=None):
     '''Plots the loadings for each element in each dimension of the tensor, generate by
     a tensor factorization.
 
@@ -23,6 +24,14 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
     order_labels : list, default=None
         List with the labels of each dimension to use in the plot. If none, the
         default names given when factorizing the tensor will be used.
+
+    reorder_elements : dict, default=None
+        Dictionary for reordering elements in each of the tensor dimension.
+        Keys of this dictionary could be any or all of the keys in
+        interaction_tensor.factors. Values are list with the names or labels of the
+        elements in a tensor dimension. For example, for the context dimension,
+        all elements included in interaction_tensor.factors['Context'].index must
+        be present.
 
     metadata : list, default=None
         List of pandas dataframes with metadata information for elements of each
@@ -71,6 +80,13 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
     else:
         order_labels = list(interaction_tensor.factors.keys())
 
+    rank = interaction_tensor.rank
+    factors = interaction_tensor.factors
+    if reorder_elements is not None:
+        factors, metadata = reorder_dimension_elements(factors=factors,
+                                                       reorder_elements=reorder_elements,
+                                                       metadata=metadata)
+
     if metadata is None:
         metadata = [None] * dim
         meta_colors = [None] * dim
@@ -85,9 +101,6 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
                                                  sample_col=sample_col,
                                                  group_col=group_col,
                                                  cmap=cmap).to_dict() if ((m is not None) & (cmap is not None)) else None for m, cmap in zip(metadata, meta_cmaps)]
-
-    rank = interaction_tensor.rank
-    factors = interaction_tensor.factors
 
     # Make the plot
     fig, axes = plt.subplots(nrows=rank,
@@ -164,6 +177,65 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, metadata=None, sa
         plt.savefig(filename, dpi=300,
                     bbox_inches='tight')
     return fig, axes
+
+
+def reorder_dimension_elements(factors, reorder_elements, metadata=None):
+    '''Reorders elements in the dataframes including factor loadings.
+
+    Parameters
+    ----------
+    factors : dict
+        Ordered dictionary containing a dataframe with the factor loadings for each
+        dimension/order of the tensor.
+
+    reorder_elements : dict, default=None
+        Dictionary for reordering elements in each of the tensor dimension.
+        Keys of this dictionary could be any or all of the keys in
+        interaction_tensor.factors. Values are list with the names or labels of the
+        elements in a tensor dimension. For example, for the context dimension,
+        all elements included in interaction_tensor.factors['Context'].index must
+        be present.
+
+    metadata : list, default=None
+        List of pandas dataframes with metadata information for elements of each
+        dimension in the tensor. A column called as the variable `sample_col` contains
+        the name of each element in the tensor while another column called as the
+        variable `group_col` contains the metadata or grouping information of each
+        element.
+
+    Returns
+    -------
+    reordered_factors : dict
+        Ordered dictionary containing a dataframe with the factor loadings for each
+        dimension/order of the tensor. This dictionary includes the new orders.
+
+    new_metadata : list, default=None
+        List of pandas dataframes with metadata information for elements of each
+        dimension in the tensor. A column called as the variable `sample_col` contains
+        the name of each element in the tensor while another column called as the
+        variable `group_col` contains the metadata or grouping information of each
+        element. In this case, elements are sorted according to reorder_elements.
+
+    '''
+    assert all(k in factors.keys() for k in reorder_elements.keys()), "Keys in 'reorder_elements' must be only keys in 'factors'"
+    assert all((len(set(factors[key].index).difference(set(reorder_elements[key]))) == 0)for key in reorder_elements.keys()), "All elements of each dimension included should be present"
+
+    reordered_factors = factors.copy()
+    new_metadata = metadata.copy()
+
+    i = 0
+    for k, df in reordered_factors.items():
+        if k in reorder_elements.keys():
+            df = df.loc[reorder_elements[k]]
+            reordered_factors[k] = df[~df.index.duplicated(keep='first')]
+            if new_metadata is not None:
+                meta = new_metadata[i]
+                meta['Element'] = pd.Categorical(meta['Element'], ordered=True, categories=list(reordered_factors[k].index))
+                new_metadata[i] = meta.sort_values(by='Element').reset_index(drop=True)
+        else:
+            reordered_factors[k] = df
+        i += 1
+    return reordered_factors, new_metadata
 
 
 def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
