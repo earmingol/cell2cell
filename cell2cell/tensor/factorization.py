@@ -131,17 +131,23 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
         List of  tuples with (x, y) coordinates for the elbow analysis. X values are
         the different ranks and Y values are the errors of each decomposition.
     '''
+    if kwargs is None:
+        kwargs = {'return_errors': True}
+    else:
+        kwargs['return_errors'] = True
+
     loss = []
     for r in tqdm(range(1, upper_rank + 1), disable=disable_pbar):
-        tl_object = _compute_tensor_factorization(tensor=tensor,
-                                                  rank=r,
-                                                  tf_type=tf_type,
-                                                  init=init,
-                                                  random_state=random_state,
-                                                  mask=mask,
-                                                  verbose=verbose,
-                                                  **kwargs)
-        loss.append((r, _compute_norm_error(tensor, tl_object, mask)))
+        tl_object, errors = _compute_tensor_factorization(tensor=tensor,
+                                                          rank=r,
+                                                          tf_type=tf_type,
+                                                          init=init,
+                                                          random_state=random_state,
+                                                          mask=mask,
+                                                          verbose=verbose,
+                                                          **kwargs)
+        loss.append((r, errors[-1]))
+        #loss.append((r, _compute_norm_error(tensor, tl_object, mask)))
 
     return loss
 
@@ -193,6 +199,11 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
         This array is of shape (runs, upper_rank).
     '''
     assert isinstance(runs, int), "runs must be an integer"
+    if kwargs is None:
+        kwargs = {'return_errors': True}
+    else:
+        kwargs['return_errors'] = True
+
     all_loss = []
     for r in tqdm(range(1, upper_rank + 1)):
         run_errors = []
@@ -201,15 +212,16 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
                 rs = random_state + run
             else:
                 rs = None
-            tl_object = _compute_tensor_factorization(tensor=tensor,
-                                                      rank=r,
-                                                      tf_type=tf_type,
-                                                      init=init,
-                                                      random_state=rs,
-                                                      mask=mask,
-                                                      verbose=verbose,
-                                                      **kwargs)
-            run_errors.append(_compute_norm_error(tensor, tl_object, mask))
+            tl_object, errors = _compute_tensor_factorization(tensor=tensor,
+                                                              rank=r,
+                                                              tf_type=tf_type,
+                                                              init=init,
+                                                              random_state=rs,
+                                                              mask=mask,
+                                                              verbose=verbose,
+                                                              **kwargs)
+            run_errors.append(errors[-1])
+            #run_errors.append(_compute_norm_error(tensor, tl_object, mask))
         all_loss.append(run_errors)
 
     all_loss = np.array(all_loss).T
