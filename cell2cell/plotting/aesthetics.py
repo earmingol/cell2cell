@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from matplotlib import pyplot as plt
+from matplotlib.colors import Normalize
+import matplotlib.cm as cm
 import matplotlib.patches as patches
+import numpy as np
 
 
 def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
@@ -29,11 +32,22 @@ def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     colors = dict.fromkeys(labels, ())
 
     factor = int(factor)
-    NUM_COLORS = factor * len(colors)
-    cm = plt.get_cmap(cmap)
+    cm_ = plt.get_cmap(cmap)
 
-    for i, label in enumerate(colors.keys()):
-        colors[label] = cm((1 + ((factor-1)/factor)) * i / NUM_COLORS)
+    is_number = all((isinstance(e, float) or isinstance(e, int)) for e in labels)
+
+    if not is_number:
+        NUM_COLORS = factor * len(colors)
+        for i, label in enumerate(colors.keys()):
+            colors[label] = cm_((1 + ((factor-1)/factor)) * i / NUM_COLORS)
+    else:
+        max_ = np.nanmax(labels)
+        min_ = np.nanmin(labels)
+        norm = Normalize(vmin=-min_, vmax=max_)
+
+        m = cm.ScalarMappable(norm=norm, cmap=cmap)
+        for label in colors.keys():
+            colors[label] = m.to_rgba(label)
     return colors
 
 
