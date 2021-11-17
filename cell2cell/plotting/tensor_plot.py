@@ -82,6 +82,8 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
 
     rank = interaction_tensor.rank
     factors = interaction_tensor.factors
+
+    meta_og = metadata.copy()
     if reorder_elements is not None:
         factors, metadata = reorder_dimension_elements(factors=factors,
                                                        reorder_elements=reorder_elements,
@@ -96,11 +98,12 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
             meta_cmaps = ['gist_rainbow']*len(metadata)
         assert len(metadata) == len(meta_cmaps), "Provide a cmap for each order"
         assert len(metadata) == len(interaction_tensor.order_names), "Provide a metadata for each order. If there is no metadata for any, replace with None"
-        meta_colors = [get_colors_from_labels(m[group_col], cmap=cmap) if ((m is not None) & (cmap is not None)) else None for m, cmap in zip(metadata, meta_cmaps)]
+        meta_colors = [get_colors_from_labels(m[group_col], cmap=cmap) if ((m is not None) & (cmap is not None)) else None for m, cmap in zip(meta_og, meta_cmaps)]
         element_colors = [map_colors_to_metadata(metadata=m,
+                                                 colors=mc,
                                                  sample_col=sample_col,
                                                  group_col=group_col,
-                                                 cmap=cmap).to_dict() if ((m is not None) & (cmap is not None)) else None for m, cmap in zip(metadata, meta_cmaps)]
+                                                 cmap=cmap).to_dict() if ((m is not None) & (cmap is not None)) else None for m, cmap, mc in zip(metadata, meta_cmaps, meta_colors)]
 
     # Make the plot
     fig, axes = plt.subplots(nrows=rank,
