@@ -11,7 +11,7 @@ from cell2cell.core.communication_scores import compute_ccc_matrix, aggregate_cc
 from cell2cell.preprocessing.ppi import get_genes_from_complexes
 from cell2cell.preprocessing.rnaseq import add_complexes_to_expression
 from cell2cell.preprocessing.ppi import filter_ppi_by_proteins
-from cell2cell.tensor.factorization import _compute_tensor_factorization, _run_elbow_analysis, _multiple_runs_elbow_analysis, _compute_elbow
+from cell2cell.tensor.factorization import _compute_tensor_factorization, _run_elbow_analysis, _multiple_runs_elbow_analysis, _compute_elbow, _compute_norm_error
 from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow
 
 
@@ -171,10 +171,16 @@ class BaseTensor():
                                                              mask=self.mask,
                                                              verbose=verbose,
                                                              **kwargs)
-
-            if best_err > errors[-1]:
-                best_err = errors[-1]
-                tf = local_tf
+            # This helps to obtain proper error when the mask is not None.
+            if self.mask is None:
+                if best_err > errors[-1]:
+                    best_err = errors[-1]
+                    tf = local_tf
+            else:
+                err = _compute_norm_error(self.tensor, local_tf, self.mask)
+                if best_err > err:
+                    best_err = err
+                    tf = local_tf
 
         if runs > 1:
             print('Best model has a normalized error of: {}'.format(np.round(best_err, 3)))
@@ -199,8 +205,9 @@ class BaseTensor():
 
         if normalize_loadings:
             (weights, factors) = self.norm_tl_object
+            weights = tl.to_numpy(weights)
             w_order = weights.argsort()[::-1]
-            factors = [f[:, w_order] for f in factors]
+            factors = [tl.to_numpy(f)[:, w_order] for f in factors]
             self.explained_variance_ratio_ = weights[w_order] / sum(weights)
 
         else:
@@ -210,7 +217,6 @@ class BaseTensor():
         self.factors = OrderedDict(zip(order_labels,
                                        [pd.DataFrame(tl.to_numpy(f), index=idx, columns=factor_names) for f, idx in zip(factors, self.order_names)]))
         self.rank = rank
-
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', random_state=None,
                              automatic_elbow=True, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
@@ -340,7 +346,6 @@ class BaseTensor():
             print('The rank at the elbow is: {}'.format(self.rank))
         return fig, loss
 
-
     def get_top_factor_elements(self, order_name, factor_name, top_number=10):
         '''Obtains the top-elements with higher loadings for a given factor
 
@@ -378,6 +383,22 @@ class BaseTensor():
             v.to_excel(writer, sheet_name=k)
         writer.save()
         print('Loadings of the tensor factorization were successfully saved into {}'.format(filename))
+
+    def excluded_value_fraction(self):
+        '''Returns the fraction of missing/excluded values in the tensor,
+        given the values that are masked in tensor.mask
+
+        Returns
+        -------
+        excluded_fraction : float
+            Fraction of missing/excluded values in the tensor.
+        '''
+        if self.mask is None:
+            print("The interaction tensor does not have masked values")
+            return 0.0
+        else:
+            fraction = tl.sum(self.mask) / tl.prod(tl.tensor(self.tensor.shape))
+            return 1.0 - fraction.item()
 
 
 class InteractionTensor(BaseTensor):
@@ -717,7 +738,8 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
     if verbose:
         print('Building tensor for the provided context')
 
-    tensors = [generate_ccc_tensor(rnaseq_data=rnaseq.reindex(genes, fill_value=0.).reindex(cells, axis='columns', fill_value=0.),
+    #tensors = [generate_ccc_tensor(rnaseq_data=rnaseq.reindex(genes, fill_value=0.).reindex(cells, axis='columns', fill_value=0.),
+    tensors = [generate_ccc_tensor(rnaseq_data=rnaseq.reindex(genes).reindex(cells, axis='columns'),
                                    ppi_data=ppi_data_,
                                    communication_score=communication_score,
                                    interaction_columns=interaction_columns) for rnaseq in rnaseq_matrices]
@@ -733,16 +755,18 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
 
     # Generate mask:
     if how == 'outer':
-        mask_tensor = []
-        for rnaseq in rnaseq_matrices:
-            rna_cells = list(rnaseq.columns)
-            ppi_mask = pd.DataFrame(np.ones((len(rna_cells), len(rna_cells))), columns=rna_cells, index=rna_cells)
-            ppi_mask = ppi_mask.reindex(cells, fill_value=0.).reindex(cells, axis='columns', fill_value=0.) # Here we mask those cells that are not in the rnaseq data
-            rna_tensor = [ppi_mask.values for i in range(len(ppi_names))] # Replicate the mask across all PPIs in ppi_data_
-            mask_tensor.append(rna_tensor)
-        mask_tensor = np.asarray(mask_tensor)
+        #mask_tensor = []
+        #for rnaseq in rnaseq_matrices:
+        #    rna_cells = list(rnaseq.columns)
+        #    ppi_mask = pd.DataFrame(np.ones((len(rna_cells), len(rna_cells))), columns=rna_cells, index=rna_cells)
+        #    ppi_mask = ppi_mask.reindex(cells, fill_value=0.).reindex(cells, axis='columns', fill_value=0.) # Here we mask those cells that are not in the rnaseq data
+        #    rna_tensor = [ppi_mask.values for i in range(len(ppi_names))] # Replicate the mask across all PPIs in ppi_data_
+        #    mask_tensor.append(rna_tensor)
+        #mask_tensor = np.asarray(mask_tensor)
+        mask_tensor = (~np.isnan(np.asarray(tensors))).astype(int)
     else:
         mask_tensor = None
+    tensors = np.nan_to_num(tensors)
     return tensors, genes, cells, ppi_names, mask_tensor
 
 
