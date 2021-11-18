@@ -103,7 +103,7 @@ class BaseTensor():
         self.explained_variance_ratio_ = None
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
-                                     runs=10, normalize_loadings=False, **kwargs):
+                                     runs=1, normalize_loadings=False, **kwargs):
         '''Performs a Tensor Factorization
 
         Parameters
@@ -126,9 +126,9 @@ class BaseTensor():
         verbose : boolean, default=False
             Whether printing or not steps of the analysis.
 
-        runs : int, default=10
+        runs : int, default=1
             Number of models to choose among and find the lowest error.
-            This helps to avoid local minima.
+            This helps to avoid local minima when using runs > 1.
 
         normalize_loadings : boolean, default=False
             Whether normalizing the loadings in each factor to unit
