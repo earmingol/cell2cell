@@ -82,6 +82,9 @@ class BaseTensor():
         a boolean array of the same shape as the original tensor and should be 0
         where the values are missing and 1 everywhere else.
 
+    explained_variance : float
+        Explained variance score for a tnesor factorization.
+
     explained_variance_ratio_ : ndarray
         Percentage of variance explained by each of the factors. Only present when
         "normalize_loadings" is True. Otherwise, it is None.
@@ -100,6 +103,7 @@ class BaseTensor():
         self.factors = None
         self.rank = None
         self.mask = None
+        self.explained_variance_ = None
         self.explained_variance_ratio_ = None
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
@@ -213,6 +217,8 @@ class BaseTensor():
         else:
             (weights, factors) = self.tl_object
             self.explained_variance_ratio_ = None
+
+        self.explained_variance_ = self.explained_variance()
 
         self.factors = OrderedDict(zip(order_labels,
                                        [pd.DataFrame(tl.to_numpy(f), index=idx, columns=factor_names) for f, idx in zip(factors, self.order_names)]))
@@ -399,6 +405,36 @@ class BaseTensor():
         else:
             fraction = tl.sum(self.mask) / tl.prod(tl.tensor(self.tensor.shape))
             return 1.0 - fraction.item()
+
+    def explained_variance(self):
+        '''Computes the explained variance score for a tensor decomposition. Inspired on the
+        function in sklearn.metrics.explained_variance_score.
+
+        Returns
+        -------
+        explained_variance : float
+            Explained variance score for a tnesor factorization.
+        '''
+        assert self.tl_object is not None, "Must run compute_tensor_factorization before using this method."
+        tensor = self.tensor
+        rec_tensor = self.tl_object.to_tensor()
+        mask = self.mask
+
+        if mask is not None:
+            tensor = tensor * mask
+            rec_tensor = tensor * mask
+
+        y_diff_avg = tl.mean(tensor - rec_tensor)
+        numerator = tl.norm(tensor - rec_tensor - y_diff_avg)
+
+        tensor_avg = tl.mean(tensor)
+        denominator = tl.norm(tensor - tensor_avg)
+
+        if denominator == 0.:
+            explained_variance = 0.0
+        else:
+            explained_variance =  1. - (numerator / denominator)
+        return explained_variance
 
 
 class InteractionTensor(BaseTensor):
