@@ -146,8 +146,11 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
                                                           mask=mask,
                                                           verbose=verbose,
                                                           **kwargs)
-        loss.append((r, errors[-1]))
-        #loss.append((r, _compute_norm_error(tensor, tl_object, mask)))
+        # This helps to obtain proper error when the mask is not None.
+        if mask is None:
+            loss.append((r, errors[-1]))
+        else:
+            loss.append((r, _compute_norm_error(tensor, tl_object, mask)))
 
     return loss
 
@@ -220,8 +223,11 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
                                                               mask=mask,
                                                               verbose=verbose,
                                                               **kwargs)
-            run_errors.append(errors[-1])
-            #run_errors.append(_compute_norm_error(tensor, tl_object, mask))
+            # This helps to obtain proper error when the mask is not None.
+            if mask is None:
+                run_errors.append(errors[-1])
+            else:
+                run_errors.append(_compute_norm_error(tensor, tl_object, mask))
         all_loss.append(run_errors)
 
     all_loss = np.array(all_loss).T
