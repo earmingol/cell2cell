@@ -178,7 +178,7 @@ class BaseTensor():
             # This helps to obtain proper error when the mask is not None.
             if self.mask is None:
                 if best_err > errors[-1]:
-                    best_err = errors[-1]
+                    best_err = tl.to_numpy(errors[-1])
                     tf = local_tf
             else:
                 err = _compute_norm_error(self.tensor, local_tf, self.mask)
