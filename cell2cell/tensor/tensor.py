@@ -435,7 +435,7 @@ class BaseTensor():
             explained_variance = 0.0
         else:
             explained_variance =  1. - (numerator / denominator)
-        return explained_variance
+        return explained_variance.item()
 
 
 class InteractionTensor(BaseTensor):
