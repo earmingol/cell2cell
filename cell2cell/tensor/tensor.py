@@ -188,7 +188,7 @@ class BaseTensor():
                     tf = local_tf
 
         if runs > 1:
-            print('Best model has a normalized error of: {}'.format(np.round(best_err, 3)))
+            print('Best model has a normalized error of: {0:.3f}'.format(best_err))
 
         self.tl_object = tf
         if normalize_loadings:
