@@ -655,7 +655,7 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
     list of PPIs to compute the communication scores between the interacting cells
     for each PPI. This is done for each context.
 
-        Parameters
+    Parameters
     __________
     rnaseq_matrices : list
         A list with dataframes of gene expression wherein the rows are the genes and
