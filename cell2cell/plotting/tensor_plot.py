@@ -221,7 +221,7 @@ def reorder_dimension_elements(factors, reorder_elements, metadata=None):
 
     '''
     assert all(k in factors.keys() for k in reorder_elements.keys()), "Keys in 'reorder_elements' must be only keys in 'factors'"
-    assert all((len(set(factors[key].index).difference(set(reorder_elements[key]))) == 0)for key in reorder_elements.keys()), "All elements of each dimension included should be present"
+    assert all((len(set(factors[key].index).difference(set(reorder_elements[key]))) == 0) for key in reorder_elements.keys()), "All elements of each dimension included should be present"
 
     reordered_factors = factors.copy()
     new_metadata = metadata.copy()
