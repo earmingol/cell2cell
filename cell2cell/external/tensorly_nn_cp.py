@@ -15,12 +15,10 @@ from tensorly.cp_tensor import (CPTensor,
 def initialize_cp(tensor, rank, init='svd', svd='numpy_svd', random_state=None,
                        non_negative=False, normalize_factors=False):
     r"""Initialize factors used in `parafac`.
-
     The type of initialization is set using `init`. If `init == 'random'` then
     initialize factor matrices using `random_state`. If `init == 'svd'` then
     initialize the `m`th factor matrix using the `rank` left singular vectors
     of the `m`th unfolding of the input tensor.
-
     Parameters
     ----------
     tensor : ndarray
@@ -30,12 +28,10 @@ def initialize_cp(tensor, rank, init='svd', svd='numpy_svd', random_state=None,
         function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
     non_negative : bool, default is False
         if True, non-negative factors are returned
-
     Returns
     -------
     factors : CPTensor
         An initial cp tensor.
-
     """
     rng = check_random_state(random_state)
 
@@ -100,11 +96,8 @@ def non_negative_parafac(tensor, rank, n_iter_max=100, init='svd', svd='numpy_sv
                          fixed_modes=[]):
     """
     Non-negative CP decomposition
-
     Uses multiplicative updates, see [2]_
-
     This is the same as parafac(non_negative=True).
-
     Parameters
     ----------
     tensor : ndarray
@@ -124,13 +117,11 @@ def non_negative_parafac(tensor, rank, n_iter_max=100, init='svd', svd='numpy_sv
     fixed_modes : list, default is []
         A list of modes for which the initial value is not modified.
         The last mode cannot be fixed due to error computation.
-
     Returns
     -------
     factors : ndarray list
             list of positive factors of the CP decomposition
             element `i` is of shape ``(tensor.shape[i], rank)``
-
     References
     ----------
     .. [2] Amnon Shashua and Tamir Hazan,
