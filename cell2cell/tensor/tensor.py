@@ -107,7 +107,7 @@ class BaseTensor():
         self.explained_variance_ratio_ = None
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
-                                     runs=1, normalize_loadings=False, var_ordered_factors=True, **kwargs):
+                                     runs=1, normalize_loadings=True, var_ordered_factors=True, **kwargs):
         '''Performs a Tensor Factorization
 
         Parameters
@@ -134,7 +134,7 @@ class BaseTensor():
             Number of models to choose among and find the lowest error.
             This helps to avoid local minima when using runs > 1.
 
-        normalize_loadings : boolean, default=False
+        normalize_loadings : boolean, default=True
             Whether normalizing the loadings in each factor to unit
             Euclidean length.
 
