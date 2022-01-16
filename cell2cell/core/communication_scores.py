@@ -77,6 +77,9 @@ def get_continuous_scores(cell1, cell2, ppi_score=None, method='expression_produ
             - 'expression_mean' : Average between the expression
                 of the interacting proteins. One coming from cell1 and the
                 other from cell2.
+            - 'expression_gmean' : Geometric mean between the expression
+                of the interacting proteins. One coming from cell1 and the
+                other from cell2.
 
     Returns
     -------
@@ -91,6 +94,8 @@ def get_continuous_scores(cell1, cell2, ppi_score=None, method='expression_produ
         communication_scores = score_expression_product(c1, c2)
     elif method == 'expression_mean':
         communication_scores = score_expression_mean(c1, c2)
+    elif method == 'expression_gmean':
+        communication_scores = np.sqrt(score_expression_product(c1, c2))
     else:
         raise ValueError('{} is not implemented yet'.format(method))
 
@@ -174,6 +179,8 @@ def compute_ccc_matrix(prot_a_exp, prot_b_exp, communication_score='expression_p
                 of the interacting proteins.
             - 'expression_mean' : Average between the expression
                 of the interacting proteins.
+            - 'expression_gmean' : Geometric mean between the expression
+                of the interacting proteins.
 
     Returns
     -------
@@ -188,6 +195,8 @@ def compute_ccc_matrix(prot_a_exp, prot_b_exp, communication_score='expression_p
         communication_scores = np.outer(prot_a_exp, prot_b_exp)
     elif communication_score == 'expression_mean':
         communication_scores = (np.outer(prot_a_exp, np.ones(prot_b_exp.shape)) + np.outer(np.ones(prot_a_exp.shape), prot_b_exp)) / 2.
+    elif communication_score == 'expression_gmean':
+        communication_scores = np.sqrt(np.outer(prot_a_exp, prot_b_exp))
     else:
         raise ValueError("Not a valid communication_score")
     return communication_scores
