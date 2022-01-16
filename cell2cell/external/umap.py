@@ -10,8 +10,9 @@ def run_umap(rnaseq_data, axis=1, metric='euclidean', min_dist=0.4, n_neighbors=
     Parameters
     __________
     rnaseq_data : pandas.DataFrame
-        A dataframe of gene expression values wherein the rows are the genes and
-        columns the cells, tissues or samples.
+        A dataframe of gene expression values wherein the rows are the genes or
+        embeddings of a dimensionality reduction method and columns the cells,
+        tissues or samples.
 
     axis : int, default=0
         An axis of the dataframe (0 across rows, 1 across columns).
@@ -61,7 +62,7 @@ def run_umap(rnaseq_data, axis=1, metric='euclidean', min_dist=0.4, n_neighbors=
         raise ValueError("The parameter axis must be either 0 or 1.")
 
     # Compute distances
-    D = sp.distance.pdist(df, metric='euclidean')
+    D = sp.distance.pdist(df, metric=metric)
     D_sq = sp.distance.squareform(D)
 
     # Run UMAP

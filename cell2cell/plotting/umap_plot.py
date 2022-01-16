@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def umap_biplot(umap_df, figsize=(8 ,8), show_axes=True, show_legend=True, hue=None,
+def umap_biplot(umap_df, figsize=(8 ,8), ax=None, show_axes=True, show_legend=True, hue=None,
                 cmap='tab10', fontsize=20, filename=None):
     '''Plots a UMAP biplot for the UMAP embeddings.
 
@@ -17,6 +17,9 @@ def umap_biplot(umap_df, figsize=(8 ,8), show_axes=True, show_legend=True, hue=N
 
     figsize : tuple, default=(8, 8)
         Size of the figure (width*height), each in inches.
+
+    ax : matplotlib.axes.Axes, default=None
+        The matplotlib axes containing a plot.
 
     show_axes : boolean, default=True
         Whether showing lines, ticks and ticklabels of both axes.
@@ -48,12 +51,15 @@ def umap_biplot(umap_df, figsize=(8 ,8), show_axes=True, show_legend=True, hue=N
             The matplotlib axes containing the plot.
     '''
 
-    fig = plt.figure(figsize=figsize)
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
 
     ax = sns.scatterplot(x='umap1',
                          y='umap2',
                          data=umap_df,
                          hue=hue,
+                         palette=cmap,
+                         ax=ax
                          )
 
     if show_axes:
@@ -68,8 +74,8 @@ def umap_biplot(umap_df, figsize=(8 ,8), show_axes=True, show_legend=True, hue=N
                        length=5
                        )
     else:
-        plt.xticks([])
-        plt.yticks([])
+        ax.set_xticks([])
+        ax.set_yticks([])
         for key, spine in ax.spines.items():
             spine.set_visible(False)
 
@@ -90,7 +96,7 @@ def umap_biplot(umap_df, figsize=(8 ,8), show_axes=True, show_legend=True, hue=N
 
     if (show_legend) & (hue is not None):
         # Put the legend out of the figure
-        legend = plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        legend = ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
         legend.set_title(hue)
         legend.get_title().set_fontsize(int(0.7*fontsize))
 
@@ -100,4 +106,7 @@ def umap_biplot(umap_df, figsize=(8 ,8), show_axes=True, show_legend=True, hue=N
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches='tight')
 
-    return fig, ax
+    if ax is None:
+        return fig, ax
+    else:
+        return ax
