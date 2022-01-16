@@ -107,7 +107,7 @@ class BaseTensor():
         self.explained_variance_ratio_ = None
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
-                                     runs=1, normalize_loadings=False, **kwargs):
+                                     runs=1, normalize_loadings=False, var_ordered_factors=True, **kwargs):
         '''Performs a Tensor Factorization
 
         Parameters
@@ -137,6 +137,11 @@ class BaseTensor():
         normalize_loadings : boolean, default=False
             Whether normalizing the loadings in each factor to unit
             Euclidean length.
+
+        var_ordered_factors : boolean, default=True
+            Whether ordering factors by the variance they explain. The order is from
+            highest to lowest variance. `normalize_loadings` must be True. Otherwise,
+            this parameter is ignored.
 
         **kwargs : dict
             Extra arguments for the tensor factorization according to inputs in tensorly.
@@ -211,9 +216,13 @@ class BaseTensor():
         if normalize_loadings:
             (weights, factors) = self.norm_tl_object
             weights = tl.to_numpy(weights)
-            w_order = weights.argsort()[::-1]
-            factors = [tl.to_numpy(f)[:, w_order] for f in factors]
-            self.explained_variance_ratio_ = weights[w_order] / sum(weights)
+            if var_ordered_factors:
+                w_order = weights.argsort()[::-1]
+                factors = [tl.to_numpy(f)[:, w_order] for f in factors]
+                self.explained_variance_ratio_ = weights[w_order] / sum(weights)
+            else:
+                factors = [tl.to_numpy(f) for f in factors]
+                self.explained_variance_ratio_ = weights / sum(weights)
 
         else:
             (weights, factors) = self.tl_object
