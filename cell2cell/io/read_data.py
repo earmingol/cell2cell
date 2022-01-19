@@ -395,7 +395,7 @@ def load_variable_with_pickle(filename):
 
     Returns
     -------
-    variable : a python varibale
+    variable : a python variable
         The variable of interest.
     '''
 
@@ -407,3 +407,34 @@ def load_variable_with_pickle(filename):
             bytes_in += f_in.read(max_bytes)
     variable = pickle.loads(bytes_in)
     return variable
+
+
+def load_tensor_factors(filename):
+    '''Imports factors previously exported from a tensor
+    decomposition done in a cell2cell.tensor.BaseTensor-like object.
+
+    Parameters
+    ----------
+    filename : str
+        Absolute path to a file storing an excel file containing
+        the factors, their loadings, and element names for each
+        of the dimensions of a previously decomposed tensor.
+
+    Returns
+    -------
+    factors : collections.OrderedDict
+        An ordered dictionary wherein keys are the names of each
+        tensor dimension, and values are the loadings in a pandas.DataFrame.
+        In this dataframe, rows are the elements of the respective dimension
+        and columns are the factors from the tensor factorization. Values
+        are the corresponding loadings.
+    '''
+    from collections import OrderedDict
+
+    xls = pd.ExcelFile(filename)
+
+    factors = OrderedDict()
+    for sheet_name in xls.sheet_names:
+        factors[sheet_name] = xls.parse(sheet_name, index_col=0)
+
+    return factors
