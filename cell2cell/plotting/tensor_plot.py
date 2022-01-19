@@ -81,7 +81,100 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
         order_labels = list(interaction_tensor.factors.keys())
 
     rank = interaction_tensor.rank
-    factors = interaction_tensor.factors
+    fig, axes = tensor_factors_plot_from_loadings(factors=interaction_tensor.factors,
+                                                  rank=rank,
+                                                  order_labels=order_labels,
+                                                  reorder_elements=reorder_elements,
+                                                  metadata=metadata,
+                                                  sample_col=sample_col,
+                                                  group_col=group_col,
+                                                  meta_cmaps=meta_cmaps,
+                                                  fontsize=meta_cmaps,
+                                                  plot_legend=plot_legend,
+                                                  filename=filename)
+    return fig, axes
+
+
+def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reorder_elements=None, metadata=None,
+                                      sample_col='Element', group_col='Category', meta_cmaps=None, fontsize=20, plot_legend=True,
+                                      filename=None):
+    '''Plots the loadings for each element in each dimension of the tensor, generate by
+    a tensor factorization.
+
+    Parameters
+    ----------
+    factors : collections.OrderedDict
+        An ordered dictionary wherein keys are the names of each
+        tensor dimension, and values are the loadings in a pandas.DataFrame.
+        In this dataframe, rows are the elements of the respective dimension
+        and columns are the factors from the tensor factorization. Values
+        are the corresponding loadings.
+
+    rank : int, default=None
+        Number of factors generated from the decomposition
+
+    order_labels : list, default=None
+        List with the labels of each dimension to use in the plot. If none, the
+        default names given when factorizing the tensor will be used.
+
+    reorder_elements : dict, default=None
+        Dictionary for reordering elements in each of the tensor dimension.
+        Keys of this dictionary could be any or all of the keys in
+        interaction_tensor.factors. Values are list with the names or labels of the
+        elements in a tensor dimension. For example, for the context dimension,
+        all elements included in interaction_tensor.factors['Context'].index must
+        be present.
+
+    metadata : list, default=None
+        List of pandas dataframes with metadata information for elements of each
+        dimension in the tensor. A column called as the variable `sample_col` contains
+        the name of each element in the tensor while another column called as the
+        variable `group_col` contains the metadata or grouping information of each
+        element.
+
+    sample_col : str, default='Element'
+        Name of the column containing the element names in the metadata.
+
+    group_col : str, default='Category'
+        Name of the column containing the metadata or grouping information for each
+        element in the metadata.
+
+    meta_cmaps : list, default=None
+        A list of colormaps used for coloring elements in each dimension. The length
+        of this list is equal to the number of dimensions of the tensor. If None, all
+        dimensions will be colores with the colormap 'gist_rainbow'.
+
+    fontsize : int, default=20
+        Font size of the tick labels. Axis labels will be 1.2 times the fontsize.
+
+    plot_legend : boolean, default=True
+        Whether plotting the legends for the coloring of each element in their
+        respective dimensions.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is
+        not saved.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib
+
+    axes : matplotlib.axes.Axes or array of Axes
+        List of Axes for each subplot in the figure.
+    '''
+    # Prepare inputs for matplotlib
+    if rank is not None:
+        assert list(factors.values())[0].shape[1] == rank, "Rank must match the number of columns in dataframes in `factors`"
+    else:
+        rank = list(factors.values())[0].shape[1]
+
+    dim = len(factors)
+
+    if order_labels is not None:
+        assert dim == len(order_labels), "The length of factor_labels must match the order of the tensor (order {})".format(dim)
+    else:
+        order_labels = list(factors.keys())
 
     meta_og = metadata.copy()
     if reorder_elements is not None:
@@ -97,7 +190,7 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
         if meta_cmaps is None:
             meta_cmaps = ['gist_rainbow']*len(metadata)
         assert len(metadata) == len(meta_cmaps), "Provide a cmap for each order"
-        assert len(metadata) == len(interaction_tensor.order_names), "Provide a metadata for each order. If there is no metadata for any, replace with None"
+        assert len(metadata) == len(factors), "Provide a metadata for each order. If there is no metadata for any, replace with None"
         meta_colors = [get_colors_from_labels(m[group_col], cmap=cmap) if ((m is not None) & (cmap is not None)) else None for m, cmap in zip(meta_og, meta_cmaps)]
         element_colors = [map_colors_to_metadata(metadata=m,
                                                  colors=mc,
