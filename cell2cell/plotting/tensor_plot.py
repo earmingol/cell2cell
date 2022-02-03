@@ -89,7 +89,7 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
                                                   sample_col=sample_col,
                                                   group_col=group_col,
                                                   meta_cmaps=meta_cmaps,
-                                                  fontsize=meta_cmaps,
+                                                  fontsize=fontsize,
                                                   plot_legend=plot_legend,
                                                   filename=filename)
     return fig, axes
@@ -210,6 +210,8 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
     if rank > 1:
         # Iterates horizontally (dimension by dimension)
         for ind, (order_factors, axs) in enumerate(zip(factors.values(), axes.T)):
+            if isinstance(order_factors, pd.Series):
+                order_factors = order_factors.to_frame().T
             # Iterates vertically (factor by factor)
             for i, (df_row, ax) in enumerate(zip(order_factors.T.iterrows(), axs)):
                 factor_name = df_row[0]
@@ -228,6 +230,8 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
             axs[-1].set_xlabel(order_labels[ind], fontsize=int(1.2*fontsize), labelpad=fontsize)
     else:
         for ind, order_factors in enumerate(factors.values()):
+            if isinstance(order_factors, pd.Series):
+                order_factors = order_factors.to_frame().T
             ax = axes[ind]
             ax.set_xlabel(order_labels[ind], fontsize=int(1.2*fontsize), labelpad=fontsize)
             for i, df_row in enumerate(order_factors.T.iterrows()):
