@@ -254,12 +254,11 @@ def _triangularize_distance_matrix(df, linkage=None, symmetric=None, **kwargs):
 
     # Triangular matrix
     if symmetric:
-        order_map = dict()
+
         if linkage is None:
-            mask = np.ones((df.shape[0], df.shape[1]))
-            for i in range(mask.shape[0]):
-                for j in range(i, mask.shape[1]):
-                    mask[i, j] = 0
+            hier = sns.clustermap(df,
+                                  **kwargs
+                                  )
         else:
             # Plot hierarchical clustering for getting indexes according to linkage
             hier = sns.clustermap(df,
@@ -267,13 +266,30 @@ def _triangularize_distance_matrix(df, linkage=None, symmetric=None, **kwargs):
                                   row_linkage=linkage,
                                   **kwargs
                                   )
-            plt.close()
-            ind_order = hier.dendrogram_col.reordered_ind
-            mask = np.zeros((df.shape[0], df.shape[1]))
-            for i, ind in enumerate(ind_order):
-                order_map[i] = ind
-                filter_list = [order_map[j] for j in range(i)]
-                mask[ind, filter_list] = 1
+        plt.close()
+
+        # Get indexes for elements given dendrogram order
+        if 'col_cluster' in kwargs.keys():
+            if kwargs['col_cluster']:
+                col_order = hier.dendrogram_col.reordered_ind
+            else:
+                col_order = range(df.shape[1])
+        else:
+            col_order = hier.dendrogram_col.reordered_ind
+
+        if 'row_cluster' in kwargs.keys():
+            if kwargs['row_cluster']:
+                row_order = hier.dendrogram_row.reordered_ind
+            else:
+                row_order = range(df.shape[0])
+        else:
+            row_order = hier.dendrogram_row.reordered_ind
+
+        # Generate mask
+        mask = np.zeros((df.shape[0], df.shape[1]))
+        for i, ind in enumerate(col_order):
+            filter_list = [row_order[j] for j in range(i)]
+            mask[ind, filter_list] = 1
     else:
         mask = None
     return mask
