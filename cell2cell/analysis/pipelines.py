@@ -46,9 +46,12 @@ class BulkInteractions:
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a
+        - 'expression_product' : Computes the product between the expression of a
                                 ligand from a sender cell and the expression of a
                                 receptor on a receiver cell.
+        - 'expression_gmean' : Computes the geometric mean between the expression
+                              of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
 
     cci_score : str, default='bray_curtis'
         Scoring function to aggregate the communication scores between a pair of
@@ -131,6 +134,7 @@ class BulkInteractions:
                 - 'expression_thresholding'
                 - 'expression_product'
                 - 'expression_mean'
+                - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
             scores. It can be:
                 - 'bray_curtis'
@@ -276,9 +280,12 @@ class BulkInteractions:
         - 'expression_mean' : Computes the average between the expression
                               of a ligand from a sender cell and the
                               expression of a receptor on a receiver cell.
-        - 'expresion_product' : Computes the product between the expression
+        - 'expression_product' : Computes the product between the expression
                                 of a ligand from a sender cell and the
                                 expression of a receptor on a receiver cell.
+        - 'expression_gmean' : Computes the geometric mean between the expression
+                              of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
@@ -377,9 +384,12 @@ class SingleCellInteractions:
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a
+        - 'expression_product' : Computes the product between the expression of a
                                 ligand from a sender cell and the expression of a
                                 receptor on a receiver cell.
+        - 'expression_gmean' : Computes the geometric mean between the expression
+                              of a ligand from a sender cell and the
+                              expression of a receptor on a receiver cell.
 
     cci_score : str, default='bray_curtis'
         Scoring function to aggregate the communication scores between a pair of
@@ -476,6 +486,7 @@ class SingleCellInteractions:
                 - 'expression_thresholding'
                 - 'expression_product'
                 - 'expression_mean'
+                - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
             scores. It can be:
                 - 'bray_curtis'
@@ -773,6 +784,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
                 - 'expression_thresholding'
                 - 'expression_product'
                 - 'expression_mean'
+                - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
             scores. It can be:
                 - 'bray_curtis'

@@ -220,6 +220,7 @@ class InteractionSpace():
             - 'expression_thresholding'
             - 'expression_product'
             - 'expression_mean'
+            - 'expression_gmean'
 
     cci_score : str, default='bray_curtis'
         Scoring function to aggregate the communication scores. See
@@ -265,6 +266,7 @@ class InteractionSpace():
             - 'expression_thresholding'
             - 'expression_product'
             - 'expression_mean'
+            - 'expression_gmean'
 
     cci_score : str
         Scoring function to aggregate the communication scores. See
@@ -495,14 +497,17 @@ class InteractionSpace():
             If None, the score stored in the attribute analysis_setup
             will be used.
             Available communication_scores are:
-            - 'expresion_thresholding' : Computes the joint presence of a
+            - 'expression_thresholding' : Computes the joint presence of a
                                          ligand from a sender cell and of
                                          a receptor on a receiver cell from
                                          binarizing their gene expression levels.
             - 'expression_mean' : Computes the average between the expression
                                   of a ligand from a sender cell and the
                                   expression of a receptor on a receiver cell.
-            - 'expresion_product' : Computes the product between the expression
+            - 'expression_product' : Computes the product between the expression
+                                    of a ligand from a sender cell and the
+                                    expression of a receptor on a receiver cell.
+            - 'expression_gmean' : Computes the geometric mean between the expression
                                     of a ligand from a sender cell and the
                                     expression of a receptor on a receiver cell.
 
@@ -524,11 +529,11 @@ class InteractionSpace():
             print("Computing communication score between {} and {}".format(cell1.type, cell2.type))
 
         # Check that new score is the same type as score used to build interaction space (binary or continuous)
-        if (communication_score in ['expression_product', 'expression_correlation', 'expression_mean']) \
+        if (communication_score in ['expression_product', 'expression_correlation', 'expression_mean', 'expression_gmean']) \
                 & (self.communication_score in ['expression_thresholding', 'differential_combinations']):
             raise ValueError('Cannot use {} for this interaction space'.format(communication_score))
         if (communication_score in ['expression_thresholding', 'differential_combinations']) \
-                & (self.communication_score in ['expression_product', 'expression_correlation', 'expression_mean']):
+                & (self.communication_score in ['expression_product', 'expression_correlation', 'expression_mean', 'expression_gmean']):
             raise ValueError('Cannot use {} for this interaction space'.format(communication_score))
 
         if use_ppi_score:
@@ -536,12 +541,11 @@ class InteractionSpace():
         else:
             ppi_score = None
 
-        if (communication_score == 'expression_thresholding') | (communication_score == 'differential_combinations'):
+        if communication_score in ['expression_thresholding', 'differential_combinations']:
             communication_value = communication_scores.get_binary_scores(cell1=cell1,
                                                                          cell2=cell2,
                                                                          ppi_score=ppi_score)
-        elif (communication_score == 'expression_product') | (communication_score == 'expression_correlation') \
-                | (communication_score == 'expression_mean'):
+        elif communication_score in ['expression_product', 'expression_correlation', 'expression_mean', 'expression_gmean']:
               communication_value = communication_scores.get_continuous_scores(cell1=cell1,
                                                                                cell2=cell2,
                                                                                ppi_score=ppi_score,
@@ -564,14 +568,17 @@ class InteractionSpace():
             If None, the score stored in the attribute analysis_setup
             will be used.
             Available communication_scores are:
-            - 'expresion_thresholding' : Computes the joint presence of a
+            - 'expression_thresholding' : Computes the joint presence of a
                                          ligand from a sender cell and of
                                          a receptor on a receiver cell from
                                          binarizing their gene expression levels.
             - 'expression_mean' : Computes the average between the expression
                                   of a ligand from a sender cell and the
                                   expression of a receptor on a receiver cell.
-            - 'expresion_product' : Computes the product between the expression
+            - 'expression_product' : Computes the product between the expression
+                                    of a ligand from a sender cell and the
+                                    expression of a receptor on a receiver cell.
+            - 'expression_gmean' : Computes the geometric mean between the expression
                                     of a ligand from a sender cell and the
                                     expression of a receptor on a receiver cell.
 
