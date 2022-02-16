@@ -97,6 +97,7 @@ setup(name='cell2cell',
                         'umap-learn',
                         'tqdm',
                         'statsmodels',
+                        'statannotations',
                         'tensorly == 0.5.1',
                         'kneed',
                         'scanpy'
