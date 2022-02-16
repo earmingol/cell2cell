@@ -205,11 +205,11 @@ class BaseTensor():
         factor_names = ['Factor {}'.format(i) for i in range(1, rank+1)]
         if self.order_labels is None:
             if tensor_dim == 4:
-                order_labels = ['Contexts', 'Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
+                order_labels = ['Contexts', 'Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
             elif tensor_dim > 4:
-                order_labels = ['Contexts-{}'.format(i+1) for i in range(tensor_dim-3)] + ['Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
+                order_labels = ['Contexts-{}'.format(i+1) for i in range(tensor_dim-3)] + ['Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
             elif tensor_dim == 3:
-                order_labels = ['Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
+                order_labels = ['Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
             else:
                 raise ValueError('Too few dimensions in the tensor')
         else:
@@ -468,7 +468,7 @@ class InteractionTensor(BaseTensor):
 
     order_labels : list, default=None
         List containing the labels for each order or dimension of the tensor. For
-        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver cells]
+        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
 
     context_names : list, default=None
         A list of strings containing the names of the corresponding contexts to each
@@ -622,7 +622,7 @@ class PreBuiltTensor(BaseTensor):
 
     order_labels : list, default=None
         List containing the labels for each order or dimension of the tensor. For
-        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver cells]
+        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']'
 
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
@@ -964,11 +964,11 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
 
     if interaction_tensor.order_labels is None:
         if tensor_dim == 4:
-            default_cats = ['Contexts', 'Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
+            default_cats = ['Contexts', 'Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
         elif tensor_dim > 4:
-            default_cats = ['Contexts-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
+            default_cats = ['Contexts-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
         elif tensor_dim == 3:
-            default_cats = ['Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
+            default_cats = ['Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
         else:
             raise ValueError('Too few dimensions in the tensor')
     else:
