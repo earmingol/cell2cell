@@ -28,9 +28,12 @@ class BaseTensor():
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a
+        - 'expression_product' : Computes the product between the expression of a
                                 ligand from a sender cell and the expression of a
                                 receptor on a receiver cell.
+        - 'expression_gmean' : Computes the geometric mean between the expression
+                                   of a ligand from a sender cell and the
+                                   expression of a receptor on a receiver cell.
 
     how : str
         Approach to consider cell types and genes present across multiple contexts.
@@ -202,11 +205,11 @@ class BaseTensor():
         factor_names = ['Factor {}'.format(i) for i in range(1, rank+1)]
         if self.order_labels is None:
             if tensor_dim == 4:
-                order_labels = ['Context', 'LRs', 'Sender', 'Receiver']
+                order_labels = ['Contexts', 'Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
             elif tensor_dim > 4:
-                order_labels = ['Context-{}'.format(i+1) for i in range(tensor_dim-3)] + ['LRs', 'Sender', 'Receiver']
+                order_labels = ['Contexts-{}'.format(i+1) for i in range(tensor_dim-3)] + ['Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
             elif tensor_dim == 3:
-                order_labels = ['LRs', 'Sender', 'Receiver']
+                order_labels = ['Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
             else:
                 raise ValueError('Too few dimensions in the tensor')
         else:
@@ -486,9 +489,12 @@ class InteractionTensor(BaseTensor):
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a
+        - 'expression_product' : Computes the product between the expression of a
                                 ligand from a sender cell and the expression of a
                                 receptor on a receiver cell.
+        - 'expression_gmean' : Computes the geometric mean between the expression
+                               of a ligand from a sender cell and the
+                               expression of a receptor on a receiver cell.
 
     complex_sep : str, default=None
         Symbol that separates the protein subunits in a multimeric complex.
@@ -694,9 +700,12 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a
+        - 'expression_product' : Computes the product between the expression of a
                                 ligand from a sender cell and the expression of a
                                 receptor on a receiver cell.
+        - 'expression_gmean' : Computes the geometric mean between the expression
+                               of a ligand from a sender cell and the
+                               expression of a receptor on a receiver cell.
 
     complex_sep : str, default=None
         Symbol that separates the protein subunits in a multimeric complex.
@@ -839,9 +848,12 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a
+        - 'expression_product' : Computes the product between the expression of a
                                 ligand from a sender cell and the expression of a
                                 receptor on a receiver cell.
+        - 'expression_gmean' : Computes the geometric mean between the expression
+                               of a ligand from a sender cell and the
+                               expression of a receptor on a receiver cell.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a dataframe of
@@ -952,11 +964,11 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
 
     if interaction_tensor.order_labels is None:
         if tensor_dim == 4:
-            default_cats = ['Context', 'Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+            default_cats = ['Contexts', 'Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
         elif tensor_dim > 4:
-            default_cats = ['Context-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+            default_cats = ['Contexts-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
         elif tensor_dim == 3:
-            default_cats = ['Ligand-receptor pair', 'Sender cell', 'Receiver cell']
+            default_cats = ['Ligand-receptor pairs', 'Sender cells', 'Receiver cells']
         else:
             raise ValueError('Too few dimensions in the tensor')
     else:
@@ -1016,9 +1028,12 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
-        - 'expresion_product' : Computes the product between the expression of a
+        - 'expression_product' : Computes the product between the expression of a
                                 ligand from a sender cell and the expression of a
                                 receptor on a receiver cell.
+        - 'expression_gmean' : Computes the geometric mean between the expression
+                               of a ligand from a sender cell and the
+                               expression of a receptor on a receiver cell.
 
     upper_letter_comparison : boolean, default=True
         Whether making uppercase the gene names in the expression matrices and the

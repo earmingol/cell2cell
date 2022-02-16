@@ -508,8 +508,8 @@ class InteractionSpace():
                                     of a ligand from a sender cell and the
                                     expression of a receptor on a receiver cell.
             - 'expression_gmean' : Computes the geometric mean between the expression
-                                    of a ligand from a sender cell and the
-                                    expression of a receptor on a receiver cell.
+                                   of a ligand from a sender cell and the
+                                   expression of a receptor on a receiver cell.
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
