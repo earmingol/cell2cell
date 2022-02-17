@@ -4,7 +4,6 @@ from __future__ import absolute_import
 
 import networkx as nx
 
-# TODO: Add an export function for Cytoscape
 
 def generate_network_from_adjacency(adjacency_matrix, package='networkx'):
     '''
@@ -43,20 +42,17 @@ def generate_network_from_adjacency(adjacency_matrix, package='networkx'):
     return network
 
 
-def export_network_to_gephi(cci_matrix, filename, format='excel', network_type='Undirected'):
+def export_network_to_gephi(network, filename, format='excel', network_type='Undirected'):
     '''
-    Exports a CCI matrix into a spreadsheet that is readable
+    Exports a network into a spreadsheet that is readable
     by the software Gephi.
 
     Parameters
     ----------
-    cci_matrix : pandas.DataFrame
-        Squared matrix containing cell-cell interactions scores.
-        Rows and columns are cell-types/tissues/samples. Usually
-        obtained from
-        cell2cell.core.interaction_space.InteractionSpace.interaction_elements['cci_matrix']
-        or cell2cell.analysis.pipeline.SingleCellInteractions.interaction_space.interaction_elements['cci_matrix']
-        or cell2cell.analysis.pipeline.BulkInteractions.interaction_space.interaction_elements['cci_matrix']
+    network : networkx.Graph, networkx.DiGraph or a pandas.DataFrame
+        A networkx Graph or Directed Graph, or an adjacency matrix,
+        where in rows and columns are nodes and values represents a
+        weight for the respective edge.
 
     filename : str, default=None
         Path to save the network into a Gephi-readable format.
@@ -72,13 +68,11 @@ def export_network_to_gephi(cci_matrix, filename, format='excel', network_type='
         'Undirected' or 'Directed'.
     '''
     # This allows to pass a network directly or an adjacency matrix
-    if type(cci_matrix) != nx.classes.graph.Graph:
-        cci_network = generate_network_from_adjacency(cci_matrix,
-                                                      package='networkx')
-    else:
-        cci_network = cci_matrix
+    if type(network) != nx.classes.graph.Graph:
+        network = generate_network_from_adjacency(network,
+                                                  package='networkx')
 
-    gephi_df = nx.to_pandas_edgelist(cci_network)
+    gephi_df = nx.to_pandas_edgelist(network)
     gephi_df = gephi_df.assign(Type=network_type)
     # When weight is not in the network
     if ('weight' not in gephi_df.columns):
@@ -97,3 +91,33 @@ def export_network_to_gephi(cci_matrix, filename, format='excel', network_type='
         gephi_df.to_csv(filename, sep='\t', index=False)
     else:
         raise ValueError("Format not supported.")
+
+
+def export_network_to_cytoscape(network, filename):
+    '''
+    Exports a network into a spreadsheet that is readable
+    by the software Gephi.
+
+    Parameters
+    ----------
+    network : networkx.Graph, networkx.DiGraph or a pandas.DataFrame
+        A networkx Graph or Directed Graph, or an adjacency matrix,
+        where in rows and columns are nodes and values represents a
+        weight for the respective edge.
+
+    filename : str, default=None
+        Path to save the network into a Cytoscape-readable format
+        (JSON file in this case). E.g. '/home/user/network.json'
+    '''
+    # This allows to pass a network directly or an adjacency matrix
+    if type(network) != nx.classes.graph.Graph:
+        network = generate_network_from_adjacency(network,
+                                                  package='networkx')
+
+    data = nx.readwrite.json_graph.cytoscape.cytoscape_data(network)
+
+    # Export
+    import json
+    json_str = json.dumps(data)
+    with open(filename, 'w') as outfile:
+        outfile.write(json_str)
