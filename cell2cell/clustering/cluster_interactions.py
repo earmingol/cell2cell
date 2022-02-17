@@ -75,6 +75,11 @@ def compute_linkage(distance_matrix, method='ward', optimal_ordering=True):
         For more details, go to:
         https://docs.scipy.org/doc/scipy-0.19.0/reference/generated/scipy.cluster.hierarchy.linkage.html
 
+    optimal_ordering : boolean, default=True
+        Whether sorting the leaf of the dendrograms to have a minimal distance
+        between successive leaves. For more information, see
+        scipy.cluster.hierarchy.optimal_leaf_ordering
+
     Returns
     -------
     Z : numpy.ndarray
