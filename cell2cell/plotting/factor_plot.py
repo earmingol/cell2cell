@@ -169,7 +169,8 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
 
     loading_threshold : float
         Threshold to filter out elements in the loadings dataframe.
-        Elements with loadings greater than this threshold will be plot.
+        This plot considers elements with loadings greater than this
+        threshold in at least one of the factors.
 
     use_zscore : boolean
         Whether converting loadings to z-scores across factors.
