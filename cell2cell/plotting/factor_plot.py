@@ -150,7 +150,8 @@ def context_boxplot(context_loadings, metadict, group_order=None, nrows=1, figsi
 
 
 def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='euclidean', method='ward',
-                       optimal_leaf=True, figsize=(15, 8), heatmap_lw=0.2, cbar_fontsize=12, filename=None, **kwargs):
+                       optimal_leaf=True, figsize=(15, 8), heatmap_lw=0.2, cbar_fontsize=12, tick_fontsize=10,
+                       filename=None, **kwargs):
     '''
     Plots a clustermap of the tensor-factorization loadings from one tensor dimension or
     the joint loadings from multiple tensor dimensions.
@@ -208,6 +209,9 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
     cbar_fontsize : int, default=12
         Font size for the colorbar title.
 
+    tick_fontsize : int, default=10
+        Font size for ticks in the x and y axes.
+
     filename : str, default=None
         Path to save the figure of the elbow analysis. If None, the figure is not
         saved.
@@ -259,11 +263,11 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
     cbar.ax.yaxis.set_label_position("left")
 
     # Tick labels
-    cm.ax_heatmap.set_yticklabels(cm.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, ha='left')
-    hm = cm.ax_heatmap.get_position()
-    plt.setp(cm.ax_heatmap.xaxis.get_majorticklabels(), fontsize=10)
+    cm.ax_heatmap.set_yticklabels(cm.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, ha='left', fontsize=tick_fontsize)
+    plt.setp(cm.ax_heatmap.xaxis.get_majorticklabels(), fontsize=tick_fontsize)
 
     # Resize clustermap and dendrograms
+    hm = cm.ax_heatmap.get_position()
     w_mult = 1.0
     h_mult = 1.0
     cm.ax_heatmap.set_position([hm.x0, hm.y0, hm.width * w_mult, hm.height])
