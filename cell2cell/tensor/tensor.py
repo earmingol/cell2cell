@@ -205,11 +205,11 @@ class BaseTensor():
         factor_names = ['Factor {}'.format(i) for i in range(1, rank+1)]
         if self.order_labels is None:
             if tensor_dim == 4:
-                order_labels = ['Contexts', 'Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
+                order_labels = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
             elif tensor_dim > 4:
-                order_labels = ['Contexts-{}'.format(i+1) for i in range(tensor_dim-3)] + ['Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
+                order_labels = ['Contexts-{}'.format(i+1) for i in range(tensor_dim-3)] + ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
             elif tensor_dim == 3:
-                order_labels = ['Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
+                order_labels = ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
             else:
                 raise ValueError('Too few dimensions in the tensor')
         else:
@@ -964,11 +964,11 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
 
     if interaction_tensor.order_labels is None:
         if tensor_dim == 4:
-            default_cats = ['Contexts', 'Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
+            default_cats = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
         elif tensor_dim > 4:
-            default_cats = ['Contexts-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
+            default_cats = ['Contexts-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
         elif tensor_dim == 3:
-            default_cats = ['Ligand-receptor Pairs', 'Sender Cells', 'Receiver Cells']
+            default_cats = ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
         else:
             raise ValueError('Too few dimensions in the tensor')
     else:
