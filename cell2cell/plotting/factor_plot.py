@@ -102,7 +102,7 @@ def context_boxplot(context_loadings, metadict, group_order=None, statistical_te
     -------
     fig : matplotlib.figure.Figure
         A matplotlib figure.
-        
+
     ax : matplotlib.axes.Axes or array of Axes
         Matplotlib axes representing the subplots containing the boxplots.
     '''
@@ -197,7 +197,7 @@ def context_boxplot(context_loadings, metadict, group_order=None, statistical_te
 
 
 def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='euclidean', method='ward',
-                       optimal_leaf=True, figsize=(15, 8), heatmap_lw=0.2, cbar_fontsize=12, tick_fontsize=10,
+                       optimal_leaf=True, figsize=(15, 8), heatmap_lw=0.2, cbar_fontsize=12, tick_fontsize=10, cmap=None,
                        filename=None, **kwargs):
     '''
     Plots a clustermap of the tensor-factorization loadings from one tensor dimension or
@@ -259,6 +259,10 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
     tick_fontsize : int, default=10
         Font size for ticks in the x and y axes.
 
+    cmap : str, default=None
+        Name of the color palette for coloring the heatmap. If None,
+        cmap='Blues' would be used when use_zscore=False; and cmap='vlag' when use_zscore=True.
+
     filename : str, default=None
         Path to save the figure of the elbow analysis. If None, the figure is not
         saved.
@@ -275,12 +279,14 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
     df = df[(df.T > loading_threshold).any()].T
     if use_zscore:
         df = df.apply(zscore)
-        cmap='vlag'
+        if cmap is None:
+            cmap = 'vlag'
         val = np.ceil(max([abs(df.min().min()), abs(df.max().max())]))
         vmin, vmax = -1. * val, val
         cbar_label = 'Z-scores \n across factors'
     else:
-        cmap='Blues'
+        if cmap is None:
+            cmap='Blues'
         vmin, vmax = 0., df.max().max()
         cbar_label = 'Loadings'
 
