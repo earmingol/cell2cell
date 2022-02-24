@@ -8,10 +8,10 @@ from scipy.stats import zscore
 from cell2cell.clustering.cluster_interactions import compute_distance, compute_linkage
 
 
-def context_boxplot(context_loadings, metadict, group_order=None, nrows=1, figsize=(12, 6), cmap='tab10', title_size=14,
-                    axis_label_size=12, group_label_rotation=45, ylabel='Context Loadings', dot_color='lightsalmon',
-                    dot_edge_color='brown', statistical_test='Mann-Whitney', pval_correction='benjamini-hochberg',
-                    filename=None, verbose=False):
+def context_boxplot(context_loadings, metadict, group_order=None, statistical_test='Mann-Whitney',
+                    pval_correction='benjamini-hochberg', text_format='star', nrows=1, figsize=(12, 6), cmap='tab10',
+                    title_size=14, axis_label_size=12, group_label_rotation=45, ylabel='Context Loadings',
+                    dot_color='lightsalmon', dot_edge_color='brown', filename=None, verbose=False):
     '''
     Plots a boxplot to compare the loadings of context groups in each
     of the factors resulting from a tensor decomposition.
@@ -51,13 +51,60 @@ def context_boxplot(context_loadings, metadict, group_order=None, nrows=1, figsi
         'Holm-Bonferroni', 'holm', 'benjamini-hochberg', 'BH', 'fdr_bh',
         'Benjamini-Hochberg', 'fdr_by', 'Benjamini-Yekutieli', 'BY', None
 
+    text_format : str, default='star'
+        Format to display the results of the statistical test.
+        Options are:
+        - 'star', to display P- values < 1e-4 as "****"; < 1e-3 as "***";
+                  < 1e-2 as "**"; < 0.05 as "*", and < 1 as "ns".
+        - 'simple', to display P-values < 1e-5 as "1e-5"; < 1e-4 as "1e-4";
+                  < 1e-3 as "0.001"; < 1e-2 as "0.01"; and < 5e-2 as "0.05".
+
+    nrows : int, default=1
+        Number of rows to generate the subplots.
+
+    figsize : tuple, default=(12, 6)
+        Size of the figure (width*height), each in inches.
+
+    cmap : str, default='tab10'
+        Name of the color palette for coloring the major groups of contexts.
+
+    title_size : int, default=14
+        Font size of the title in each of the factor boxplots.
+
+    axis_label_size : int, default=12
+        Font size of the labels for X and Y axes.
+
+    group_label_rotation : int, default=45
+        Angle of rotation for the tick labels in the X axis.
+
+    y_label : str, default='Context Loadings'
+        Label for the Y axis.
+
+    dot_color : str, default='lightsalmon'
+        A matplotlib color for the dots representing individual contexts
+        in the boxplot. For more info see:
+        https://matplotlib.org/stable/gallery/color/named_colors.html
+
+    dot_edge_color : str, default='brown'
+        A matplotlib color for the edge of the dots in the boxplot.
+        For more info see:
+        https://matplotlib.org/stable/gallery/color/named_colors.html
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
+
     verbose : boolean, default=None
         Whether printing out the result of the pairwise statistical tests
         in each of the factors
 
     Returns
     -------
-
+    fig : matplotlib.figure.Figure
+        A matplotlib figure.
+        
+    ax : matplotlib.axes.Axes or array of Axes
+        Matplotlib axes representing the subplots containing the boxplots.
     '''
     if group_order is not None:
         assert len(set(group_order) & set(metadict.values())) == len(set(metadict.values())), "All groups in `metadict` must be contained in `group_order`"
@@ -115,7 +162,7 @@ def context_boxplot(context_loadings, metadict, group_order=None, nrows=1, figsi
                                   y=y,
                                   order=order)
             annotator.configure(test=statistical_test,
-                                text_format='star',
+                                text_format=text_format,
                                 loc='inside',
                                 comparisons_correction=pval_correction,
                                 verbose=verbose
