@@ -565,6 +565,8 @@ class InteractionTensor(BaseTensor):
             for df in mod_rnaseq_matrices:
                 df.index = [idx.upper() for idx in df.index]
 
+        # Deduplicate gene names
+        mod_rnaseq_matrices = [df[~df.index.duplicated(keep='first')] for df in mod_rnaseq_matrices]
 
         # Get context CCC tensor
         tensor, genes, cells, ppi_names, mask = build_context_ccc_tensor(rnaseq_matrices=mod_rnaseq_matrices,
