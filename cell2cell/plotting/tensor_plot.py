@@ -176,7 +176,8 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
     else:
         order_labels = list(factors.keys())
 
-    meta_og = metadata.copy()
+    if metadata is not None:
+        meta_og = metadata.copy()
     if reorder_elements is not None:
         factors, metadata = reorder_dimension_elements(factors=factors,
                                                        reorder_elements=reorder_elements,
@@ -205,6 +206,8 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
                              sharex='col',
                              #sharey='col'
                              )
+
+    axes = axes.reshape((rank, dim))
 
     # Factor by factor
     if rank > 1:

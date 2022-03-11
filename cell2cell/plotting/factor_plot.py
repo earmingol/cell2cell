@@ -188,7 +188,8 @@ def context_boxplot(context_loadings, metadict, group_order=None, statistical_te
         ax = axs[j]
         ax.axis(False)
 
-    fig.align_ylabels(axes[:, 0])
+    if axes.shape[0] > 1:
+        fig.align_ylabels(axes[:, 0])
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.99])
     if filename is not None:
