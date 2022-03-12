@@ -33,6 +33,7 @@ def get_modified_rnaseq(rnaseq_data, cutoffs=None, communication_score='expressi
             - 'expression_thresholding'
             - 'expression_product'
             - 'expression_mean'
+            - 'expression_gmean'
 
     Returns
     -------
@@ -43,7 +44,7 @@ def get_modified_rnaseq(rnaseq_data, cutoffs=None, communication_score='expressi
     '''
     if communication_score == 'expression_thresholding':
         modified_rnaseq = get_thresholded_rnaseq(rnaseq_data, cutoffs)
-    elif (communication_score == 'expression_product') or (communication_score == 'expression_mean'):
+    elif communication_score in ['expression_product', 'expression_mean', 'expression_gmean']:
         modified_rnaseq = rnaseq_data.copy()
     else:
         # As other score types are implemented, other elif condition will be included here.
