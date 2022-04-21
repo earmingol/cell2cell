@@ -48,10 +48,11 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
   of *C. elegans***. These analyses evaluate changes in
   cell-cell communication dependent on: 
   - [Different severities of COVID-19](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/06-BALF-Tensor-Factorization.html)
-  - [ASD condition of patients](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/11-Brain-ASD-Tensor-Factorization.html)
+  - [ASD condition of patients (including **downstream analyses from decomposition loadings**)](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/11-Brain-ASD-Tensor-Factorization.html)
   - [Multiple time points of the *C. elegans* development](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/08-Celegans-Tensor-Factorization.html)
-- **A tutorial of running Tensor-cell2cell** on a dataset of control and interferon-beta-treated PBMCs from 8 donors
-  is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Tensor-cell2cell-PBMC.ipynb)
+- **A tutorial of running the simplest analysis of Tensor-cell2cell** on a dataset of control and interferon-beta-treated PBMCs from 8 donors
+  is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Tensor-cell2cell-PBMC.ipynb). <u>This tutorial shows 
+  how to run the analysis until obtaining the decomposition loadings that could be used for downstream analyses, as shown in the ASD example above.</u>
 - **Do you have precomputed communication scores?** Re-use them as a prebuilt tensor as [exemplified here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Loading-PreBuiltTensor.ipynb).
   This allows reusing previous tensors you built or even plugging in communication scores from other tools.
 - **Run Tensor-cell2cell much faster!** An example to perform the analysis using a **Nvidia GPU** is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/GPU-Example.ipynb)
