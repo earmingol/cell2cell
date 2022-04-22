@@ -1,11 +1,14 @@
+# -*- coding: utf-8 -*-
+
+import networkx as nx
 import numpy as np
-import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 from statannotations.Annotator import Annotator
 from scipy.stats import zscore
 
 from cell2cell.clustering.cluster_interactions import compute_distance, compute_linkage
+from cell2cell.analysis.tensor_downstream import get_factor_specific_ccc_networks
 
 
 def context_boxplot(context_loadings, metadict, group_order=None, statistical_test='Mann-Whitney',
@@ -103,8 +106,8 @@ def context_boxplot(context_loadings, metadict, group_order=None, statistical_te
     fig : matplotlib.figure.Figure
         A matplotlib figure.
 
-    ax : matplotlib.axes.Axes or array of Axes
-        Matplotlib axes representing the subplots containing the boxplots.
+    axes : matplotlib.axes.Axes or array of Axes
+           Matplotlib axes representing the subplots containing the boxplots.
     '''
     if group_order is not None:
         assert len(set(group_order) & set(metadict.values())) == len(set(metadict.values())), "All groups in `metadict` must be contained in `group_order`"
@@ -337,3 +340,165 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
         plt.savefig(filename, dpi=300, bbox_inches='tight')
 
     return cm
+
+
+def ccc_networks_plot(factors, sender_label='Sender Cells', receiver_label='Receiver Cells',
+                      ccc_threshold=None, panel_size=(8, 8), cols=4, network_layout='spring', edge_color='magenta',
+                      edge_width=25, edge_arrow_size=20, edge_alpha=0.25, node_color="#210070", node_size=1000,
+                      node_alpha=0.9, node_label_size=20, node_label_alpha=0.7, node_label_offset=(0.1, -0.2),
+                      factor_title_size=36, filename=None):
+    '''Plots factor-specific cell-cell communication networks
+    resulting from decomposition with Tensor-cell2cell.
+
+    Parameters
+    ----------
+    factors : dict
+        Ordered dictionary containing a dataframe with the factor loadings for each
+        dimension/order of the tensor.
+
+    sender_label : str
+        Label for the dimension of sender cells. It is one key of the factors dict.
+
+    receiver_label : str
+        Label for the dimension of receiver cells. It is one key of the factors dict.
+
+    ccc_threshold : float, default=None
+        Threshold to consider only edges with a higher weight than this value.
+
+    panel_size : tuple, default=(8, 8)
+        Size of one subplot or network (width*height), each in inches.
+
+    cols : int, default=4
+        Number of columns in the set of subplots.
+
+    network_layout : str, default='spring'
+        Visualization layout of the networks. It uses algorithms implemented
+        in NetworkX, including:
+            -'spring' : Fruchterman-Reingold force-directed algorithm.
+            -'circular' : Position nodes on a circle.
+
+    edge_color : str, default='magenta'
+        Color of the edges in the network.
+
+    edge_width : int, default=25
+        Thickness of the edges in the network.
+
+    edge_arrow_size : int, default=20
+        Size of the arrow of an edge pointing towards the receiver cells.
+
+    edge_alpha : float, default=0.25
+        Transparency of the edges. Values must be between 0 and 1. Higher
+        values indicates less transparency.
+
+    node_color : str, default="#210070"
+        Color of the nodes in the network.
+
+    node_size : int, default=1000
+        Size of the nodes in the network.
+
+    node_alpha : float, default=0.9
+        Transparency of the nodes. Values must be between 0 and 1. Higher
+        values indicates less transparency.
+
+    node_label_size : int, default=20
+        Size of the labels for the node names.
+
+    node_label_alpha : int, default=0.7
+        Transparency of the node labeks. Values must be between 0 and 1.
+        Higher values indicates less transparency.
+
+    node_label_offset : tuple, default=(0.1, -0.2)
+        Offset values to move the node labels away from the center of the nodes.
+
+    factor_title_size : int, default=36
+        Size of the subplot titles. Each network has a title like 'Factor 1',
+        'Factor 2', ... ,'Factor R'.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        A matplotlib figure.
+
+    axes : matplotlib.axes.Axes or array of Axes
+        Matplotlib axes representing the subplots containing the networks.
+    '''
+    networks = get_factor_specific_ccc_networks(result=factors,
+                                                sender_label=sender_label,
+                                                receiver_label=receiver_label)
+
+    factor_labels = [f'Factor {i}' for i in range(1, len(networks) + 1)]
+    rows = int(np.ceil(len(factor_labels) / cols))
+    fig, axes = plt.subplots(rows, cols, figsize=(panel_size[0] * cols, panel_size[1] * rows))
+    axs = axes.flatten()
+
+    for i, factor in enumerate(factor_labels):
+        ax = axs[i]
+        if ccc_threshold is not None:
+            # Considers edges with weight above ccc_threshold
+            df = networks[factor].gt(ccc_threshold).astype(int).multiply(networks[factor])
+        else:
+            df = networks[factor]
+
+        # Networkx Directed Network
+        G = nx.convert_matrix.from_pandas_adjacency(df, create_using=nx.DiGraph())
+
+        # Layout for visualization - Node positions
+        if network_layout == 'spring':
+            pos = nx.spring_layout(G,
+                                   k=1.,
+                                   seed=888
+                                   )
+        elif network_layout == 'circular':
+            pos = nx.circular_layout(G)
+        else:
+            raise ValueError("network_layout should be either 'spring' or 'circular'")
+
+        # Weights for edge thickness
+        weights = np.asarray([G.edges[e]['weight'] for e in G.edges()])
+
+        # Visualize network
+        nx.draw_networkx_edges(G,
+                               pos,
+                               alpha=edge_alpha,
+                               arrowsize=edge_arrow_size,
+                               width=weights * edge_width,
+                               edge_color=edge_color,
+                               connectionstyle="arc3,rad=-0.3",
+                               ax=ax
+                               )
+        nx.draw_networkx_nodes(G,
+                               pos,
+                               node_color=node_color,
+                               node_size=node_size,
+                               alpha=node_alpha,
+                               ax=ax
+                               )
+        label_options = {"ec": "k", "fc": "white", "alpha": node_label_alpha}
+        _ = nx.draw_networkx_labels(G,
+                                    {k: v + np.array(node_label_offset) for k, v in pos.items()},
+                                    font_size=node_label_size,
+                                    bbox=label_options,
+                                    ax=ax
+                                    )
+
+        ax.set_frame_on(False)
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        coeff = 1.4
+        ax.set_xlim((xlim[0] * coeff, xlim[1] * coeff))
+        ax.set_ylim((ylim[0] * coeff, ylim[1] * coeff))
+        ax.set_title(factor, fontsize=factor_title_size, fontweight='bold')
+
+    # Remove extra subplots
+    for j in range(i, axs.shape[0]):
+        ax = axs[j]
+        ax.axis(False)
+
+    plt.tight_layout()
+    if filename is not None:
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+    return fig, axes

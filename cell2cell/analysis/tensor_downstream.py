@@ -3,8 +3,6 @@
 import numpy as np
 import pandas as pd
 
-import cell2cell.tensor
-
 
 def get_joint_loadings(result, dim1, dim2, factor):
     """
@@ -35,7 +33,7 @@ def get_joint_loadings(result, dim1, dim2, factor):
         Joint distribution of factor loadings for the specified dimensions.
         Rows correspond to elements in dim1 and columns to elements in dim2.
     """
-    if isinstance(result, (cell2cell.tensor.tensor.InteractionTensor, cell2cell.tensor.tensor.BaseTensor, cell2cell.tensor.tensor.PreBuiltTensor)):
+    if hasattr(result, 'factors'):
         result = result.factors
         if result is None:
             raise ValueError('A tensor factorization must be run on the tensor before calling this function.')
@@ -86,7 +84,7 @@ def get_factor_specific_ccc_networks(result, sender_label='Sender Cells', receiv
         (factor names are the keys of the dict). These dataframes are the
         adjacency matrices of the CCC networks.
     '''
-    if isinstance(result, (cell2cell.tensor.tensor.InteractionTensor, cell2cell.tensor.tensor.BaseTensor, cell2cell.tensor.tensor.PreBuiltTensor)):
+    if hasattr(result, 'factors'):
         result = result.factors
         if result is None:
             raise ValueError('A tensor factorization must be run on the tensor before calling this function.')
