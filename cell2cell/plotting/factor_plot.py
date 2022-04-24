@@ -439,7 +439,7 @@ def ccc_networks_plot(factors, included_factors=None, sender_label='Sender Cells
     else:
         factor_labels = included_factors
 
-    cols = min[len(factor_labels), cols]
+    cols = min([len(factor_labels), cols])
     rows = int(np.ceil(len(factor_labels) / cols))
     fig, axes = plt.subplots(rows, cols, figsize=(panel_size[0] * cols, panel_size[1] * rows))
     axs = axes.flatten()
