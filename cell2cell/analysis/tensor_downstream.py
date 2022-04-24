@@ -3,6 +3,8 @@
 import numpy as np
 import pandas as pd
 
+from cell2cell.stats import gini_coefficient
+
 
 def get_joint_loadings(result, dim1, dim2, factor):
     """
@@ -108,7 +110,8 @@ def get_factor_specific_ccc_networks(result, sender_label='Sender Cells', receiv
 def flatten_factor_ccc_networks(networks, orderby='senders'):
     '''
     Flattens all adjacency matrices in the factor-specific
-    cell-cell communication networks.
+    cell-cell communication networks. It generates a matrix
+    where rows are factors and columns are cell-cell pairs.
 
     Parameters
     ---------
@@ -147,3 +150,55 @@ def flatten_factor_ccc_networks(networks, orderby='senders'):
                                     columns=list(networks.keys())
                                     )
     return flatten_networks
+
+
+def compute_gini_coefficients(result, sender_label='Sender Cells', receiver_label='Receiver Cells'):
+    '''
+    Computes Gini coefficient on the distribution of edge weights
+    in each factor-specific cell-cell communication network. Factors
+    obtained from the tensor decomposition with Tensor-cell2cell.
+
+    Parameters
+    ----------
+    result : any Tensor class in cell2cell.tensor.tensor or a dict
+        Either a Tensor type or a dictionary which resulted from the tensor
+        decomposition. If it is a dict, it should be the one in, for example,
+        InteractionTensor.factors
+
+    sender_label : str
+        Label for the dimension of sender cells. Usually found in
+        InteractionTensor.order_labels
+
+    receiver_label : str
+        Label for the dimension of receiver cells. Usually found in
+        InteractionTensor.order_labels
+
+    Returns
+    -------
+    gini_df : pandas.DataFrame
+        Dataframe containing the Gini coefficient of each factor from
+        a tensor decomposition. Calculated on the factor-specific
+        cell-cell communication networks.
+    '''
+    if hasattr(result, 'factors'):
+        result = result.factors
+        if result is None:
+            raise ValueError('A tensor factorization must be run on the tensor before calling this function.')
+    elif isinstance(result, dict):
+        pass
+    else:
+        raise ValueError('result is not of a valid type. It must be an InteractionTensor or a dict.')
+
+    factors = sorted(list(set(result[sender_label].columns) & set(result[receiver_label].columns)))
+
+    ginis = []
+    for f in factors:
+        factor_net = get_joint_loadings(result=result,
+                                        dim1=sender_label,
+                                        dim2=receiver_label,
+                                        factor=f
+                                        )
+        gini = gini_coefficient(factor_net.flatten())
+        ginis.append((f, gini))
+    gini_df = pd.DataFrame.from_records(ginis, columns=['Factor', 'Gini'])
+    return gini_df
