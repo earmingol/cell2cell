@@ -342,7 +342,7 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
     return cm
 
 
-def ccc_networks_plot(factors, sender_label='Sender Cells', receiver_label='Receiver Cells',
+def ccc_networks_plot(factors, included_factors=None, sender_label='Sender Cells', receiver_label='Receiver Cells',
                       ccc_threshold=None, panel_size=(8, 8), cols=4, network_layout='spring', edge_color='magenta',
                       edge_width=25, edge_arrow_size=20, edge_alpha=0.25, node_color="#210070", node_size=1000,
                       node_alpha=0.9, node_label_size=20, node_label_alpha=0.7, node_label_offset=(0.1, -0.2),
@@ -355,6 +355,10 @@ def ccc_networks_plot(factors, sender_label='Sender Cells', receiver_label='Rece
     factors : dict
         Ordered dictionary containing a dataframe with the factor loadings for each
         dimension/order of the tensor.
+
+    included_factors : list, default=None
+        Factors to be included. Factor names must be the same as the key values in
+        the factors dictionary.
 
     sender_label : str
         Label for the dimension of sender cells. It is one key of the factors dict.
@@ -430,7 +434,12 @@ def ccc_networks_plot(factors, sender_label='Sender Cells', receiver_label='Rece
                                                 sender_label=sender_label,
                                                 receiver_label=receiver_label)
 
-    factor_labels = [f'Factor {i}' for i in range(1, len(networks) + 1)]
+    if included_factors is None:
+        factor_labels = [f'Factor {i}' for i in range(1, len(networks) + 1)]
+    else:
+        factor_labels = included_factors
+
+    cols = min[len(factor_labels), cols]
     rows = int(np.ceil(len(factor_labels) / cols))
     fig, axes = plt.subplots(rows, cols, figsize=(panel_size[0] * cols, panel_size[1] * rows))
     axs = axes.flatten()
