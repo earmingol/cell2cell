@@ -11,7 +11,7 @@ from cell2cell.clustering.cluster_interactions import compute_distance, compute_
 from cell2cell.analysis.tensor_downstream import get_factor_specific_ccc_networks
 
 
-def context_boxplot(context_loadings, metadict, group_order=None, statistical_test='Mann-Whitney',
+def context_boxplot(context_loadings, metadict, included_factors=None, group_order=None, statistical_test='Mann-Whitney',
                     pval_correction='benjamini-hochberg', text_format='star', nrows=1, figsize=(12, 6), cmap='tab10',
                     title_size=14, axis_label_size=12, group_label_rotation=45, ylabel='Context Loadings',
                     dot_color='lightsalmon', dot_edge_color='brown', filename=None, verbose=False):
@@ -32,6 +32,10 @@ def context_boxplot(context_loadings, metadict, group_order=None, statistical_te
         and values are the respective groups. For example:
         metadict={'Context 1' : 'Group 1', 'Context 2' : 'Group 1',
                   'Context 3' : 'Group 2', 'Context 4' : 'Group 2'}
+
+    included_factors : list, default=None
+        Factors to be included. Factor names must be the same as column elements
+        in the context_loadings.
 
     group_order : list, default=None
         Order of the groups to plot the boxplots. Considering the
@@ -114,16 +118,26 @@ def context_boxplot(context_loadings, metadict, group_order=None, statistical_te
     else:
         group_order = list(set(metadict.values()))
     df = context_loadings.copy()
-    rank = df.shape[1]
+
+    if included_factors is None:
+        factor_labels = list(df.columns)
+    else:
+        factor_labels = included_factors
+    rank = len(factor_labels)
     df['Group'] = [metadict[idx] for idx in df.index]
 
+    nrows = min([rank, nrows])
     ncols = int(np.ceil(rank/nrows))
     fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, sharey='none')
-    axs = axes.flatten()
-    for i in range(1, rank + 1):
-        ax = axs[i - 1]
 
-        factor = 'Factor {}'.format(i)
+    if rank == 1:
+        axs = np.array([axes])
+    else:
+        axs = axes.flatten()
+
+
+    for i, factor in enumerate(factor_labels):
+        ax = axs[i]
         x, y = 'Group', factor
 
         order = group_order
@@ -175,7 +189,7 @@ def context_boxplot(context_loadings, metadict, group_order=None, statistical_te
         ax.set_title(factor, fontsize=title_size)
 
         ax.set_xlabel('', fontsize=axis_label_size)
-        if (i == 1) | (((i-1) % ncols) == 0):
+        if (i == 0) | (((i) % ncols) == 0):
             ax.set_ylabel(ylabel, fontsize=axis_label_size)
         else:
             ax.set_ylabel(' ', fontsize=axis_label_size)
@@ -187,11 +201,12 @@ def context_boxplot(context_loadings, metadict, group_order=None, statistical_te
                            ha='right')
 
     # Remove extra subplots
-    for j in range(i, axs.shape[0]):
+    for j in range(i+1, axs.shape[0]):
         ax = axs[j]
         ax.axis(False)
 
     if axes.shape[0] > 1:
+        axes = axes.reshape(axes.shape[0], -1)
         fig.align_ylabels(axes[:, 0])
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.99])
@@ -343,7 +358,7 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
 
 
 def ccc_networks_plot(factors, included_factors=None, sender_label='Sender Cells', receiver_label='Receiver Cells',
-                      ccc_threshold=None, panel_size=(8, 8), cols=4, network_layout='spring', edge_color='magenta',
+                      ccc_threshold=None, panel_size=(8, 8), nrows=2, network_layout='spring', edge_color='magenta',
                       edge_width=25, edge_arrow_size=20, edge_alpha=0.25, node_color="#210070", node_size=1000,
                       node_alpha=0.9, node_label_size=20, node_label_alpha=0.7, node_label_offset=(0.1, -0.2),
                       factor_title_size=36, filename=None):
@@ -372,8 +387,8 @@ def ccc_networks_plot(factors, included_factors=None, sender_label='Sender Cells
     panel_size : tuple, default=(8, 8)
         Size of one subplot or network (width*height), each in inches.
 
-    cols : int, default=4
-        Number of columns in the set of subplots.
+    nrows : int, default=2
+        Number of rows in the set of subplots.
 
     network_layout : str, default='spring'
         Visualization layout of the networks. It uses algorithms implemented
@@ -439,10 +454,13 @@ def ccc_networks_plot(factors, included_factors=None, sender_label='Sender Cells
     else:
         factor_labels = included_factors
 
-    cols = min([len(factor_labels), cols])
-    rows = int(np.ceil(len(factor_labels) / cols))
-    fig, axes = plt.subplots(rows, cols, figsize=(panel_size[0] * cols, panel_size[1] * rows))
-    axs = axes.flatten()
+    nrows = min([len(factor_labels), nrows])
+    ncols = int(np.ceil(len(factor_labels) / nrows))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(panel_size[0] * ncols, panel_size[1] * nrows))
+    if len(factor_labels) == 1:
+        axs = np.array([axes])
+    else:
+        axs = axes.flatten()
 
     for i, factor in enumerate(factor_labels):
         ax = axs[i]
@@ -503,7 +521,7 @@ def ccc_networks_plot(factors, included_factors=None, sender_label='Sender Cells
         ax.set_title(factor, fontsize=factor_title_size, fontweight='bold')
 
     # Remove extra subplots
-    for j in range(i, axs.shape[0]):
+    for j in range(i+1, axs.shape[0]):
         ax = axs[j]
         ax.axis(False)
 
