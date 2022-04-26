@@ -1,0 +1,55 @@
+site_name: cell2cell
+site_description: "Python package to infer cell-cell interactions and communication from gene expression of interacting proteins."
+
+theme: readthedocs
+repo_url: https://github.com/earmingol/cell2cell
+plugins:
+  - search
+  - mkdocs-jupyter:
+      execute: false
+      include: ["*.ipynb"]
+      include_source: True
+      #ignore_h1_titles: True
+  - mkdocstrings:
+      watch:
+        - cell2cell
+      default_handler: python
+      handlers:
+        python:
+          rendering:
+            show_source: true
+            show_category_heading: true
+            members_order: source
+            show_if_no_docstring: true
+          selection:
+            docstring_style: numpy
+            filters: [ "!^_" ]
+
+markdown_extensions:
+  - def_list
+  - attr_list
+  - admonition
+  - codehilite
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - md_in_html
+  - pymdownx.superfences
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - "Home": index.md
+  - "API Documentation": documentation.md
+  - "Tutorials":
+    - tutorials/01-Tensor-Factorization-ASD.ipynb
+    - tutorials/02-Factor-Specific-ASD.ipynb
+    - tutorials/03-GSEA-ASD.ipynb
