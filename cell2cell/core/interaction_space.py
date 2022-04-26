@@ -434,7 +434,7 @@ class InteractionSpace():
             interactions. If None, it will use the one stored in the
             attribute analysis_setup of this object.
             Options:
-
+            
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells uses
