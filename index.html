@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="Python package to infer cell-cell interactions and communication from gene expression of interacting proteins." />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>cell2cell</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+        <link href="assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Home";
+        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="." class="icon icon-home"> cell2cell
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href=".">Home</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting started</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#common-issues">Common issues</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ligand-receptor-pairs">Ligand-Receptor pairs</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#citation">Citation</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="documentation/">API Documentation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Tutorials</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="tutorials/01-Tensor-Factorization-ASD/">Obtaining patterns of cell-cell communication with Tensor-cell2cell</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="tutorials/02-Factor-Specific-ASD/">Downstream analysis 1: Factor-specific analyses</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="tutorials/03-GSEA-ASD/">Downstream analysis 2: Gene Set Enrichment Analysis</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href=".">cell2cell</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="." class="icon icon-home" alt="Docs"></a> &raquo;</li><li>Home</li>
+    <li class="wy-breadcrumbs-aside">
+        <a href="https://github.com/earmingol/cell2cell/edit/master/docs/index.md"
+          class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="inferring-cell-cell-interactions-from-transcriptomes-with-cell2cell">Inferring cell-cell interactions from transcriptomes with <em>cell2cell</em></h1>
+<p><a href="https://pypi.org/project/cell2cell/"><img alt="PyPI Version" src="https://badge.fury.io/py/cell2cell.svg" /></a>
+<a href="https://pepy.tech/project/cell2cell"><img alt="Downloads" src="https://pepy.tech/badge/cell2cell/month" /></a></p>
+<h2 id="getting-started">Getting started</h2>
+<p>Please refer to the <a href="https://earmingol.github.io/cell2cell/">documentation</a>, especially the</p>
+<p><a href="https://github.com/earmingol/cell2cell/blob/master/docs/tutorials/">Tutorials</a>, and the</p>
+<p><a href="https://earmingol.github.io/cell2cell/documentation/">API documentation</a>.</p>
+<h2 id="installation">Installation</h2>
+<p><strong>First, <a href="https://docs.anaconda.com/anaconda/install/">install Anaconda following this tutorial</a></strong></p>
+<p>Once installed, create a new conda environment:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>conda create -n cell2cell -y python=3.7 jupyter
+</code></pre></div></p>
+<p>Activate that environment:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>conda activate cell2cell
+</code></pre></div>
+<p>Then, install cell2cell:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip install cell2cell
+</code></pre></div></p>
+<h2 id="examples">Examples</h2>
+<hr />
+<p><img alt="plot" src="https://github.com/earmingol/cell2cell/blob/master/Logo.png?raw=true" /></p>
+<ul>
+<li>A toy example using the <strong>under-the-hood methods of cell2cell</strong> is
+  <a href="https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example.ipynb">available here</a>.
+  This case allows personalizing the analyses in a higher level, but it may result <strong>harder to use</strong>.</li>
+<li>A toy example using an Interaction Pipeline for <strong>bulk data</strong> is 
+  <a href="https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example-BulkPipeline.ipynb">available here</a>.
+  An Interaction Pipeline makes cell2cell <strong>easier to use</strong>.</li>
+<li>A toy example using an Interaction Pipeline for <strong>single-cell data</strong> is 
+  <a href="https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example-SingleCellPipeline.ipynb">available here</a>.
+  An Interaction Pipeline makes cell2cell <strong>easier to use</strong>.  </li>
+<li>An example of using <em>cell2cell</em> to infer cell-cell interactions across the <strong>whole
+body of <em>C. elegans</em></strong> is <a href="https://github.com/LewisLabUCSD/Celegans-cell2cell">available here</a></li>
+</ul>
+<hr />
+<p><img alt="plot" src="https://github.com/earmingol/cell2cell/blob/master/LogoTensor.png?raw=true" /></p>
+<ul>
+<li>Jupyter notebooks for reproducing the results in the manuscript of Tensor-cell2cell
+  <a href="https://doi.org/10.24433/CO.0051950.v2">are available and can be run online in codeocean.com</a>.
+  It specifically contains analyses on datasets of <strong>COVID-19, Autism Spectrum Disorders (ASD) and the embryonic development
+  of <em>C. elegans</em></strong>. These analyses evaluate changes in
+  cell-cell communication dependent on: <ul>
+<li><a href="https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/06-BALF-Tensor-Factorization.html">Different severities of COVID-19</a></li>
+<li><a href="https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/11-Brain-ASD-Tensor-Factorization.html">ASD condition of patients (including <strong>downstream analyses from the loadings obtained with Tensor-cell2cell</strong>)</a></li>
+<li><a href="https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/08-Celegans-Tensor-Factorization.html">Multiple time points of the <em>C. elegans</em> development</a></li>
+</ul>
+</li>
+<li><strong>A tutorial of running the simplest analysis of Tensor-cell2cell</strong> on a dataset of control and interferon-beta-treated PBMCs from 8 donors
+  is <a href="https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Tensor-cell2cell-PBMC.ipynb">available here</a>. <ins>This tutorial only shows 
+  how to run the tensor decomposition that generates loadings in each of the factors. These loadings can be further used for downstream analyses, as shown in the ASD example above.</ins></li>
+<li><strong>More detailed tutorials of running Tensor-cell2cell and downstream analyses <a href="https://earmingol.github.io/cell2cell/">can be found here</a></strong></li>
+<li><strong>Do you have precomputed communication scores?</strong> Re-use them as a prebuilt tensor as <a href="https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Loading-PreBuiltTensor.ipynb">exemplified here</a>.
+  This allows reusing previous tensors you built or even plugging in communication scores from other tools.</li>
+<li><strong>Run Tensor-cell2cell much faster!</strong> An example to perform the analysis using a <strong>Nvidia GPU</strong> is <a href="https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/GPU-Example.ipynb">available here</a></li>
+</ul>
+<hr />
+<h2 id="common-issues">Common issues</h2>
+<ul>
+<li>When running Tensor-cell2cell (<code>InteractionTensor.compute_tensor_factorization()</code> or <code>InteractionTensor.elbow_rank_selection()</code>), a common error is
+associated with Memory. This may happen when the tensor is big enough to make the computer run out of memory when the input of the functions in the parentheses is
+  <code>init='svd'</code>. To avoid this issue, just replace it by <code>init='random'</code>.</li>
+</ul>
+<h2 id="ligand-receptor-pairs">Ligand-Receptor pairs</h2>
+<ul>
+<li>A repository with previously published lists of ligand-receptor pairs <a href="https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs">is available here</a>.
+  You can use any of these lists as an input of cell2cell.</li>
+</ul>
+<h2 id="citation">Citation</h2>
+<ul>
+<li>
+<p><strong>cell2cell</strong> should be cited using this pre-print in bioRxiv:</p>
+<ul>
+<li>Armingol E., Ghaddar A., Joshi C.J., Baghdassarian H., Shamie I., Chan J.,
+  Her H.L., O’Rourke E.J., Lewis N.E. 
+  <a href="https://www.biorxiv.org/content/10.1101/2020.11.22.392217v3">Inferring a spatial code of cell-cell interactions across a whole animal body</a>.
+   <em>bioRxiv</em>, (2020). <strong>DOI: 10.1101/2020.11.22.392217</strong></li>
+</ul>
+</li>
+<li>
+<p><strong>Tensor-cell2cell</strong> should be cited using this pre-print in bioRxiv:</p>
+<ul>
+<li>Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Knight R., Lewis N.E.
+ <a href="https://doi.org/10.1101/2021.09.20.461129">Context-aware deconvolution of cell-cell communication with Tensor-cell2cell</a>
+ <em>bioRxiv</em>, (2021). <strong>DOI: 10.1101/2021.09.20.461129</strong></li>
+</ul>
+</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="documentation/" class="btn btn-neutral float-right" title="API Documentation">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/earmingol/cell2cell" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+    
+      <span><a href="documentation/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '.';</script>
+    <script src="js/theme_extra.js" defer></script>
+    <script src="js/theme.js" defer></script>
+      <script src="search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.3.0
+Build Date UTC : 2022-04-26 08:43:31.391082+00:00
+-->
