@@ -6,11 +6,8 @@
 [pypi]: https://pypi.org/project/cell2cell/
 
 ## Getting started
-Please refer to the [documentation](https://earmingol.github.io/cell2cell/), especially the
-
-[Tutorials](https://github.com/earmingol/cell2cell/blob/master/docs/tutorials/), and the
-
-[API documentation](https://earmingol.github.io/cell2cell/documentation/).
+Please refer to the [cell2cell website](https://earmingol.github.io/cell2cell/), 
+which includes tutorials and documentation
 
 
 
