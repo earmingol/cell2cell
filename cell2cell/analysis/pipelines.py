@@ -55,7 +55,8 @@ class BulkInteractions:
 
     cci_score : str, default='bray_curtis'
         Scoring function to aggregate the communication scores between a pair of
-        cells. It computes an overall potential of cell-cell interactions. Options:
+        cells. It computes an overall potential of cell-cell interactions.
+        Options:
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells use
@@ -127,8 +128,8 @@ class BulkInteractions:
 
     analysis_setup : dict
         Contains main setup for running the cell-cell interactions and communication
-        analyses. Three main setups are needed (passed as keys):
-
+        analyses.
+        Three main setups are needed (passed as keys):
         - 'communication_score' : is the type of communication score used to detect
             active ligand-receptor pairs between each pair of cell. It can be:
                 - 'expression_thresholding'
@@ -238,7 +239,8 @@ class BulkInteractions:
             Scoring function to aggregate the communication scores between
             a pair of cells. It computes an overall potential of cell-cell
             interactions. If None, it will use the one stored in the
-            attribute analysis_setup of this object. Options:
+            attribute analysis_setup of this object.
+            Options:
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells use
@@ -273,19 +275,19 @@ class BulkInteractions:
             If None, the score stored in the attribute analysis_setup
             will be used.
             Available communication_scores are:
-        - 'expresion_thresholding' : Computes the joint presence of a
-                                     ligand from a sender cell and of
-                                     a receptor on a receiver cell from
-                                     binarizing their gene expression levels.
-        - 'expression_mean' : Computes the average between the expression
-                              of a ligand from a sender cell and the
-                              expression of a receptor on a receiver cell.
-        - 'expression_product' : Computes the product between the expression
-                                of a ligand from a sender cell and the
-                                expression of a receptor on a receiver cell.
-        - 'expression_gmean' : Computes the geometric mean between the expression
-                              of a ligand from a sender cell and the
-                              expression of a receptor on a receiver cell.
+            - 'expresion_thresholding' : Computes the joint presence of a
+                                         ligand from a sender cell and of
+                                         a receptor on a receiver cell from
+                                         binarizing their gene expression levels.
+            - 'expression_mean' : Computes the average between the expression
+                                  of a ligand from a sender cell and the
+                                  expression of a receptor on a receiver cell.
+            - 'expression_product' : Computes the product between the expression
+                                    of a ligand from a sender cell and the
+                                    expression of a receptor on a receiver cell.
+            - 'expression_gmean' : Computes the geometric mean between the expression
+                                  of a ligand from a sender cell and the
+                                  expression of a receptor on a receiver cell.
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
@@ -393,7 +395,8 @@ class SingleCellInteractions:
 
     cci_score : str, default='bray_curtis'
         Scoring function to aggregate the communication scores between a pair of
-        cells. It computes an overall potential of cell-cell interactions. Options:
+        cells. It computes an overall potential of cell-cell interactions.
+        Options:
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells use

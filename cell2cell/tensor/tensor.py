@@ -667,7 +667,6 @@ class PreBuiltTensor(BaseTensor):
 def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communication_score='expression_product',
                              complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'),
                              group_ppi_by=None, group_ppi_method='gmean', verbose=True):
-
     '''Builds a 4D-Communication tensor. Takes the gene expression matrices and the
     list of PPIs to compute the communication scores between the interacting cells
     for each PPI. This is done for each context.
@@ -933,8 +932,7 @@ def aggregate_ccc_tensor(ccc_tensor, ppi_data, group_ppi_by=None, group_ppi_meth
 
 
 def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order_elements=True):
-    '''
-    Uses a list of of dicts (or None when a dict is missing) to generate a list of
+    '''Uses a list of of dicts (or None when a dict is missing) to generate a list of
     metadata for each order in the tensor.
 
     Parameters
