@@ -65,13 +65,14 @@ def compute_linkage(distance_matrix, method='ward', optimal_ordering=True):
 
     method : str, 'ward' by default
         Method to compute the linkage. It could be:
-        'single'
-        'complete'
-        'average'
-        'weighted'
-        'centroid'
-        'median'
-        'ward'
+
+        - 'single'
+        - 'complete'
+        - 'average'
+        - 'weighted'
+        - 'centroid'
+        - 'median'
+        - 'ward'
         For more details, go to:
         https://docs.scipy.org/doc/scipy-0.19.0/reference/generated/scipy.cluster.hierarchy.linkage.html
 

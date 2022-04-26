@@ -29,11 +29,13 @@ def get_modified_rnaseq(rnaseq_data, cutoffs=None, communication_score='expressi
     communication_score : str, default='expression_thresholding'
         Type of communication score used to detect active ligand-receptor
         pairs between each pair of cell. See
-        cell2cell.core.communication_scores for more details. It can be:
-            - 'expression_thresholding'
-            - 'expression_product'
-            - 'expression_mean'
-            - 'expression_gmean'
+        cell2cell.core.communication_scores for more details.
+        It can be:
+
+        - 'expression_thresholding'
+        - 'expression_product'
+        - 'expression_mean'
+        - 'expression_gmean'
 
     Returns
     -------
@@ -177,6 +179,7 @@ def get_ppi_dict_from_proteins(ppi_data, contact_proteins, mediator_proteins=Non
         Dictionary containing lists of PPIs involving proteins that
         participate in diffferent kinds of intercellular interactions.
         Options are under the keys:
+
         - 'contacts' : Contains proteins participating in cell contact
                 interactions (e.g. surface proteins, receptors)
         - 'mediated' : Contains proteins participating in mediated or
@@ -268,6 +271,7 @@ def get_ppi_dict_from_go_terms(ppi_data, go_annotations, go_terms, contact_go_te
         Dictionary containing lists of PPIs involving proteins that
         participate in diffferent kinds of intercellular interactions.
         Options are under the keys:
+
         - 'contacts' : Contains proteins participating in cell contact
                 interactions (e.g. surface proteins, receptors)
         - 'mediated' : Contains proteins participating in mediated or

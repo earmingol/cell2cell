@@ -40,6 +40,7 @@ class BulkInteractions:
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
+
         - 'expression_thresholding' : Computes the joint presence of a ligand from a
                                      sender cell and of a receptor on a receiver cell
                                      from binarizing their gene expression levels.
@@ -57,6 +58,7 @@ class BulkInteractions:
         Scoring function to aggregate the communication scores between a pair of
         cells. It computes an overall potential of cell-cell interactions.
         Options:
+
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells use
@@ -130,6 +132,7 @@ class BulkInteractions:
         Contains main setup for running the cell-cell interactions and communication
         analyses.
         Three main setups are needed (passed as keys):
+
         - 'communication_score' : is the type of communication score used to detect
             active ligand-receptor pairs between each pair of cell. It can be:
                 - 'expression_thresholding'
@@ -241,6 +244,7 @@ class BulkInteractions:
             interactions. If None, it will use the one stored in the
             attribute analysis_setup of this object.
             Options:
+
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells use
@@ -251,12 +255,6 @@ class BulkInteractions:
 
         verbose : boolean, default=True
             Whether printing or not steps of the analysis.
-
-        Returns
-        -------
-        self.interaction_space.interaction_elements['cci_matrix'] :
-        pandas.DataFrame
-            Contains CCI scores for each pair of cells.
         '''
         self.interaction_space.compute_pairwise_cci_scores(cci_score=cci_score,
                                                            use_ppi_score=use_ppi_score,
@@ -268,13 +266,14 @@ class BulkInteractions:
         a given pair of sender-receiver cell
 
         Parameters
-        ---------
+        ----------
         communication_score : str, default=None
             Type of communication score to infer the potential use of
             a given ligand-receptor pair by a pair of cells/tissues/samples.
             If None, the score stored in the attribute analysis_setup
             will be used.
             Available communication_scores are:
+
             - 'expresion_thresholding' : Computes the joint presence of a
                                          ligand from a sender cell and of
                                          a receptor on a receiver cell from
@@ -318,6 +317,7 @@ class BulkInteractions:
             Type of interaction between two cells. Used to specify
             if we want to consider a LR pair in both directions.
             It can be:
+
                 - 'undirected'
                 - 'directed
             If None, the one stored in the attribute analysis_setup
@@ -325,13 +325,6 @@ class BulkInteractions:
 
         verbose : boolean, default=True
             Whether printing or not steps of the analysis.
-
-        Returns
-        -------
-        self.interaction_space.interaction_elements['communication_matrix'] :
-        pandas.DataFrame
-            Contains communication scores for each LR pair in a
-            given pair of sender-receiver cells.
         '''
         if interaction_columns is None:
             interaction_columns = self.interaction_columns # Used only for ref_ppi_data
@@ -380,6 +373,7 @@ class SingleCellInteractions:
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
+
         - 'expression_thresholding' : Computes the joint presence of a ligand from a
                                      sender cell and of a receptor on a receiver cell
                                      from binarizing their gene expression levels.
@@ -397,6 +391,7 @@ class SingleCellInteractions:
         Scoring function to aggregate the communication scores between a pair of
         cells. It computes an overall potential of cell-cell interactions.
         Options:
+
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells use
@@ -419,6 +414,7 @@ class SingleCellInteractions:
         cells into their respective cell types. Used to perform the CCI
         analysis since it is on the cell types rather than single cells.
         Options are:
+
         - 'nn_cell_fraction' : Among the single cells composing a cell type, it
             calculates the fraction of single cells with non-zero count values
             of a given gene.
@@ -482,7 +478,8 @@ class SingleCellInteractions:
 
     analysis_setup : dict
         Contains main setup for running the cell-cell interactions and communication
-        analyses. Three main setups are needed (passed as keys):
+        analyses.
+        Three main setups are needed (passed as keys):
 
         - 'communication_score' : is the type of communication score used to detect
             active ligand-receptor pairs between each pair of cell. It can be:
@@ -507,8 +504,8 @@ class SingleCellInteractions:
         Contains two keys: 'type' and 'parameter'. The first key represent the
         way to use a cutoff or threshold, while parameter is the value used
         to binarize the expression values.
-
         The key 'type' can be:
+
             - 'local_percentile' : computes the value of a given percentile, for each
                 gene independently. In this case, the parameter corresponds to the
                 percentile to compute, as a float value between 0 and 1.
@@ -539,6 +536,7 @@ class SingleCellInteractions:
         cells into their respective cell types. Used to perform the CCI
         analysis since it is on the cell types rather than single cells.
         Options are:
+
         - 'nn_cell_fraction' : Among the single cells composing a cell type, it
             calculates the fraction of single cells with non-zero count values
             of a given gene.
@@ -644,6 +642,7 @@ class SingleCellInteractions:
 
         evaluation : str, default='communication'
             Whether calculating P-values for CCI or communication scores.
+
             - 'interactions' : For CCI scores
             - 'communication' : For communication scores
 
@@ -759,8 +758,8 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
         Contains two keys: 'type' and 'parameter'. The first key represent the
         way to use a cutoff or threshold, while parameter is the value used
         to binarize the expression values.
-
         The key 'type' can be:
+
             - 'local_percentile' : computes the value of a given percentile, for each
                 gene independently. In this case, the parameter corresponds to the
                 percentile to compute, as a float value between 0 and 1.
@@ -783,7 +782,8 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
 
     analysis_setup : dict
         Contains main setup for running the cell-cell interactions and communication
-        analyses. Three main setups are needed (passed as keys):
+        analyses.
+        Three main setups are needed (passed as keys):
 
         - 'communication_score' : is the type of communication score used to detect
             active ligand-receptor pairs between each pair of cell. It can be:

@@ -325,7 +325,9 @@ def filter_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, refer
 
     interaction_type : str, default='contacts'
         Type of intercellular interactions/communication where the proteins
-        have to be involved in. Available types are:
+        have to be involved in.
+        Available types are:
+
         - 'contacts' : Contains proteins participating in cell contact
                 interactions (e.g. surface proteins, receptors)
         - 'mediated' : Contains proteins participating in mediated or
@@ -551,7 +553,9 @@ def get_filtered_ppi_network(ppi_data, contact_proteins, mediator_proteins=None,
 
     interaction_type : str, default='contacts'
         Type of intercellular interactions/communication where the proteins
-        have to be involved in. Available types are:
+        have to be involved in.
+        Available types are:
+
         - 'contacts' : Contains proteins participating in cell contact
                 interactions (e.g. surface proteins, receptors)
         - 'mediated' : Contains proteins participating in mediated or

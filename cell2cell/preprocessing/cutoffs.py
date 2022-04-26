@@ -108,31 +108,31 @@ def get_cutoffs(rnaseq_data, parameters, verbose=True):
         The first one is the respective parameter to compute the threshold
         or cutoff values. The type corresponds to the approach to
         compute the values according to the parameter employed.
-
         Options of 'type' that can be used:
-            'local_percentile' : computes the value of a given percentile,
-                                 for each gene independently. In this case,
-                                 the parameter corresponds to the percentile
-                                 to compute, as a float value between 0 and 1.
-            'global_percentile' : computes the value of a given percentile
-                                  from all genes and samples simultaneously.
-                                  In this case, the parameter corresponds to
-                                  the percentile to compute, as a float value
-                                  between 0 and 1. All genes have the same cutoff.
-            'file' : load a cutoff table from a file. Parameter in this case is
-                     the path of that file. It must contain the same genes as
-                     index and same samples as columns.
-            'multi_col_matrix' : a dataframe must be provided, containing a
-                                 cutoff for each gene in each sample. This allows
-                                 to use specific cutoffs for each sample. The
-                                 columns here must be the same as the ones in the
-                                 rnaseq_data.
-            'single_col_matrix' : a dataframe must be provided, containing a
-                                  cutoff for each gene in only one column. These
-                                  cutoffs will be applied to all samples.
-            'constant_value' : binarizes the expression. Evaluates whether
-                               expression is greater than the value input in
-                               the 'parameter'.
+
+        - 'local_percentile' : computes the value of a given percentile,
+                               for each gene independently. In this case,
+                               the parameter corresponds to the percentile
+                               to compute, as a float value between 0 and 1.
+        - 'global_percentile' : computes the value of a given percentile
+                                from all genes and samples simultaneously.
+                                In this case, the parameter corresponds to
+                                the percentile to compute, as a float value
+                                between 0 and 1. All genes have the same cutoff.
+        - 'file' : load a cutoff table from a file. Parameter in this case is
+                   the path of that file. It must contain the same genes as
+                   index and same samples as columns.
+        - 'multi_col_matrix' : a dataframe must be provided, containing a
+                               cutoff for each gene in each sample. This allows
+                               to use specific cutoffs for each sample. The
+                               columns here must be the same as the ones in the
+                               rnaseq_data.
+        - 'single_col_matrix' : a dataframe must be provided, containing a
+                                cutoff for each gene in only one column. These
+                                cutoffs will be applied to all samples.
+        - 'constant_value' : binarizes the expression. Evaluates whether
+                             expression is greater than the value input in
+                             the 'parameter'.
 
     verbose : boolean, default=True
         Whether printing or not steps of the analysis.

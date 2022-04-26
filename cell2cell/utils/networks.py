@@ -59,6 +59,7 @@ def export_network_to_gephi(network, filename, format='excel', network_type='Und
 
     format : str, default='excel'
         Format to export the spreadsheet. Options are:
+
         - 'excel' : An excel file, either .xls or .xlsx
         - 'csv' : Comma separated value format
         - 'tsv' : Tab separated value format

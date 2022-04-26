@@ -144,7 +144,7 @@ def matmul_jaccard_like(A_scores, B_scores, ppi_score=None):
     cell-types/tissues/samples.
 
     Parameters
-    __________
+    ----------
     A_scores : array-like
         Matrix of size NxM, where N are the proteins in the first
         column of a list of PPIs and M are the
@@ -182,7 +182,7 @@ def matmul_bray_curtis_like(A_scores, B_scores, ppi_score=None):
     cell-types/tissues/samples.
 
     Parameters
-    __________
+    ----------
     A_scores : array-like
         Matrix of size NxM, where N are the proteins in the first
         column of a list of PPIs and M are the
@@ -221,7 +221,7 @@ def matmul_count_active(A_scores, B_scores, ppi_score=None):
     cell-types/tissues/samples.
 
     Parameters
-    __________
+    ----------
     A_scores : array-like
         Matrix of size NxM, where N are the proteins in the first
         column of a list of PPIs and M are the
@@ -253,7 +253,7 @@ def matmul_cosine(A_scores, B_scores, ppi_score=None):
     cell-types/tissues/samples.
 
     Parameters
-    __________
+    ----------
     A_scores : array-like
         Matrix of size NxM, where N are the proteins in the first
         column of a list of PPIs and M are the

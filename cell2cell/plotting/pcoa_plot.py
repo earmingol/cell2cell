@@ -81,6 +81,7 @@ def pcoa_3dplot(interaction_space, metadata=None, sample_col='#SampleID', group_
     -------
     results : dict
         Dictionary that contains:
+
         - 'fig' : matplotlib.figure.Figure, containing the whole figure
         - 'axes' : matplotlib.axes.Axes, containing the axes of the 3D plot
         - 'ordination' : Ordination or projection obtained from the PCoA

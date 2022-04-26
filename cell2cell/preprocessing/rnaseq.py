@@ -202,6 +202,7 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
         cells into their respective cell types. Used to perform the CCI
         analysis since it is on the cell types rather than single cells.
         Options are:
+
         - 'nn_cell_fraction' : Among the single cells composing a cell type, it
             calculates the fraction of single cells with non-zero count values
             of a given gene.

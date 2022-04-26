@@ -18,14 +18,16 @@ def load_table(filename, format='auto', sep='\t', sheet_name=0, compression=None
         Absolute path to a file storing a table.
 
     format : str, default='auto'
-        Format of the file. Options are:
-            - 'auto' : Automatically determines the format given
-                the file extension. Files ending with .gz will be
-                consider as tsv files.
-            - 'excel' : An excel file, either .xls or .xlsx
-            - 'csv' : Comma separated value format
-            - 'tsv' : Tab separated value format
-            - 'txt' : Text file
+        Format of the file.
+        Options are:
+
+        - 'auto' : Automatically determines the format given
+            the file extension. Files ending with .gz will be
+            consider as tsv files.
+        - 'excel' : An excel file, either .xls or .xlsx
+        - 'csv' : Comma separated value format
+        - 'tsv' : Tab separated value format
+        - 'txt' : Text file
 
     sep : str, default='\t'
         Separation between columns. Examples are: '\t', ' ', ';', ',', etc.
@@ -35,12 +37,13 @@ def load_table(filename, format='auto', sep='\t', sheet_name=0, compression=None
         sheet positions. Lists of strings/integers are used to request
         multiple sheets. Specify None to get all sheets.
         Available cases:
-            - Defaults to 0: 1st sheet as a DataFrame
-            - 1: 2nd sheet as a DataFrame
-            - "Sheet1": Load sheet with name “Sheet1”
-            - [0, 1, "Sheet5"]: Load first, second and sheet named
-                “Sheet5” as a dict of DataFrame
-            - None: All sheets.
+
+        - Defaults to 0: 1st sheet as a DataFrame
+        - 1: 2nd sheet as a DataFrame
+        - "Sheet1": Load sheet with name “Sheet1”
+        - [0, 1, "Sheet5"]: Load first, second and sheet named
+            “Sheet5” as a dict of DataFrame
+        - None: All sheets.
 
     compression : str, or None, default=‘infer’
         For on-the-fly decompression of on-disk data. If ‘infer’, detects
@@ -190,6 +193,8 @@ def load_metadata(metadata_file, cell_labels=None, index_col=None, **kwargs):
 def load_cutoffs(cutoff_file, gene_column=None, drop_nangenes=True, log_transformation=False, verbose=True, **kwargs):
     '''Loads a table of cutoff of thresholding values for each gene.
 
+    Parameters
+    ----------
     cutoff_file : str
         Absolute path to a file containing thresholding values for genes.
         Genes are rows and threshold values are in the only column beyond

@@ -163,7 +163,7 @@ def compute_ccc_matrix(prot_a_exp, prot_b_exp, communication_score='expression_p
     different cell-types/tissues/samples.
 
     Parameters
-    __________
+    ----------
     prot_a_exp : array-like
         Vector with gene expression levels for an interacting protein A
         in a given PPI. Coordinates are different cell-types/tissues/samples.
@@ -175,12 +175,13 @@ def compute_ccc_matrix(prot_a_exp, prot_b_exp, communication_score='expression_p
     communication_score : str, default='expression_product'
         Scoring function for computing the communication score.
         Options are:
-            - 'expression_product' : Multiplication between the expression
-                of the interacting proteins.
-            - 'expression_mean' : Average between the expression
-                of the interacting proteins.
-            - 'expression_gmean' : Geometric mean between the expression
-                of the interacting proteins.
+
+        - 'expression_product' : Multiplication between the expression
+            of the interacting proteins.
+        - 'expression_mean' : Average between the expression
+            of the interacting proteins.
+        - 'expression_gmean' : Geometric mean between the expression
+            of the interacting proteins.
 
     Returns
     -------
@@ -216,10 +217,11 @@ def aggregate_ccc_matrices(ccc_matrices, method='gmean'):
 
     method : str, default='gmean'.
         Method to aggregate the matrices element-wise.
-            Options are:
-            - 'gmean' : Geometric mean in an element-wise way.
-            - 'sum' : Sum in an element-wise way.
-            - 'mean' : Mean in an element-wise way.
+        Options are:
+
+        - 'gmean' : Geometric mean in an element-wise way.
+        - 'sum' : Sum in an element-wise way.
+        - 'mean' : Mean in an element-wise way.
 
     Returns
     -------

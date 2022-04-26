@@ -114,7 +114,7 @@ def flatten_factor_ccc_networks(networks, orderby='senders'):
     where rows are factors and columns are cell-cell pairs.
 
     Parameters
-    ---------
+    ----------
     networks : dict
         A dictionary containing a pandas.DataFrame for each of the factors
         (factor names are the keys of the dict). These dataframes are the

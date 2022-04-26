@@ -25,6 +25,7 @@ class BaseTensor():
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
+
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
@@ -37,6 +38,7 @@ class BaseTensor():
 
     how : str
         Approach to consider cell types and genes present across multiple contexts.
+
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
         - 'outer' : Considers all cell types and genes present across contexts
@@ -121,6 +123,7 @@ class BaseTensor():
 
         tf_type : str, default='non_negative_cp'
             Type of Tensor Factorization.
+
             - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
 
         init : str, default='svd'
@@ -417,7 +420,8 @@ class BaseTensor():
             return 0.0
         else:
             fraction = tl.sum(self.mask) / tl.prod(tl.tensor(self.tensor.shape))
-            return 1.0 - fraction.item()
+            excluded_fraction = 1.0 - fraction.item()
+            return excluded_fraction
 
     def explained_variance(self):
         '''Computes the explained variance score for a tensor decomposition. Inspired on the
@@ -456,7 +460,7 @@ class InteractionTensor(BaseTensor):
      and a list of ligand-receptor pairs
 
     Parameters
-    __________
+    ----------
     rnaseq_matrices : list
         A list with dataframes of gene expression wherein the rows are the genes and
         columns the cell types, tissues or samples.
@@ -477,6 +481,7 @@ class InteractionTensor(BaseTensor):
 
     how : str, default='inner'
         Approach to consider cell types and genes present across multiple contexts.
+
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
         - 'outer' : Considers all cell types and genes present across contexts
@@ -486,6 +491,7 @@ class InteractionTensor(BaseTensor):
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
+
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
@@ -518,6 +524,7 @@ class InteractionTensor(BaseTensor):
 
     group_ppi_method : str, default='gmean'
         Method for aggregating multiple PPIs into major groups.
+
         - 'mean' : Computes the average communication score among all PPIs of the
                    group for a given pair of cells/tissues/samples
         - 'gmean' : Computes the geometric mean of the communication scores among all
@@ -531,10 +538,6 @@ class InteractionTensor(BaseTensor):
 
     verbose : boolean, default=False
             Whether printing or not steps of the analysis.
-
-    Attributes
-    ----------
-    Same attributes as cell2cell.tensor.BaseTensor
     '''
     def __init__(self, rnaseq_matrices, ppi_data, order_labels=None, context_names=None, how='inner',
                  communication_score='expression_mean', complex_sep=None, upper_letter_comparison=True,
@@ -634,10 +637,6 @@ class PreBuiltTensor(BaseTensor):
     device : str, default=None
         Device to use when backend is pytorch. Options are:
          {'cpu', 'cuda:0', None}
-
-    Attributes
-    ----------
-    Same attributes as cell2cell.tensor.BaseTensor
     '''
     def __init__(self, tensor, order_names, order_labels=None, mask=None, device=None):
         # Init BaseTensor
@@ -667,12 +666,13 @@ class PreBuiltTensor(BaseTensor):
 def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communication_score='expression_product',
                              complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'),
                              group_ppi_by=None, group_ppi_method='gmean', verbose=True):
-    '''Builds a 4D-Communication tensor. Takes the gene expression matrices and the
-    list of PPIs to compute the communication scores between the interacting cells
-    for each PPI. This is done for each context.
+    '''Builds a 4D-Communication tensor.
+    Takes the gene expression matrices and the list of PPIs to compute
+    the communication scores between the interacting cells for each PPI.
+    This is done for each context.
 
     Parameters
-    __________
+    ----------
     rnaseq_matrices : list
         A list with dataframes of gene expression wherein the rows are the genes and
         columns the cell types, tissues or samples.
@@ -682,13 +682,9 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         contain at least two columns, one for the first protein partner in the
         interaction as well as the second protein partner.
 
-    context_names : list, default=None
-        A list of strings containing the names of the corresponding contexts to each
-        rnaseq_matrix. The length of this list must match the length of the list
-        rnaseq_matrices.
-
     how : str, default='inner'
         Approach to consider cell types and genes present across multiple contexts.
+
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
         - 'outer' : Considers all cell types and genes present across contexts
@@ -698,6 +694,7 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
+
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
@@ -730,6 +727,7 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
 
     group_ppi_method : str, default='gmean'
         Method for aggregating multiple PPIs into major groups.
+
         - 'mean' : Computes the average communication score among all PPIs of the
                    group for a given pair of cells/tissues/samples
         - 'gmean' : Computes the geometric mean of the communication scores among all
@@ -762,7 +760,6 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         missing values (e.g., cell types that are not present in a given context),
         while using how='inner' makes the mask_tensor to be None.
     '''
-
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
     df_cols = [list(rnaseq.columns) for rnaseq in rnaseq_matrices]
     if how == 'inner':
@@ -846,6 +843,7 @@ def generate_ccc_tensor(rnaseq_data, ppi_data, communication_score='expression_p
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
+
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.
@@ -905,6 +903,7 @@ def aggregate_ccc_tensor(ccc_tensor, ppi_data, group_ppi_by=None, group_ppi_meth
 
     group_ppi_method : str, default='gmean'
         Method for aggregating multiple PPIs into major groups.
+
         - 'mean' : Computes the average communication score among all PPIs of the
                    group for a given pair of cells/tissues/samples
         - 'gmean' : Computes the geometric mean of the communication scores among all
@@ -1016,6 +1015,7 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
 
     how : str, default='inner'
         Approach to consider cell types and genes present across multiple contexts.
+
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
         - 'outer' : Considers all cell types and genes present across contexts
@@ -1025,6 +1025,7 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
         Available communication_scores are:
+
         - 'expression_mean' : Computes the average between the expression of a ligand
                               from a sender cell and the expression of a receptor on a
                               receiver cell.

@@ -19,11 +19,13 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
         A lyst of cell-type/tissue/sample names.
 
     cci_type : str,
-        Type of interactions. Options are:
-            - 'directed' : Directed cell-cell interactions, so pair A-B is different
-                to pair B-A and both are considered.
-            - 'undirected0 : Undirected cell-cell interactions, so pair A-B is equal
-                to pair B-A and just one of them is considered.
+        Type of interactions.
+        Options are:
+
+        - 'directed' : Directed cell-cell interactions, so pair A-B is different
+            to pair B-A and both are considered.
+        - 'undirected' : Undirected cell-cell interactions, so pair A-B is equal
+            to pair B-A and just one of them is considered.
 
     self_interaction : boolean, default=True
         Whether considering autocrine interactions (pair A-A, B-B, etc).
@@ -191,43 +193,47 @@ class InteractionSpace():
         Contains two keys: 'type' and 'parameter'. The first key represent the
         way to use a cutoff or threshold, while parameter is the value used
         to binarize the expression values.
-
         The key 'type' can be:
-            - 'local_percentile' : computes the value of a given percentile, for each
-                gene independently. In this case, the parameter corresponds to the
-                percentile to compute, as a float value between 0 and 1.
-            - 'global_percentile' : computes the value of a given percentile from all
-                genes and samples simultaneously. In this case, the parameter
-                corresponds to the percentile to compute, as a float value between
-                0 and 1. All genes have the same cutoff.
-            - 'file' : load a cutoff table from a file. Parameter in this case is the
-                path of that file. It must contain the same genes as index and same
-                samples as columns.
-            - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
-                for each gene in each sample. This allows to use specific cutoffs for
-                each sample. The columns here must be the same as the ones in the
-                rnaseq_data.
-            - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
-                for each gene in only one column. These cutoffs will be applied to
-                all samples.
-            - 'constant_value' : binarizes the expression. Evaluates whether
-                expression is greater than the value input in the parameter.
+
+        - 'local_percentile' : computes the value of a given percentile, for each
+            gene independently. In this case, the parameter corresponds to the
+            percentile to compute, as a float value between 0 and 1.
+        - 'global_percentile' : computes the value of a given percentile from all
+            genes and samples simultaneously. In this case, the parameter
+            corresponds to the percentile to compute, as a float value between
+            0 and 1. All genes have the same cutoff.
+        - 'file' : load a cutoff table from a file. Parameter in this case is the
+            path of that file. It must contain the same genes as index and same
+            samples as columns.
+        - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
+            for each gene in each sample. This allows to use specific cutoffs for
+            each sample. The columns here must be the same as the ones in the
+            rnaseq_data.
+        - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
+            for each gene in only one column. These cutoffs will be applied to
+            all samples.
+        - 'constant_value' : binarizes the expression. Evaluates whether
+            expression is greater than the value input in the parameter.
 
     communication_score : str, default='expression_thresholding'
         Type of communication score used to detect active ligand-receptor
         pairs between each pair of cell. See
-        cell2cell.core.communication_scores for more details. It can be:
-            - 'expression_thresholding'
-            - 'expression_product'
-            - 'expression_mean'
-            - 'expression_gmean'
+        cell2cell.core.communication_scores for more details.
+        It can be:
+
+        - 'expression_thresholding'
+        - 'expression_product'
+        - 'expression_mean'
+        - 'expression_gmean'
 
     cci_score : str, default='bray_curtis'
         Scoring function to aggregate the communication scores. See
-        cell2cell.core.cci_scores for more details. It can be:
-            - 'bray_curtis'
-            - 'jaccard'
-            - 'count'
+        cell2cell.core.cci_scores for more details.
+        It can be:
+
+        - 'bray_curtis'
+        - 'jaccard'
+        - 'count'
 
     cci_type : str, default='undirected'
         Type of interaction between two cells. If it is undirected, all ligands
@@ -235,8 +241,9 @@ class InteractionSpace():
         from one cell and receptors from the other are considered separately with
         respect to ligands from the second cell and receptor from the first one.
         So, it can be:
-            - 'undirected'
-            - 'directed
+
+        - 'undirected'
+        - 'directed'
 
     cci_matrix_template : pandas.DataFrame, default=None
         A matrix of shape MxM where M are cell-types/tissues/samples. This
@@ -262,18 +269,22 @@ class InteractionSpace():
     communication_score : str
         Type of communication score used to detect active ligand-receptor
         pairs between each pair of cell. See
-        cell2cell.core.communication_scores for more details. It can be:
-            - 'expression_thresholding'
-            - 'expression_product'
-            - 'expression_mean'
-            - 'expression_gmean'
+        cell2cell.core.communication_scores for more details.
+        It can be:
+
+        - 'expression_thresholding'
+        - 'expression_product'
+        - 'expression_mean'
+        - 'expression_gmean'
 
     cci_score : str
         Scoring function to aggregate the communication scores. See
-        cell2cell.core.cci_scores for more details. It can be:
-            - 'bray_curtis'
-            - 'jaccard'
-            - 'count'
+        cell2cell.core.cci_scores for more details.
+        It can be:
+
+        - 'bray_curtis'
+        - 'jaccard'
+        - 'count'
 
     cci_type : str
         Type of interaction between two cells. If it is undirected, all ligands
@@ -281,8 +292,9 @@ class InteractionSpace():
         from one cell and receptors from the other are considered separately with
         respect to ligands from the second cell and receptor from the first one.
         So, it can be:
-            - 'undirected'
-            - 'directed
+
+        - 'undirected'
+        - 'directed'
 
     ppi_data : pandas.DataFrame
         List of protein-protein interactions (or ligand-receptor pairs) used
@@ -371,7 +383,9 @@ class InteractionSpace():
             Scoring function to aggregate the communication scores between
             a pair of cells. It computes an overall potential of cell-cell
             interactions. If None, it will use the one stored in the
-            attribute analysis_setup of this object. Options:
+            attribute analysis_setup of this object.
+            Options:
+
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells uses
@@ -418,7 +432,9 @@ class InteractionSpace():
             Scoring function to aggregate the communication scores between
             a pair of cells. It computes an overall potential of cell-cell
             interactions. If None, it will use the one stored in the
-            attribute analysis_setup of this object. Options:
+            attribute analysis_setup of this object.
+            Options:
+            
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells uses
@@ -497,6 +513,7 @@ class InteractionSpace():
             If None, the score stored in the attribute analysis_setup
             will be used.
             Available communication_scores are:
+
             - 'expression_thresholding' : Computes the joint presence of a
                                          ligand from a sender cell and of
                                          a receptor on a receiver cell from
@@ -561,13 +578,14 @@ class InteractionSpace():
         a given pair of sender-receiver cell
 
         Parameters
-        ---------
+        ----------
         communication_score : str, default=None
             Type of communication score to infer the potential use of
             a given ligand-receptor pair by a pair of cells/tissues/samples.
             If None, the score stored in the attribute analysis_setup
             will be used.
             Available communication_scores are:
+
             - 'expression_thresholding' : Computes the joint presence of a
                                          ligand from a sender cell and of
                                          a receptor on a receiver cell from

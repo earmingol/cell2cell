@@ -61,6 +61,7 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
     text_format : str, default='star'
         Format to display the results of the statistical test.
         Options are:
+
         - 'star', to display P- values < 1e-4 as "****"; < 1e-3 as "***";
                   < 1e-2 as "**"; < 0.05 as "*", and < 1 as "ns".
         - 'simple', to display P-values < 1e-5 as "1e-5"; < 1e-4 as "1e-4";
@@ -250,14 +251,16 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
         'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule'.
 
     method : str, 'ward' by default
-        Method to compute the linkage. It could be:
-        'single'
-        'complete'
-        'average'
-        'weighted'
-        'centroid'
-        'median'
-        'ward'
+        Method to compute the linkage.
+        It could be:
+
+        - 'single'
+        - 'complete'
+        - 'average'
+        - 'weighted'
+        - 'centroid'
+        - 'median'
+        - 'ward'
         For more details, go to:
         https://docs.scipy.org/doc/scipy-0.19.0/reference/generated/scipy.cluster.hierarchy.linkage.html
 

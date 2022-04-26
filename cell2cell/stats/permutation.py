@@ -35,12 +35,13 @@ def compute_pvalue_from_dist(obs_value, dist, consider_size=False, comparison='u
 
     comparison : str, default='upper'
         Type of hypothesis testing:
-            - 'lower' : Lower-tailed, whether the value is smaller than most
-                of the values in the distribution.
-            - 'upper' : Upper-tailed, whether the value is greater than most
-                of the values in the distribution.
-            - 'different' : Two-tailed, whether the value is different than
-                most of the values in the distribution.
+
+        - 'lower' : Lower-tailed, whether the value is smaller than most
+            of the values in the distribution.
+        - 'upper' : Upper-tailed, whether the value is greater than most
+            of the values in the distribution.
+        - 'different' : Two-tailed, whether the value is different than
+            most of the values in the distribution.
     '''
     if comparison == 'lower':
         pval = scipy.stats.percentileofscore(dist, obs_value) / 100.0
@@ -86,12 +87,13 @@ def pvalue_from_dist(obs_value, dist, label='', consider_size=False, comparison=
 
     comparison : str, default='upper'
         Type of hypothesis testing:
-            - 'lower' : Lower-tailed, whether the value is smaller than most
-                of the values in the distribution.
-            - 'upper' : Upper-tailed, whether the value is greater than most
-                of the values in the distribution.
-            - 'different' : Two-tailed, whether the value is different than
-                most of the values in the distribution.
+
+        - 'lower' : Lower-tailed, whether the value is smaller than most
+            of the values in the distribution.
+        - 'upper' : Upper-tailed, whether the value is greater than most
+            of the values in the distribution.
+        - 'different' : Two-tailed, whether the value is different than
+            most of the values in the distribution.
 
     Returns
     -------
@@ -159,12 +161,14 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
         for the receptors.
 
     permuted_column : str, default='both'
-        Column among the interacting_columns to permute. Options are:
-            - 'first' : To permute labels considering only proteins in the first
-                column.
-            - 'second' : To permute labels considering only proteins in the second
-                column.
-            ' both' : To permute labels considering all the proteins in the list.
+        Column among the interacting_columns to permute.
+        Options are:
+
+        - 'first' : To permute labels considering only proteins in the first
+            column.
+        - 'second' : To permute labels considering only proteins in the second
+            column.
+        - ' both' : To permute labels considering all the proteins in the list.
 
     Returns
     ------
@@ -225,22 +229,28 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
         analyses. Three main setups are needed (passed as keys):
 
         - 'communication_score' : is the type of communication score used to detect
-            active ligand-receptor pairs between each pair of cell. It can be:
-                - 'expression_thresholding'
-                - 'expression_product'
-                - 'expression_mean'
+            active ligand-receptor pairs between each pair of cell.
+            It can be:
+
+            - 'expression_thresholding'
+            - 'expression_product'
+            - 'expression_mean'
         - 'cci_score' : is the scoring function to aggregate the communication
-            scores. It can be:
-                - 'bray_curtis'
-                - 'jaccard'
-                - 'count'
+            scores.
+            It can be:
+
+            - 'bray_curtis'
+            - 'jaccard'
+            - 'count'
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
              are considered separately with respect to ligands from the second
-             cell and receptor from the first one. So, it can be:
-                - 'undirected'
-                - 'directed
+             cell and receptor from the first one.
+             So, it can be:
+
+             - 'undirected'
+             - 'directed
 
     cutoff_setup : dict
         Contains two keys: 'type' and 'parameter'. The first key represent the
@@ -248,25 +258,26 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
         to binarize the expression values.
 
         The key 'type' can be:
-            - 'local_percentile' : computes the value of a given percentile, for each
-                gene independently. In this case, the parameter corresponds to the
-                percentile to compute, as a float value between 0 and 1.
-            - 'global_percentile' : computes the value of a given percentile from all
-                genes and samples simultaneously. In this case, the parameter
-                corresponds to the percentile to compute, as a float value between
-                0 and 1. All genes have the same cutoff.
-            - 'file' : load a cutoff table from a file. Parameter in this case is the
-                path of that file. It must contain the same genes as index and same
-                samples as columns.
-            - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
-                for each gene in each sample. This allows to use specific cutoffs for
-                each sample. The columns here must be the same as the ones in the
-                rnaseq_data.
-            - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
-                for each gene in only one column. These cutoffs will be applied to
-                all samples.
-            - 'constant_value' : binarizes the expression. Evaluates whether
-                expression is greater than the value input in the parameter.
+
+        - 'local_percentile' : computes the value of a given percentile, for each
+            gene independently. In this case, the parameter corresponds to the
+            percentile to compute, as a float value between 0 and 1.
+        - 'global_percentile' : computes the value of a given percentile from all
+            genes and samples simultaneously. In this case, the parameter
+            corresponds to the percentile to compute, as a float value between
+            0 and 1. All genes have the same cutoff.
+        - 'file' : load a cutoff table from a file. Parameter in this case is the
+            path of that file. It must contain the same genes as index and same
+            samples as columns.
+        - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
+            for each gene in each sample. This allows to use specific cutoffs for
+            each sample. The columns here must be the same as the ones in the
+            rnaseq_data.
+        - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
+            for each gene in only one column. These cutoffs will be applied to
+            all samples.
+        - 'constant_value' : binarizes the expression. Evaluates whether
+            expression is greater than the value input in the parameter.
 
     permutations : int, default=100
             Number of permutations where in each of them a random
