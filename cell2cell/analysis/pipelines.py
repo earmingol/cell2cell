@@ -701,11 +701,14 @@ class SingleCellInteractions:
                 interaction_space.compute_pairwise_cci_scores(verbose=False)
                 randomized_scores.append(interaction_space.interaction_elements['cci_matrix'].values.flatten())
 
+        randomized_scores = np.array(randomized_scores)
         base_scores = score.values.flatten()
         pvals = np.ones(base_scores.shape)
         for i in range(len(base_scores)):
+            dist = randomized_scores[:, i]
+            dist = np.append(dist, base_scores[i])
             pvals[i] = permutation.compute_pvalue_from_dist(obs_value=base_scores[i],
-                                                            dist=np.array(randomized_scores)[:, i],
+                                                            dist=dist,
                                                             consider_size=True,
                                                             comparison='different'
                                                             )

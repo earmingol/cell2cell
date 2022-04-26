@@ -35,7 +35,7 @@ def hypergeom_representation(sample_size, class_in_sample, population_size, clas
     nonclass_in_sample = sample_size - class_in_sample
     nonclass_in_population = population_size - class_in_population
 
-    # Remaining cards in deck after sampling
+    # Remaining elements in population after sampling
     rem_class = class_in_population - class_in_sample
     rem_nonclass = nonclass_in_population - nonclass_in_sample
 
@@ -88,13 +88,11 @@ def fisher_representation(sample_size, class_in_sample, population_size, class_i
     rem_nonclass = nonclass_in_population - nonclass_in_sample
 
     # Depletion Analysis
-
     depletion_odds, depletion_fisher_p_val = st.fisher_exact([[class_in_sample, rem_class],
                                                               [nonclass_in_sample, rem_nonclass]],
                                                              alternative='less')
 
     # Enrichment Analysis
-
     enrichment_odds, enrichment_fisher_p_val = st.fisher_exact([[class_in_sample, rem_class],
                                                                 [nonclass_in_sample, rem_nonclass]],
                                                                alternative='greater')
