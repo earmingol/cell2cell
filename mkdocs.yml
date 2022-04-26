@@ -49,7 +49,7 @@ markdown_extensions:
 nav:
   - "Home": index.md
   - "API Documentation": documentation.md
-  - "Tutorials":
+  - "Tensor-cell2cell Tutorials":
     - tutorials/01-Tensor-Factorization-ASD.ipynb
     - tutorials/02-Factor-Specific-ASD.ipynb
     - tutorials/03-GSEA-ASD.ipynb
