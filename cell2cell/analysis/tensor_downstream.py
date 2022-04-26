@@ -198,7 +198,7 @@ def compute_gini_coefficients(result, sender_label='Sender Cells', receiver_labe
                                         dim2=receiver_label,
                                         factor=f
                                         )
-        gini = gini_coefficient(factor_net.flatten())
+        gini = gini_coefficient(factor_net.values.flatten())
         ginis.append((f, gini))
     gini_df = pd.DataFrame.from_records(ginis, columns=['Factor', 'Gini'])
     return gini_df
