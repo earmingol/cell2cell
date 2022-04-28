@@ -506,7 +506,7 @@ class SingleCellInteractions:
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
-            
+
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
