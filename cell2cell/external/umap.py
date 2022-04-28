@@ -8,7 +8,7 @@ import scipy.spatial as sp
 def run_umap(rnaseq_data, axis=1, metric='euclidean', min_dist=0.4, n_neighbors=8, random_state=None, **kwargs):
     '''Runs UMAP on a expression matrix.
     Parameters
-    __________
+    ----------
     rnaseq_data : pandas.DataFrame
         A dataframe of gene expression values wherein the rows are the genes or
         embeddings of a dimensionality reduction method and columns the cells,

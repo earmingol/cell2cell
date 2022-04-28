@@ -13,7 +13,7 @@ def agents_number(n_jobs):
     jobs/threads requested.
 
     Parameters
-    ---------
+    ----------
     n_jobs : int
         Number of threads for parallelization.
 

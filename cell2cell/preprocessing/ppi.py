@@ -627,7 +627,7 @@ def get_all_to_all_ppi(ppi_data, proteins, interaction_columns=('A', 'B')):
     columns of interacting partners.
 
     Parameters
-    ---------
+    ----------
     ppi_data : pandas.DataFrame
         List of protein-protein interactions (or ligand-receptor pairs) used
         for inferring the cell-cell interactions and communication.

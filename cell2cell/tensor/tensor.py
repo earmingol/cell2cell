@@ -116,7 +116,7 @@ class BaseTensor():
         '''Performs a Tensor Factorization
 
         Parameters
-        ---------
+        ----------
         rank : int
             Rank of the Tensor Factorization (number of factors to deconvolve the original
             tensor).
