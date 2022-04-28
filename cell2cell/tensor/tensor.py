@@ -113,7 +113,9 @@ class BaseTensor():
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
                                      runs=1, normalize_loadings=True, var_ordered_factors=True, **kwargs):
-        '''Performs a Tensor Factorization
+        '''Performs a Tensor Factorization.
+        There are no returns, instead the attributes factors and rank
+         of the Tensor class are updated.
 
         Parameters
         ----------
@@ -151,18 +153,6 @@ class BaseTensor():
 
         **kwargs : dict
             Extra arguments for the tensor factorization according to inputs in tensorly.
-
-        Returns
-        -------
-        There are no returns, instead the attributes of the Tensor class are updated.
-
-        self.factors : dict
-            Ordered dictionary containing a dataframe with the factor loadings for each
-            dimension/order of the tensor.
-
-        self.rank : int
-            Rank of the Tensor Factorization (number of factors to deconvolve the original
-            tensor).
         '''
         tensor_dim = len(self.tensor.shape)
         best_err = np.inf
