@@ -85,7 +85,7 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
     group_label_rotation : int, default=45
         Angle of rotation for the tick labels in the X axis.
 
-    y_label : str, default='Context Loadings'
+    ylabel : str, default='Context Loadings'
         Label for the Y axis.
 
     dot_color : str, default='lightsalmon'
