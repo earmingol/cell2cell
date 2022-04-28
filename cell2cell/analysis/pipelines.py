@@ -59,9 +59,9 @@ class BulkInteractions:
         cells. It computes an overall potential of cell-cell interactions.
         Options:
 
-        - 'bray_curtis' : Bray-Curtis-like score
-        - 'jaccard' : Jaccard-like score
-        - 'count' : Number of LR pairs that the pair of cells use
+        - 'bray_curtis' : Bray-Curtis-like score.
+        - 'jaccard' : Jaccard-like score.
+        - 'count' : Number of LR pairs that the pair of cells use.
 
     cci_type : str, default='undirected'
         Specifies whether computing the cci_score in a directed or undirected
@@ -156,7 +156,7 @@ class BulkInteractions:
             So, it can be:
 
             - 'undirected'
-            - 'directed
+            - 'directed'
 
     cutoff_setup : dict
         Contains two keys: 'type' and 'parameter'. The first key represent the
@@ -251,9 +251,9 @@ class BulkInteractions:
             attribute analysis_setup of this object.
             Options:
 
-            - 'bray_curtis' : Bray-Curtis-like score
-            - 'jaccard' : Jaccard-like score
-            - 'count' : Number of LR pairs that the pair of cells use
+            - 'bray_curtis' : Bray-Curtis-like score.
+            - 'jaccard' : Jaccard-like score.
+            - 'count' : Number of LR pairs that the pair of cells use.
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
@@ -325,7 +325,7 @@ class BulkInteractions:
             It can be:
 
             - 'undirected'
-            - 'directed
+            - 'directed'
             If None, the one stored in the attribute analysis_setup
             will be used.
 
@@ -398,9 +398,9 @@ class SingleCellInteractions:
         cells. It computes an overall potential of cell-cell interactions.
         Options:
 
-        - 'bray_curtis' : Bray-Curtis-like score
-        - 'jaccard' : Jaccard-like score
-        - 'count' : Number of LR pairs that the pair of cells use
+        - 'bray_curtis' : Bray-Curtis-like score.
+        - 'jaccard' : Jaccard-like score.
+        - 'count' : Number of LR pairs that the pair of cells use.
 
     cci_type : str, default='undirected'
         Specifies whether computing the cci_score in a directed or undirected
@@ -510,7 +510,7 @@ class SingleCellInteractions:
             So, it can be:
 
             - 'undirected'
-            - 'directed
+            - 'directed'
 
     cutoff_setup : dict
         Contains two keys: 'type' and 'parameter'. The first key represent the
@@ -655,8 +655,8 @@ class SingleCellInteractions:
         evaluation : str, default='communication'
             Whether calculating P-values for CCI or communication scores.
 
-            - 'interactions' : For CCI scores
-            - 'communication' : For communication scores
+            - 'interactions' : For CCI scores.
+            - 'communication' : For communication scores.
 
         fdr_correction : boolean, default=True
             Whether performing a multiple test correction after
@@ -820,7 +820,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
             So, it can be:
 
             - 'undirected'
-            - 'directed
+            - 'directed'
 
     excluded_cells : list, default=None
         List of cells in the rnaseq_data to be excluded. If None, all cells
