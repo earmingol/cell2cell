@@ -818,7 +818,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
              are considered separately with respect to ligands from the second
              cell and receptor from the first one.
              So, it can be:
-             
+
                 - 'undirected'
                 - 'directed
 

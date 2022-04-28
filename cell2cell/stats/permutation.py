@@ -42,6 +42,12 @@ def compute_pvalue_from_dist(obs_value, dist, consider_size=False, comparison='u
             of the values in the distribution.
         - 'different' : Two-tailed, whether the value is different than
             most of the values in the distribution.
+
+    Returns
+    -------
+    pval : float
+        P-value obtained from comparing the observed value and values in the
+        distribution.
     '''
     if comparison == 'lower':
         pval = scipy.stats.percentileofscore(dist, obs_value) / 100.0
@@ -171,7 +177,7 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
         - ' both' : To permute labels considering all the proteins in the list.
 
     Returns
-    ------
+    -------
     ppi_data_ : pandas.DataFrame
         List of protein-protein interactions (or ligand-receptor pairs) with randomly
         permuted labels of proteins.
@@ -207,8 +213,7 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
 
 def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_setup, permutations=10000,
                           permuted_label='gene_labels', excluded_cells=None, consider_size=True, verbose=False):
-    '''
-    Permutes a label before computing cell-cell interaction scores.
+    '''Permutes a label before computing cell-cell interaction scores.
 
     Parameters
     ----------
@@ -256,7 +261,6 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
         Contains two keys: 'type' and 'parameter'. The first key represent the
         way to use a cutoff or threshold, while parameter is the value used
         to binarize the expression values.
-
         The key 'type' can be:
 
         - 'local_percentile' : computes the value of a given percentile, for each
@@ -285,7 +289,9 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
             CCI scores to create a null distribution.
 
     permuted_label : str, default='gene_labels'
-        Label to be permuted. Types are:
+        Label to be permuted.
+        Types are:
+
             - 'genes' : Permutes cell-labels in a gene-specific way.
             - 'gene_labels' : Permutes the labels of genes in the RNA-seq dataset.
             - 'cell_labels' : Permutes the labels of cell-types/tissues/samples

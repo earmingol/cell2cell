@@ -391,7 +391,7 @@ def get_genes_from_complexes(ppi_data, complex_sep='&', interaction_columns=('A'
         for the receptors.
 
     Returns
-    ------
+    -------
     col_a_genes : list
         List of protein/gene names for proteins and subunits in the first column
         of interacting partners.

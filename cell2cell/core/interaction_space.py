@@ -76,7 +76,7 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
 
     Parameters
     ----------
-    modified_rnaseq_data : pandas.DataFrame
+    modified_rnaseq : pandas.DataFrame
         Preprocessed gene expression data for a bulk or single-cell RNA-seq experiment.
         Columns are are cell-types/tissues/samples and rows are genes. The preprocessing
         may correspond to scoring the gene expression as binary or continuous values
