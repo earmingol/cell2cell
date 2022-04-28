@@ -508,7 +508,7 @@ class SingleCellInteractions:
              are considered separately with respect to ligands from the second
              cell and receptor from the first one.
              So, it can be:
-             
+
                 - 'undirected'
                 - 'directed
 
@@ -798,13 +798,17 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
         Three main setups are needed (passed as keys):
 
         - 'communication_score' : is the type of communication score used to detect
-            active ligand-receptor pairs between each pair of cell. It can be:
+            active ligand-receptor pairs between each pair of cell.
+            It can be:
+
                 - 'expression_thresholding'
                 - 'expression_product'
                 - 'expression_mean'
                 - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
-            scores. It can be:
+            scores.
+            It can be:
+
                 - 'bray_curtis'
                 - 'jaccard'
                 - 'count'
@@ -812,7 +816,9 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
              are considered separately with respect to ligands from the second
-             cell and receptor from the first one. So, it can be:
+             cell and receptor from the first one.
+             So, it can be:
+             
                 - 'undirected'
                 - 'directed
 
