@@ -59,9 +59,9 @@ class BulkInteractions:
         cells. It computes an overall potential of cell-cell interactions.
         Options:
 
-            - 'bray_curtis' : Bray-Curtis-like score
-            - 'jaccard' : Jaccard-like score
-            - 'count' : Number of LR pairs that the pair of cells use
+        - 'bray_curtis' : Bray-Curtis-like score
+        - 'jaccard' : Jaccard-like score
+        - 'count' : Number of LR pairs that the pair of cells use
 
     cci_type : str, default='undirected'
         Specifies whether computing the cci_score in a directed or undirected
@@ -137,26 +137,26 @@ class BulkInteractions:
             active ligand-receptor pairs between each pair of cell.
             It can be:
 
-                - 'expression_thresholding'
-                - 'expression_product'
-                - 'expression_mean'
-                - 'expression_gmean'
+            - 'expression_thresholding'
+            - 'expression_product'
+            - 'expression_mean'
+            - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
             scores.
             It can be:
 
-                - 'bray_curtis'
-                - 'jaccard'
-                - 'count'
+            - 'bray_curtis'
+            - 'jaccard'
+            - 'count'
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
-             are considered separately with respect to ligands from the second
-             cell and receptor from the first one.
-             So, it can be:
+            are considered separately with respect to ligands from the second
+            cell and receptor from the first one.
+            So, it can be:
 
-                - 'undirected'
-                - 'directed
+            - 'undirected'
+            - 'directed
 
     cutoff_setup : dict
         Contains two keys: 'type' and 'parameter'. The first key represent the
@@ -324,8 +324,8 @@ class BulkInteractions:
             if we want to consider a LR pair in both directions.
             It can be:
 
-                - 'undirected'
-                - 'directed
+            - 'undirected'
+            - 'directed
             If None, the one stored in the attribute analysis_setup
             will be used.
 
@@ -398,9 +398,9 @@ class SingleCellInteractions:
         cells. It computes an overall potential of cell-cell interactions.
         Options:
 
-            - 'bray_curtis' : Bray-Curtis-like score
-            - 'jaccard' : Jaccard-like score
-            - 'count' : Number of LR pairs that the pair of cells use
+        - 'bray_curtis' : Bray-Curtis-like score
+        - 'jaccard' : Jaccard-like score
+        - 'count' : Number of LR pairs that the pair of cells use
 
     cci_type : str, default='undirected'
         Specifies whether computing the cci_score in a directed or undirected
@@ -491,26 +491,26 @@ class SingleCellInteractions:
             active ligand-receptor pairs between each pair of cell.
             It can be:
 
-                - 'expression_thresholding'
-                - 'expression_product'
-                - 'expression_mean'
-                - 'expression_gmean'
+            - 'expression_thresholding'
+            - 'expression_product'
+            - 'expression_mean'
+            - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
             scores.
             It can be:
 
-                - 'bray_curtis'
-                - 'jaccard'
-                - 'count'
+            - 'bray_curtis'
+            - 'jaccard'
+            - 'count'
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
-             are considered separately with respect to ligands from the second
-             cell and receptor from the first one.
-             So, it can be:
+            are considered separately with respect to ligands from the second
+            cell and receptor from the first one.
+            So, it can be:
 
-                - 'undirected'
-                - 'directed
+            - 'undirected'
+            - 'directed
 
     cutoff_setup : dict
         Contains two keys: 'type' and 'parameter'. The first key represent the
@@ -518,25 +518,25 @@ class SingleCellInteractions:
         to binarize the expression values.
         The key 'type' can be:
 
-            - 'local_percentile' : computes the value of a given percentile, for each
-                gene independently. In this case, the parameter corresponds to the
-                percentile to compute, as a float value between 0 and 1.
-            - 'global_percentile' : computes the value of a given percentile from all
-                genes and samples simultaneously. In this case, the parameter
-                corresponds to the percentile to compute, as a float value between
-                0 and 1. All genes have the same cutoff.
-            - 'file' : load a cutoff table from a file. Parameter in this case is the
-                path of that file. It must contain the same genes as index and same
-                samples as columns.
-            - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
-                for each gene in each sample. This allows to use specific cutoffs for
-                each sample. The columns here must be the same as the ones in the
-                rnaseq_data.
-            - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
-                for each gene in only one column. These cutoffs will be applied to
-                all samples.
-            - 'constant_value' : binarizes the expression. Evaluates whether
-                expression is greater than the value input in the parameter.
+        - 'local_percentile' : computes the value of a given percentile, for each
+            gene independently. In this case, the parameter corresponds to the
+            percentile to compute, as a float value between 0 and 1.
+        - 'global_percentile' : computes the value of a given percentile from all
+            genes and samples simultaneously. In this case, the parameter
+            corresponds to the percentile to compute, as a float value between
+            0 and 1. All genes have the same cutoff.
+        - 'file' : load a cutoff table from a file. Parameter in this case is the
+            path of that file. It must contain the same genes as index and same
+            samples as columns.
+        - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
+            for each gene in each sample. This allows to use specific cutoffs for
+            each sample. The columns here must be the same as the ones in the
+            rnaseq_data.
+        - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
+            for each gene in only one column. These cutoffs will be applied to
+            all samples.
+        - 'constant_value' : binarizes the expression. Evaluates whether
+            expression is greater than the value input in the parameter.
 
     interaction_space : cell2cell.core.interaction_space.InteractionSpace
         Interaction space that contains all the required elements to perform the
@@ -772,25 +772,25 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
         to binarize the expression values.
         The key 'type' can be:
 
-            - 'local_percentile' : computes the value of a given percentile, for each
-                gene independently. In this case, the parameter corresponds to the
-                percentile to compute, as a float value between 0 and 1.
-            - 'global_percentile' : computes the value of a given percentile from all
-                genes and samples simultaneously. In this case, the parameter
-                corresponds to the percentile to compute, as a float value between
-                0 and 1. All genes have the same cutoff.
-            - 'file' : load a cutoff table from a file. Parameter in this case is the
-                path of that file. It must contain the same genes as index and same
-                samples as columns.
-            - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
-                for each gene in each sample. This allows to use specific cutoffs for
-                each sample. The columns here must be the same as the ones in the
-                rnaseq_data.
-            - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
-                for each gene in only one column. These cutoffs will be applied to
-                all samples.
-            - 'constant_value' : binarizes the expression. Evaluates whether
-                expression is greater than the value input in the parameter.
+        - 'local_percentile' : computes the value of a given percentile, for each
+            gene independently. In this case, the parameter corresponds to the
+            percentile to compute, as a float value between 0 and 1.
+        - 'global_percentile' : computes the value of a given percentile from all
+            genes and samples simultaneously. In this case, the parameter
+            corresponds to the percentile to compute, as a float value between
+            0 and 1. All genes have the same cutoff.
+        - 'file' : load a cutoff table from a file. Parameter in this case is the
+            path of that file. It must contain the same genes as index and same
+            samples as columns.
+        - 'multi_col_matrix' : a dataframe must be provided, containing a cutoff
+            for each gene in each sample. This allows to use specific cutoffs for
+            each sample. The columns here must be the same as the ones in the
+            rnaseq_data.
+        - 'single_col_matrix' : a dataframe must be provided, containing a cutoff
+            for each gene in only one column. These cutoffs will be applied to
+            all samples.
+        - 'constant_value' : binarizes the expression. Evaluates whether
+            expression is greater than the value input in the parameter.
 
     analysis_setup : dict
         Contains main setup for running the cell-cell interactions and communication
@@ -801,26 +801,26 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
             active ligand-receptor pairs between each pair of cell.
             It can be:
 
-                - 'expression_thresholding'
-                - 'expression_product'
-                - 'expression_mean'
-                - 'expression_gmean'
+            - 'expression_thresholding'
+            - 'expression_product'
+            - 'expression_mean'
+            - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
             scores.
             It can be:
 
-                - 'bray_curtis'
-                - 'jaccard'
-                - 'count'
+            - 'bray_curtis'
+            - 'jaccard'
+            - 'count'
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
-             are considered separately with respect to ligands from the second
-             cell and receptor from the first one.
-             So, it can be:
+            are considered separately with respect to ligands from the second
+            cell and receptor from the first one.
+            So, it can be:
 
-                - 'undirected'
-                - 'directed
+            - 'undirected'
+            - 'directed
 
     excluded_cells : list, default=None
         List of cells in the rnaseq_data to be excluded. If None, all cells
