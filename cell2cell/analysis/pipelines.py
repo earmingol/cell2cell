@@ -134,13 +134,17 @@ class BulkInteractions:
         Three main setups are needed (passed as keys):
 
         - 'communication_score' : is the type of communication score used to detect
-            active ligand-receptor pairs between each pair of cell. It can be:
+            active ligand-receptor pairs between each pair of cell.
+            It can be:
+
                 - 'expression_thresholding'
                 - 'expression_product'
                 - 'expression_mean'
                 - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
-            scores. It can be:
+            scores.
+            It can be:
+
                 - 'bray_curtis'
                 - 'jaccard'
                 - 'count'
@@ -148,7 +152,9 @@ class BulkInteractions:
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
              are considered separately with respect to ligands from the second
-             cell and receptor from the first one. So, it can be:
+             cell and receptor from the first one.
+             So, it can be:
+
                 - 'undirected'
                 - 'directed
 
@@ -156,8 +162,8 @@ class BulkInteractions:
         Contains two keys: 'type' and 'parameter'. The first key represent the
         way to use a cutoff or threshold, while parameter is the value used
         to binarize the expression values.
-
         The key 'type' can be:
+
             - 'local_percentile' : computes the value of a given percentile, for each
                 gene independently. In this case, the parameter corresponds to the
                 percentile to compute, as a float value between 0 and 1.
@@ -482,13 +488,17 @@ class SingleCellInteractions:
         Three main setups are needed (passed as keys):
 
         - 'communication_score' : is the type of communication score used to detect
-            active ligand-receptor pairs between each pair of cell. It can be:
+            active ligand-receptor pairs between each pair of cell.
+            It can be:
+
                 - 'expression_thresholding'
                 - 'expression_product'
                 - 'expression_mean'
                 - 'expression_gmean'
         - 'cci_score' : is the scoring function to aggregate the communication
-            scores. It can be:
+            scores.
+            It can be:
+
                 - 'bray_curtis'
                 - 'jaccard'
                 - 'count'
@@ -496,7 +506,9 @@ class SingleCellInteractions:
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
              are considered separately with respect to ligands from the second
-             cell and receptor from the first one. So, it can be:
+             cell and receptor from the first one.
+             So, it can be:
+             
                 - 'undirected'
                 - 'directed
 
