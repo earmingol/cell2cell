@@ -141,6 +141,7 @@ class BulkInteractions:
             - 'expression_product'
             - 'expression_mean'
             - 'expression_gmean'
+
         - 'cci_score' : is the scoring function to aggregate the communication
             scores.
             It can be:
@@ -148,6 +149,7 @@ class BulkInteractions:
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
@@ -326,6 +328,7 @@ class BulkInteractions:
 
             - 'undirected'
             - 'directed'
+
             If None, the one stored in the attribute analysis_setup
             will be used.
 
@@ -495,6 +498,7 @@ class SingleCellInteractions:
             - 'expression_product'
             - 'expression_mean'
             - 'expression_gmean'
+
         - 'cci_score' : is the scoring function to aggregate the communication
             scores.
             It can be:
@@ -502,6 +506,7 @@ class SingleCellInteractions:
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+            
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
@@ -805,6 +810,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
             - 'expression_product'
             - 'expression_mean'
             - 'expression_gmean'
+
         - 'cci_score' : is the scoring function to aggregate the communication
             scores.
             It can be:
@@ -812,6 +818,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
             If it is directed, ligands from one cell and receptors from the other
