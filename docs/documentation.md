@@ -22,7 +22,7 @@ visualizations to simplify the interpretation of results:
 - **cell2cell.utils** : Includes general utilities for analyzing networks and performing parallel computing.
 
 
-Bellow, all the inputs, parameters (including their different options), and outputs are detailed. Source code of the functions is also included.
+Below, all the inputs, parameters (including their different options), and outputs are detailed. Source code of the functions is also included.
 
 
 ::: cell2cell.analysis
