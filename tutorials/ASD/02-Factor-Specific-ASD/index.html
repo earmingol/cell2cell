@@ -4,23 +4,23 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <link rel="shortcut icon" href="../../img/favicon.ico" />
+      <link rel="shortcut icon" href="../../../img/favicon.ico" />
     <title>Downstream analysis 1: Factor-specific analyses - cell2cell</title>
-    <link rel="stylesheet" href="../../css/theme.css" />
-    <link rel="stylesheet" href="../../css/theme_extra.css" />
+    <link rel="stylesheet" href="../../../css/theme.css" />
+    <link rel="stylesheet" href="../../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
-        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+        <link href="../../../assets/_mkdocstrings.css" rel="stylesheet" />
     
       <script>
         // Current page data
         var mkdocs_page_name = "Downstream analysis 1: Factor-specific analyses";
-        var mkdocs_page_input_path = "tutorials/02-Factor-Specific-ASD.ipynb";
+        var mkdocs_page_input_path = "tutorials/ASD/02-Factor-Specific-ASD.ipynb";
         var mkdocs_page_url = null;
       </script>
     
-    <script src="../../js/jquery-3.6.0.min.js" defer></script>
+    <script src="../../../js/jquery-3.6.0.min.js" defer></script>
     <!--[if lt IE 9]>
-      <script src="../../js/html5shiv.min.js"></script>
+      <script src="../../../js/html5shiv.min.js"></script>
     <![endif]-->
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
       <script>hljs.initHighlightingOnLoad();</script> 
@@ -32,9 +32,9 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-          <a href="../.." class="icon icon-home"> cell2cell
+          <a href="../../.." class="icon icon-home"> cell2cell
         </a><div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+  <form id ="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
       <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
   </form>
 </div>
@@ -42,11 +42,11 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../..">Home</a>
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../../documentation/">API Documentation</a>
+                <li class="toctree-l1"><a class="reference internal" href="../../../documentation/">API Documentation</a>
                 </li>
               </ul>
               <p class="caption"><span class="caption-text">Tensor-cell2cell Tutorials</span></p>
@@ -55,9 +55,9 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="./">Downstream analysis 1: Factor-specific analyses</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#load-data">Load Data</a>
+    <li class="toctree-l2"><a class="reference internal" href="#1-load-data">1 - Load Data</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#downstream-analyses">Downstream Analyses</a>
+    <li class="toctree-l2"><a class="reference internal" href="#2-downstream-analyses">2 - Downstream Analyses</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#boxplots-to-compare-group-of-samplescontexts">Boxplots to compare group of samples/contexts</a>
     </li>
@@ -81,16 +81,16 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
       <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../..">cell2cell</a>
+          <a href="../../..">cell2cell</a>
         
       </nav>
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="../.." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+    <li><a href="../../.." class="icon icon-home" alt="Docs"></a> &raquo;</li>
           <li>Tensor-cell2cell Tutorials &raquo;</li><li>Downstream analysis 1: Factor-specific analyses</li>
     <li class="wy-breadcrumbs-aside">
-        <a href="https://github.com/earmingol/cell2cell/edit/master/docs/tutorials/02-Factor-Specific-ASD.ipynb"
+        <a href="https://github.com/earmingol/cell2cell/edit/master/docs/tutorials/ASD/02-Factor-Specific-ASD.ipynb"
           class="icon icon-github"> Edit on GitHub</a>
     </li>
   </ul>
@@ -1234,7 +1234,7 @@ warnings.filterwarnings('ignore')</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="load-data">Load Data<a class="anchor-link" href="#load-data">&#182;</a></h2>
+<h2 id="1-load-data">1 - Load Data<a class="anchor-link" href="#1-load-data">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -1436,7 +1436,7 @@ if not os.path.isdir(output_folder):
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="downstream-analyses">Downstream Analyses<a class="anchor-link" href="#downstream-analyses">&#182;</a></h2>
+<h2 id="2-downstream-analyses">2 - Downstream Analyses<a class="anchor-link" href="#2-downstream-analyses">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -1535,6 +1535,18 @@ jp-needs-light-background
 
 </div>
 
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p>From this analysis, the communication patterns identified in Factor 3 and Factor 4 are statistically significantly different between ASD and Control patients. In contrast, the remaining factors are not varying in a context-dependent manner, indicating that the differences in communication here are due to differences in the LR-pairs as well as cell types participating in communication.</p>
+
+</div>
+</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
@@ -1833,8 +1845,8 @@ ccc_threshold = 0.075</div>
 
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain">
 <pre>(&lt;Figure size 2304x1152 with 2 Axes&gt;,
- array([&lt;matplotlib.axes._subplots.AxesSubplot object at 0x7fb0f4385390&gt;,
-        &lt;matplotlib.axes._subplots.AxesSubplot object at 0x7fb0f4453090&gt;],
+ array([&lt;matplotlib.axes._subplots.AxesSubplot object at 0x7fe8dad7e4d0&gt;,
+        &lt;matplotlib.axes._subplots.AxesSubplot object at 0x7fe8dadb6950&gt;],
        dtype=object))</pre>
 </div>
 
@@ -1862,6 +1874,18 @@ class="
 
 </div>
 
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p>Here we see the factor-specific communication at the cell resolution. For factor 3, L5/6-CC, L5/6, and L2/3 have high centrality due to their strong sending signals, in agreement with the factor loading plots.</p>
+
+</div>
+</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
@@ -2000,6 +2024,20 @@ class="
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p>Considering the loadings obtained for both sender and receiver cells obtained from the decomposition:</p>
+<p><img src="../figures/tf.png" alt="tf"></p>
+<p>We observe that the lowest Gini coefficient was obtained by factor 1, which is consistent with its cell loadings. Both senders and receivers are more similar or homogeneous. In contrast, other factors had higher Gini coefficients, which is consistent with the fact that few cells are driving the communication (eg. endothelial cells are the only receivers involved in the communication captured by Factor 6).</p>
+
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h3 id="clustermaps">&#160;Clustermaps<a class="anchor-link" href="#clustermaps">&#182;</a></h3>
 </div>
 </div>
@@ -2103,6 +2141,18 @@ jp-needs-light-background
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p>Here patients are grouped by the importance that each the communication pattern (factor) has in relation to the others, within patient. Thus, a combination of communication patterns can explain differences at the sample-specific level. <a href="https://www.biorxiv.org/content/10.1101/2021.09.20.461129v2">In our manuscript</a> we showed that these clusters separate patients by ASD condition.</p>
+
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <p><strong>Cluster LR pairs by their importance across factors</strong></p>
 <p>To consider important LR pairs in at least one factor, set a loading_threshold. This value can be obtained in the way that user thinks is pertinent. Here we use <code>loading_threshold=0.1</code>.</p>
 
@@ -2181,69 +2231,17 @@ jp-needs-light-background
 </div>
 
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-        
-        
-        <div class="CodeMirror cm-s-jupyter">
-        <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-15">
-            <div>
-                <span class="notice" hidden>Copied!</span>
-                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
-                    <path fill="currentColor" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
-                    <path fill="currentColor" fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
-                </svg>
-                </div>
-            </clipboard-copy>
-        </div>
-            <div class="highlight-ipynb hl-python"><pre><span></span>
-</pre></div>
-<div id="cell-15" class="clipboard-copy-txt"></div>
-    
-        </div>
-    </div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p>In this case, LR pairs are grouped according to how differentially important they for one factor versus the others. This can give an idea of the molecular mechanisms that are crucial in each communication pattern.</p>
 
 </div>
 </div>
-
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell-inputWrapper">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-        
-        
-        <div class="CodeMirror cm-s-jupyter">
-        <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-16">
-            <div>
-                <span class="notice" hidden>Copied!</span>
-                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
-                    <path fill="currentColor" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
-                    <path fill="currentColor" fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
-                </svg>
-                </div>
-            </clipboard-copy>
-        </div>
-            <div class="highlight-ipynb hl-python"><pre><span></span>
-</pre></div>
-<div id="cell-16" class="clipboard-copy-txt"></div>
-    
-        </div>
-    </div>
-
-</div>
-</div>
-
 </div>
 </div>
 </div>
@@ -2288,10 +2286,10 @@ jp-needs-light-background
     
   </span>
 </div>
-    <script>var base_url = '../..';</script>
-    <script src="../../js/theme_extra.js" defer></script>
-    <script src="../../js/theme.js" defer></script>
-      <script src="../../search/main.js" defer></script>
+    <script>var base_url = '../../..';</script>
+    <script src="../../../js/theme_extra.js" defer></script>
+    <script src="../../../js/theme.js" defer></script>
+      <script src="../../../search/main.js" defer></script>
     <script defer>
         window.onload = function () {
             SphinxRtdTheme.Navigation.enable(true);

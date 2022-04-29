@@ -227,11 +227,11 @@
               </ul>
               <p class="caption"><span class="caption-text">Tensor-cell2cell Tutorials</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="../tutorials/01-Tensor-Factorization-ASD/">Obtaining patterns of cell-cell communication with Tensor-cell2cell</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../tutorials/ASD/01-Tensor-Factorization-ASD/">Obtaining patterns of cell-cell communication with Tensor-cell2cell</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../tutorials/02-Factor-Specific-ASD/">Downstream analysis 1: Factor-specific analyses</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../tutorials/ASD/02-Factor-Specific-ASD/">Downstream analysis 1: Factor-specific analyses</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../tutorials/03-GSEA-ASD/">Downstream analysis 2: Gene Set Enrichment Analysis</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../tutorials/ASD/03-GSEA-ASD/">Downstream analysis 2: Gene Set Enrichment Analysis</a>
                   </li>
               </ul>
       </div>
@@ -260,6 +260,27 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="documentation-for-cell2cell">Documentation for <em>cell2cell</em></h1>
+<p>This documentation is for our <em>cell2cell</em> suite, which includes the <a href="https://www.biorxiv.org/content/10.1101/2020.11.22.392217v3">regular cell2cell</a>
+and <a href="https://doi.org/10.1101/2021.09.20.461129">Tensor-cell2cell</a> tools. The former is for inferring cell-cell interactions
+and communication in one sample or context, while the latter is for deconvolving complex patterns
+of cell-cell communication across multiple samples or contexts simultaneously into interpretable factors
+representing patterns of communication.</p>
+<p>Here, multiple classes and functions are implemented to facilitate the analyses, including a variety of
+visualizations to simplify the interpretation of results:</p>
+<ul>
+<li><strong>cell2cell.analysis</strong> : Includes simplified pipelines for running the analyses, and functions for downstream analyses of Tensor-cell2cell</li>
+<li><strong>cell2cell.clustering</strong> : Includes multiple scipy-based functions for performing clustering methods.</li>
+<li><strong>cell2cell.core</strong> : Includes the core functions for inferring cell-cell interactions and communication. It includes scoring methods, cell classes, and interaction spaces.</li>
+<li><strong>cell2cell.datasets</strong> : Includes toy datasets and annotations for testing functions in basic scenarios.</li>
+<li><strong>cell2cell.external</strong> : Includes built-in approaches borrowed from other tools to avoid incompatibilities (e.g. UMAP, tensorly, and PCoA).</li>
+<li><strong>cell2cell.io</strong> : Includes functions for opening and saving diverse types of files.</li>
+<li><strong>cell2cell.plotting</strong> : Includes all the visualization options that <em>cell2cell</em> offers.</li>
+<li><strong>cell2cell.preprocessing</strong> : Includes functions for manipulating data and variables (e.g. data preprocessing, integration, permutation, among others).</li>
+<li><strong>cell2cell.stats</strong> : Includes statistical analyses such as enrichment analysis, multiple test correction methods, permutation approaches, and Gini coefficient.</li>
+<li><strong>cell2cell.tensor</strong> : Includes all functions pertinent to the analysis of <em>Tensor-cell2cell</em></li>
+<li><strong>cell2cell.utils</strong> : Includes general utilities for analyzing networks and performing parallel computing.</li>
+</ul>
+<p>Bellow, all the inputs, parameters (including their different options), and outputs are detailed. Source code of the functions is also included.</p>
 
 
   <div class="doc doc-object doc-module">
@@ -25745,7 +25766,7 @@ jobs/threads requested.</p>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href=".." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../tutorials/01-Tensor-Factorization-ASD/" class="btn btn-neutral float-right" title="Obtaining patterns of cell-cell communication with Tensor-cell2cell">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../tutorials/ASD/01-Tensor-Factorization-ASD/" class="btn btn-neutral float-right" title="Obtaining patterns of cell-cell communication with Tensor-cell2cell">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -25775,7 +25796,7 @@ jobs/threads requested.</p>
       <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../tutorials/01-Tensor-Factorization-ASD/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../tutorials/ASD/01-Tensor-Factorization-ASD/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
