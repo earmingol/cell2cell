@@ -5,12 +5,6 @@
 [pb]: https://badge.fury.io/py/cell2cell.svg
 [pypi]: https://pypi.org/project/cell2cell/
 
-## Getting started
-Please refer to the [cell2cell website](https://earmingol.github.io/cell2cell/), 
-which includes tutorials and documentation
-
-
-
 ## Installation
 **First, [install Anaconda following this tutorial](https://docs.anaconda.com/anaconda/install/)**
 
@@ -52,19 +46,13 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
 
 - Jupyter notebooks for reproducing the results in the manuscript of Tensor-cell2cell
   [are available and can be run online in codeocean.com](https://doi.org/10.24433/CO.0051950.v2).
-  It specifically contains analyses on datasets of **COVID-19, Autism Spectrum Disorders (ASD) and the embryonic development
-  of *C. elegans***. These analyses evaluate changes in
-  cell-cell communication dependent on: 
-    - [Different severities of COVID-19](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/06-BALF-Tensor-Factorization.html)
-    - [ASD condition of patients (including **downstream analyses from the loadings obtained with Tensor-cell2cell**)](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/11-Brain-ASD-Tensor-Factorization.html)
-    - [Multiple time points of the *C. elegans* development](https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/08-Celegans-Tensor-Factorization.html)
-- **A tutorial of running the simplest analysis of Tensor-cell2cell** on a dataset of control and interferon-beta-treated PBMCs from 8 donors
-  is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Tensor-cell2cell-PBMC.ipynb). <ins>This tutorial only shows 
-  how to run the tensor decomposition that generates loadings in each of the factors. These loadings can be further used for downstream analyses, as shown in the ASD example above.</ins>
-- **More detailed tutorials of running Tensor-cell2cell and downstream analyses [can be found here](https://earmingol.github.io/cell2cell/)**
+- **Detailed tutorials for running Tensor-cell2cell and downstream analyses:**
+    - [Obtaining patterns of cell-cell communication with Tensor-cell2cell](https://earmingol.github.io/cell2cell/tutorials/ASD/01-Tensor-Factorization-ASD/)
+    - [Downstream analysis 1: Factor-specific analyses](https://earmingol.github.io/cell2cell/tutorials/ASD/02-Factor-Specific-ASD/)
+    - [Downstream analysis 2: Gene Set Enrichment Analysis](https://earmingol.github.io/cell2cell/tutorials/ASD/03-GSEA-ASD/)
 - **Do you have precomputed communication scores?** Re-use them as a prebuilt tensor as [exemplified here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Loading-PreBuiltTensor.ipynb).
   This allows reusing previous tensors you built or even plugging in communication scores from other tools.
-- **Run Tensor-cell2cell much faster!** An example to perform the analysis using a **Nvidia GPU** is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/GPU-Example.ipynb)
+- **Run Tensor-cell2cell much faster!** An example to perform the analysis using a **NVIDIA GPU** is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/GPU-Example.ipynb)
 
 
 ---
@@ -87,6 +75,6 @@ associated with Memory. This may happen when the tensor is big enough to make th
 
 
 - **Tensor-cell2cell** should be cited using this pre-print in bioRxiv:
-    - Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Knight R., Lewis N.E.
+    - Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Aamodt C., Knight R., Lewis N.E.
      [Context-aware deconvolution of cell-cell communication with Tensor-cell2cell](https://doi.org/10.1101/2021.09.20.461129)
      *bioRxiv*, (2021). **DOI: 10.1101/2021.09.20.461129**
