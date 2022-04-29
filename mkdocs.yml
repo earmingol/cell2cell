@@ -50,6 +50,6 @@ nav:
   - "Home": index.md
   - "API Documentation": documentation.md
   - "Tensor-cell2cell Tutorials":
-    - tutorials/01-Tensor-Factorization-ASD.ipynb
-    - tutorials/02-Factor-Specific-ASD.ipynb
-    - tutorials/03-GSEA-ASD.ipynb
+    - tutorials/ASD/01-Tensor-Factorization-ASD.ipynb
+    - tutorials/ASD/02-Factor-Specific-ASD.ipynb
+    - tutorials/ASD/03-GSEA-ASD.ipynb
