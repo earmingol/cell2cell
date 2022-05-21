@@ -92,6 +92,10 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
     # Copy context dict to make modifications
     cont_dict = {k : v.copy()[cols] for k, v in context_df_dict.items()}
 
+    # Labels for each dimension
+    if order_labels is None:
+        order_labels = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
+
     # Find all existing LR pairs, sender and receiver cells across contexts
     lr_dict = defaultdict(set)
     sender_dict = defaultdict(set)
@@ -108,9 +112,6 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
         lr_dict[k].update(df['LRs'].unique().tolist())
         sender_dict[k].update(df[sender_col].unique().tolist())
         receiver_dict[k].update(df[receiver_col].unique().tolist())
-
-    if order_labels is None:
-        order_labels = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
 
     # Subset LR pairs, sender and receiver cells given parameter 'how'
     for i, k in enumerate(context_order):
