@@ -41,8 +41,14 @@ class BaseTensor():
 
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts
-                    (union).
+        - 'outer' : Considers all cell types and genes that are present
+                    across contexts (union).
+        - 'outer_genes' : Considers only cell types that are present in all
+                          contexts (intersection), while all genes that are
+                          present across contexts (union).
+        - 'outer_cells' : Considers only genes that are present in all
+                          contexts (intersection), while all cell types that are
+                          present across contexts (union).
 
     tensor : tensorly.tensor
         Tensor object created with the library tensorly.
@@ -474,8 +480,14 @@ class InteractionTensor(BaseTensor):
 
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts
-                    (union).
+        - 'outer' : Considers all cell types and genes that are present
+                    across contexts (union).
+        - 'outer_genes' : Considers only cell types that are present in all
+                          contexts (intersection), while all genes that are
+                          present across contexts (union).
+        - 'outer_cells' : Considers only genes that are present in all
+                          contexts (intersection), while all cell types that are
+                          present across contexts (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -617,7 +629,7 @@ class PreBuiltTensor(BaseTensor):
 
     order_labels : list, default=None
         List containing the labels for each order or dimension of the tensor. For
-        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']'
+        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
 
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
@@ -677,8 +689,14 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
 
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts
-                    (union).
+        - 'outer' : Considers all cell types and genes that are present
+                    across contexts (union).
+        - 'outer_genes' : Considers only cell types that are present in all
+                          contexts (intersection), while all genes that are
+                          present across contexts (union).
+        - 'outer_cells' : Considers only genes that are present in all
+                          contexts (intersection), while all cell types that are
+                          present across contexts (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -752,14 +770,25 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
     '''
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
     df_cols = [list(rnaseq.columns) for rnaseq in rnaseq_matrices]
+    inter_genes = set.intersection(*map(set, df_idxs))
+    inter_cells = set.intersection(*map(set, df_cols))
+    union_genes = set.union(*map(set, df_idxs))
+    union_cells = set.union(*map(set, df_cols))
+
     if how == 'inner':
-        genes = set.intersection(*map(set, df_idxs))
-        cells = set.intersection(*map(set, df_cols))
+        genes = inter_genes
+        cells = inter_cells
     elif how == 'outer':
-        genes = set.union(*map(set, df_idxs))
-        cells = set.union(*map(set, df_cols))
+        genes = union_genes
+        cells = union_cells
+    elif how == 'outer_genes':
+        genes = union_genes
+        cells = inter_cells
+    elif how == 'outer_cells':
+        genes = inter_genes
+        cells = union_cells
     else:
-        raise ValueError('Provide a valid way to build the tensor; "how" must be "inner" or "outer" ')
+        raise ValueError('Provide a valid way to build the tensor; "how" must be "inner", "outer", "outer_genes" or "outer_cells"')
 
     # Preserve order or sort new set (either inner or outer)
     if set(df_idxs[0]) == genes:
@@ -782,7 +811,6 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
     if verbose:
         print('Building tensor for the provided context')
 
-    #tensors = [generate_ccc_tensor(rnaseq_data=rnaseq.reindex(genes, fill_value=0.).reindex(cells, axis='columns', fill_value=0.),
     tensors = [generate_ccc_tensor(rnaseq_data=rnaseq.reindex(genes).reindex(cells, axis='columns'),
                                    ppi_data=ppi_data_,
                                    communication_score=communication_score,
@@ -798,15 +826,7 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         ppi_names = [row[interaction_columns[0]] + '^' + row[interaction_columns[1]] for idx, row in ppi_data_.iterrows()]
 
     # Generate mask:
-    if how == 'outer':
-        #mask_tensor = []
-        #for rnaseq in rnaseq_matrices:
-        #    rna_cells = list(rnaseq.columns)
-        #    ppi_mask = pd.DataFrame(np.ones((len(rna_cells), len(rna_cells))), columns=rna_cells, index=rna_cells)
-        #    ppi_mask = ppi_mask.reindex(cells, fill_value=0.).reindex(cells, axis='columns', fill_value=0.) # Here we mask those cells that are not in the rnaseq data
-        #    rna_tensor = [ppi_mask.values for i in range(len(ppi_names))] # Replicate the mask across all PPIs in ppi_data_
-        #    mask_tensor.append(rna_tensor)
-        #mask_tensor = np.asarray(mask_tensor)
+    if how != 'inner':
         mask_tensor = (~np.isnan(np.asarray(tensors))).astype(int)
     else:
         mask_tensor = None
@@ -1008,8 +1028,14 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
 
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts
-                    (union).
+        - 'outer' : Considers all cell types and genes that are present
+                    across contexts (union).
+        - 'outer_genes' : Considers only cell types that are present in all
+                          contexts (intersection), while all genes that are
+                          present across contexts (union).
+        - 'outer_cells' : Considers only genes that are present in all
+                          contexts (intersection), while all cell types that are
+                          present across contexts (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
