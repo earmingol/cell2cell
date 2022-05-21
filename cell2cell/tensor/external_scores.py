@@ -94,7 +94,12 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
 
     for k, df in cont_dict.items():
         df['LRs'] = df.apply(lambda row: row[ligand_col] + lr_sep + row[receptor_col], axis=1)
-
+        # This is to consider only LR pairs in each context that are present in all cell pairs. Disabled for now.
+        # if how in ['inner', 'outer_cells']:
+        #     ccc_df = df.pivot(index='LRs', columns=[sender_col, receiver_col], values=score_col)
+        #     ccc_df = ccc_df.dropna(how='any')
+        #     lr_dict[k].update(list(ccc_df.index))
+        # else:
         lr_dict[k].update(df['LRs'].unique().tolist())
         sender_dict[k].update(df[sender_col].unique().tolist())
         receiver_dict[k].update(df[receiver_col].unique().tolist())
