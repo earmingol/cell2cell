@@ -8,7 +8,7 @@ from cell2cell.tensor.tensor import PreBuiltTensor
 
 
 def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, receptor_col, score_col, how='inner',
-                         lr_sep='^', context_order=None, order_labels=None, device=None):
+                         lr_sep='^', context_order=None, order_labels=None, sort_elements=True, device=None):
     '''Generates an InteractionTensor from a dictionary
     containing dataframes for all contexts.
 
@@ -65,6 +65,10 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
         List containing the labels for each order or dimension of the tensor. For
         example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
 
+    sort_elements : boolean, default=True
+        Whether alphabetically sorting elements in the InteractionTensor.
+        The Context Dimension is not sorted if a 'context_order' list is provided.
+
     device : str, default=None
             Device to use when backend is pytorch. Options are:
              {'cpu', 'cuda:0', None}
@@ -76,11 +80,12 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
     '''
     # Make sure that all contexts contain needed info
     if context_order is None:
+        sort_context = sort_elements
         context_order = list(context_df_dict.keys())
     else:
         assert all([c in context_df_dict.keys() for c in context_order]), "The list 'context_order' must contain all context names contained in the keys of 'context_dict'"
         assert len(context_order) == len(context_df_dict.keys()), "Each context name must be contained only once in the list 'context_order'"
-
+        sort_context = False
     cols = [sender_col, receiver_col, ligand_col, receptor_col, score_col]
     assert all([c in df.columns for c in cols for df in context_df_dict.values()]), "All input columns must be contained in all dataframes included in 'context_dict'"
 
@@ -145,6 +150,13 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
         receiver_cells = list(union_receivers)
     else:
         raise ValueError("Not a valid input for parameter 'how'")
+
+    if sort_elements:
+        if sort_context:
+            context_order = sorted(context_order)
+        lr_pairs = sorted(lr_pairs)
+        sender_cells = sorted(sender_cells)
+        receiver_cells = sorted(receiver_cells)
 
     # Build temporal tensor to pass to PreBuiltTensor
     tmp_tensor = []
