@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 import warnings 
 
 import pandas as pd
@@ -7,6 +7,9 @@ import itertools
 from scipy.stats import gmean
 from sklearn.decomposition import PCA
 import meld
+import itertools
+
+from cell2cell.tensor.tensor import InteractionTensor
 
 class CellComposition:
     """Accounting for the cell composition of the data.
@@ -234,17 +237,15 @@ class CellComposition:
                              index = ['-'.join(x) for x in itertools.product(composition_score.index, repeat = 2)])
         return pairwise_score
 
-def normalize_lr_scores_by_max(lr_communication_scores: Dict[str, pd.DataFrame]):
+def normalize_lr_scores_by_max(lr_communication_scores: Union[Dict[str, pd.DataFrame], InteractionTensor]):
     """Normalize the LR communication scores to the maximum one across all contexts. 
     This is done to create equal scaling of scores b/w LR communication and cell composition scores
     Only need if going to use the "scale_communication_by_composition" function. 
 
     Parameters
     ----------
-    lr_communication_scores : Dict[str, pd.DataFrame]
-        keys are contexts
-        values are a communication matrix with columns as (Sender-Receiver) pairs and rows as (Ligand&Receptor) pairs and values as the
-        ligand-receptor communication score calculated from gene expression
+    lr_communication_scores : Union[Dict[str, pd.DataFrame], InteractionTensor]
+        if Dict: keys are contexts, values are a communication matrix with columns as (Sender-Receiver) pairs and rows as (Ligand&Receptor) pairs and values as the ligand-receptor communication score calculated from gene expression
 
     Returns
     -------
@@ -252,32 +253,104 @@ def normalize_lr_scores_by_max(lr_communication_scores: Dict[str, pd.DataFrame])
         same as input, but with normalized values
     """
     #TODO: is this the best normalization approach?
-    max_score = 0
-    for lcs in lr_communication_scores.values():
-        if lcs.min().min() < 0:
-            raise ValueError('This function is specifically designed for non-negative LR communication scores')
-        cur_score = lcs.max().max()
-        if cur_score > max_score:
-            max_score = cur_score
     
-    if max_score <= 1: 
-        warnings.warn('LR scores already lie between [0,1]')
+    
+    if type(lr_communication_scores) == dict:
+        max_score = 0
+        for lcs in lr_communication_scores.values():
+            if lcs.min().min() < 0:
+                raise ValueError('This function is specifically designed for non-negative LR communication scores')
+            cur_score = lcs.max().max()
+            if cur_score > max_score:
+                max_score = cur_score
+        if max_score <= 1: 
+            warnings.warn('LR scores already lie between [0,1]')
 
-    lr_communication_scores = {context: lcs/max_score for context, lcs in lr_communication_scores.items()}
-
+        lr_communication_scores = {context: lcs/max_score for context, lcs in lr_communication_scores.items()}
+    elif type(lr_communication_scores) == InteractionTensor:
+        if lr_communication_scores.tensor.min() < 0:
+            raise ValueError('This function is specifically designed for non-negative LR communication scores')
+        max_score = lr_communication_scores.tensor.max()
+        if max_score <= 1: 
+            warnings.warn('LR scores already lie between [0,1]')
+        lr_communication_scores.tensor = lr_communication_scores.tensor/max_score
+        
+        
     return lr_communication_scores
 
-def scale_communication_by_composition(lr_communication_score: pd.DataFrame, 
+def weight_tensor_by_composition(tensor: pd.DataFrame, 
+                         pairwise_composition_scores: Dict[str, pd.DataFrame], method: str = 'weighted_average',
+                        composition_weight: float = 0.25):
+    """Weights a matrix of LR communication scores for a single context by the respective pairwise composition scores
+
+    Parameters
+    ----------
+    tensor : pd.DataFrame
+        a communication matrix with columns as (Sender-Receiver) pairs and rows as (Ligand&Receptor) pairs and values as the
+        ligand-receptor communication score calculated from gene expression
+    pairwise_composition_scores : Dict[str, pd.DataFrame]
+        keys are the contexts corresponding to those in the tensor
+        values are the composition scores between pairs of cells in that context. Index is the (Sender-Receiver) pair that should match the columns of the tensor
+        see CellComposition.get_pairwise_composition_scores for details
+    method : str, optional
+        the method by which to combine the LR communication scores with pairwise composition scores, by default "weighted_average"
+        Options are:
+        - 'weighted_average' : Weighted average between two score types
+        - 'product': Product of the two score types
+    composition_weight : float, optional
+        weighting of composition score relative to communication score. only for use when method = 'weighted_average'.
+
+    Returns
+    -------
+    communication_score
+        the communication matrix with LR communication scores weighted by pairwise cell composition scores
+    """
+    
+    # checks
+    if (composition_weight > 1) or (composition_weight < 0):
+        raise ValueError('The composition weight must lie between [0,1]')
+    for df in pairwise_composition_scores.values():
+        if (df.min().min() < 0) or (df.max().max() > 1):
+            raise ValueError('The composition scores are expected to lie between [0,1]')
+    if tensor.tensor.min() < 0 or tensor.tensor.max() > 1:
+        raise ValueError('The communication scores are expected to lie between [0,1]')
+
+    for context in tensor.order_names[0]:
+        composition_score = pairwise_composition_scores[context].copy()
+
+        cell_pairs = list(itertools.product(tensor.order_names[2], tensor.order_names[3]))
+        cell_indeces = [(tensor.order_names[2].index(cp[0]), tensor.order_names[3].index(cp[1])) for cp in cell_pairs]
+        cell_pairs = ['-'.join(cp) for cp in list(itertools.product(tensor.order_names[2], tensor.order_names[3]))]
+        cp_map = dict(zip(cell_pairs, cell_indeces))
+
+        composition_score['tensor_index'] = pd.Series(composition_score.index).map(cp_map).tolist()
+        composition_score = composition_score[composition_score['tensor_index'].notna()] 
+        composition_score.reset_index(inplace = True, drop = True)
+    
+        for idx in composition_score.index:
+            cs = composition_score.loc[idx,'Composition_Score']
+            ti = composition_score.loc[idx,'tensor_index']
+
+            lr_score_slice = tensor.tensor[tensor.order_names[0].index(context),:,ti[0],ti[1]]
+            if method == 'weighted_average':
+                tensor.tensor[tensor.order_names[0].index(context),:,ti[0],ti[1]] = (lr_score_slice*(1-composition_weight)) + \
+                                                                                    composition_weight*cs
+            elif method == 'product':
+                tensor.tensor[tensor.order_names[0].index(context),:,ti[0],ti[1]] = lr_score_slice*cs
+
+    return tensor
+
+def weight_communication_matrix_by_composition(lr_communication_score: pd.DataFrame, 
                          pairwise_composition_score: pd.DataFrame, method: str = 'weighted_average',
                         composition_weight: float = 0.25):
-    """Scales a LR communication score by the respective pairwise composition scores
+    """Weights a matrix of LR communication scores for a single context by the respective pairwise composition scores
 
     Parameters
     ----------
     lr_communication_score : pd.DataFrame
         a communication matrix with columns as (Sender-Receiver) pairs and rows as (Ligand&Receptor) pairs and values as the
         ligand-receptor communication score calculated from gene expression
-    pairwise_composition_score : Dict[str, pd.DataFrame]
+    pairwise_composition_score : pd.DataFrame
         the composition scores between pairs of cells
         index is the (Sender-Receiver) pair that should match the columns of the lr_communication_score
         see CellComposition.get_pairwise_composition_score for details
@@ -303,11 +376,10 @@ def scale_communication_by_composition(lr_communication_score: pd.DataFrame,
         if (df.min().min() < 0) or (df.max().max() > 1):
             raise ValueError('The communication and composition scores are expected to lie between [0,1]')
     
-    if len(set(pairwise_composition_score.index).difference(lr_communication_score.columns)):
+    if len(set(lr_communication_score.columns).difference(pairwise_composition_score.index)):
         raise ValueError('The sender-receiver cell pairs do not match between LR communication and pairwise composition scores')
-    
-    # ensure the order is matched
-    pairwise_composition_score = pairwise_composition_score.loc[lr_communication_score.columns,:] 
+    # ensure the order is matched and filtered for those included in lr communication (e.g., 'how')
+    pairwise_composition_score = pairwise_composition_score.loc[lr_communication_score.columns,:].copy() 
     
 
     # do the calculation
