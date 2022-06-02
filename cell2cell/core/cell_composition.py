@@ -1,4 +1,3 @@
-from typing import Dict, Optional, Union
 import warnings 
 
 import pandas as pd
@@ -21,18 +20,18 @@ class CellComposition:
     _method_map = {'gmean': gmean, 'mean': np.mean, 'median': np.median, 'product': np.product}
     
     def __init__(self, 
-                 expr: pd.DataFrame, 
-                 metadata: pd.DataFrame, context_label: str = 'Sample_ID', cellgroup_label: str = 'cell_type',
-                 manifold: Optional[pd.DataFrame] = None,
-                 random_state: Optional[int] = 888):
+                 expr, 
+                 metadata, context_label = 'Sample_ID', cellgroup_label = 'cell_type',
+                 manifold = None,
+                 random_state = 888):
         """Get the cell composition of the data
 
         Parameters
         ----------
-        expr : pd.DataFrame
+        expr : pandas.DataFrame
             the expression matrix with cell barcodes as columns and gene IDs as the index
             should contain cells from all contexts in a single matrix (recommended batch-corrected)
-        metadata : pd.DataFrame
+        metadata : pandas.DataFrame
             cell-level metadata, with index as cell barcodes 
             should include the samples/contexts (e.g., disease state or time point) and a higher-level grouping (e.g., cell type or cluster)
             if working with a single context, still include this metadata with a single identifier label
@@ -40,7 +39,7 @@ class CellComposition:
             metadata column that separates cells by sample or context, by default 'Sample_ID'
         cellgroup_label : str, optional
             metadata column that separates cells by higher-level cell grouping (e.g., cell type or cluster), by default 'cell_type'
-        manifold : pd.DataFrame, optional
+        manifold : pandas.DataFrame, optional
             reduced dimension coordinates, recommended PCA, by default None
             index is the cell barcode (same as metadata), columns are each dimension
             if None, will calculate to 100 PCs if needed
@@ -80,7 +79,7 @@ class CellComposition:
                 else:
                     raise ValueError('Expression matrix and metadata matrix barcodes disagree')
 
-    def run_pca(self, n_pcs: int = 100):
+    def run_pca(self, n_pcs = 100):
         """Gets the PC space of expression matrix
 
         Parameters
@@ -101,7 +100,7 @@ class CellComposition:
         for context, composition_score in self.aggregate_composition_score.items():
             self.aggregate_composition_score[context] = composition_score.loc[self._cellgroup_order,:]
     
-    def score_composition(self, score_type: str = 'frequency', **kwargs):
+    def score_composition(self, score_type = 'frequency', **kwargs):
         """Get a "composition score" representative of the cell or cell type frequency.
         
         For methods that are at the single cell resolution, must aggregate using "CellComposition.get_aggregate_composition_score".
@@ -173,7 +172,7 @@ class CellComposition:
 #             print('Internal: need to write an appropriate normalization function')
 #             raise ValueError('incomplete code')
 
-    def get_aggregate_composition_score(self, aggregation_method='median', fill_na: float = 0):
+    def get_aggregate_composition_score(self, aggregation_method = 'median', fill_na = 0):
         """Aggregate the composition score by the context and higher-level cell grouping (e.g., cell type or cluster)
 
         Parameters
@@ -210,12 +209,12 @@ class CellComposition:
                         [[self.cellgroup_label, 'Composition_Score']].reset_index(drop = True).set_index(self.cellgroup_label)
         self._order_aggregates()
     @staticmethod
-    def get_pairwise_composition_score(composition_score: pd.DataFrame, method: str ='gmean'):
+    def get_pairwise_composition_score(composition_score, method ='gmean'):
         """Calculate a pairwise composition score between two cell types from their individual composition scores.
     
         Parameters
         ----------
-        composition_score : pd.DataFrame
+        composition_score : pandas.DataFrame
             data frame of aggregated composition scores, with index as the cell type/cluster and one column containing the composition score for that cell type
             (for a single context)
         method : str, optional
@@ -228,7 +227,7 @@ class CellComposition:
 
         Returns
         -------
-        pairwise_score: pd.DataFrame
+        pairwise_score: pandas.DataFrame
             the pairwise composition scores
         """
         # internal: staticmethod to allow user provided inputs
@@ -237,14 +236,14 @@ class CellComposition:
                              index = ['-'.join(x) for x in itertools.product(composition_score.index, repeat = 2)])
         return pairwise_score
 
-def normalize_lr_scores_by_max(lr_communication_scores: Union[Dict[str, pd.DataFrame], InteractionTensor]):
+def normalize_lr_scores_by_max(lr_communication_scores):
     """Normalize the LR communication scores to the maximum one across all contexts. 
     This is done to create equal scaling of scores b/w LR communication and cell composition scores
     Only need if going to use the "scale_communication_by_composition" function. 
 
     Parameters
     ----------
-    lr_communication_scores : Union[Dict[str, pd.DataFrame], InteractionTensor]
+    lr_communication_scores : Union[Dict[str, pandas.DataFrame], cell2cell.tensor.tensor.InteractionTensor]
         if Dict: keys are contexts, values are a communication matrix with columns as (Sender-Receiver) pairs and rows as (Ligand&Receptor) pairs and values as the ligand-receptor communication score calculated from gene expression
 
     Returns
@@ -278,16 +277,15 @@ def normalize_lr_scores_by_max(lr_communication_scores: Union[Dict[str, pd.DataF
         
     return lr_communication_scores
 
-def weight_tensor_by_composition(tensor: pd.DataFrame, 
-                         pairwise_composition_scores: Dict[str, pd.DataFrame], method: str = 'weighted_average',
-                        composition_weight: float = 0.25):
+def weight_tensor_by_composition(tensor, 
+                         pairwise_composition_scores, method = 'weighted_average',
+                        composition_weight = 0.25):
     """Weights a matrix of LR communication scores for a single context by the respective pairwise composition scores
 
     Parameters
     ----------
-    tensor : pd.DataFrame
-        a communication matrix with columns as (Sender-Receiver) pairs and rows as (Ligand&Receptor) pairs and values as the
-        ligand-receptor communication score calculated from gene expression
+    tensor : cell2cell.tensor.tensor.InteractionTensor
+        the 4D-Communication tensor
     pairwise_composition_scores : Dict[str, pd.DataFrame]
         keys are the contexts corresponding to those in the tensor
         values are the composition scores between pairs of cells in that context. Index is the (Sender-Receiver) pair that should match the columns of the tensor
@@ -340,17 +338,17 @@ def weight_tensor_by_composition(tensor: pd.DataFrame,
 
     return tensor
 
-def weight_communication_matrix_by_composition(lr_communication_score: pd.DataFrame, 
-                         pairwise_composition_score: pd.DataFrame, method: str = 'weighted_average',
-                        composition_weight: float = 0.25):
+def weight_communication_matrix_by_composition(lr_communication_score, 
+                         pairwise_composition_score, method 'weighted_average',
+                        composition_weight = 0.25):
     """Weights a matrix of LR communication scores for a single context by the respective pairwise composition scores
 
     Parameters
     ----------
-    lr_communication_score : pd.DataFrame
+    lr_communication_score : pandas.DataFrame
         a communication matrix with columns as (Sender-Receiver) pairs and rows as (Ligand&Receptor) pairs and values as the
         ligand-receptor communication score calculated from gene expression
-    pairwise_composition_score : pd.DataFrame
+    pairwise_composition_score : pandas.DataFrame
         the composition scores between pairs of cells
         index is the (Sender-Receiver) pair that should match the columns of the lr_communication_score
         see CellComposition.get_pairwise_composition_score for details
