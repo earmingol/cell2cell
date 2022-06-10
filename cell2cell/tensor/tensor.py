@@ -509,6 +509,13 @@ class InteractionTensor(BaseTensor):
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
 
+    complex_agg_method : str, default='min'
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
+
     upper_letter_comparison : boolean, default=True
         Whether making uppercase the gene names in the expression matrices and the
         protein names in the ppi_data to match their names and integrate their
@@ -542,9 +549,9 @@ class InteractionTensor(BaseTensor):
             Whether printing or not steps of the analysis.
     '''
     def __init__(self, rnaseq_matrices, ppi_data, order_labels=None, context_names=None, how='inner',
-                 communication_score='expression_mean', complex_sep=None, upper_letter_comparison=True,
-                 interaction_columns=('A', 'B'), group_ppi_by=None, group_ppi_method='gmean', device=None,
-                 verbose=True):
+                 communication_score='expression_mean', complex_sep=None, complex_agg_method='min',
+                 upper_letter_comparison=True, interaction_columns=('A', 'B'), group_ppi_by=None,
+                 group_ppi_method='gmean', device=None, verbose=True):
         # Asserts
         if group_ppi_by is not None:
             assert group_ppi_by in ppi_data.columns, "Using {} for grouping PPIs is not possible. Not present among columns in ppi_data".format(group_ppi_by)
@@ -561,7 +568,7 @@ class InteractionTensor(BaseTensor):
                                                                                                  complex_sep=complex_sep,
                                                                                                  interaction_columns=interaction_columns
                                                                                                  )
-            mod_rnaseq_matrices = [add_complexes_to_expression(rnaseq, complexes) for rnaseq in rnaseq_matrices]
+            mod_rnaseq_matrices = [add_complexes_to_expression(rnaseq, complexes, agg_method=complex_agg_method) for rnaseq in rnaseq_matrices]
         else:
             mod_rnaseq_matrices = [df.copy() for df in rnaseq_matrices]
 

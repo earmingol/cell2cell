@@ -141,7 +141,7 @@ def divide_expression_by_mean(rnaseq_data, axis=1):
     return new_data
 
 
-def add_complexes_to_expression(rnaseq_data, complexes):
+def add_complexes_to_expression(rnaseq_data, complexes, agg_method='min'):
     '''
     Adds multimeric complexes into the gene expression matrix.
     Their gene expressions are the minimum expression value
@@ -157,6 +157,13 @@ def add_complexes_to_expression(rnaseq_data, complexes):
         Dictionary where keys are the complex names in the list of PPIs, while
         values are list of subunits for the respective complex names.
 
+    agg_method : str, default='min'
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
+
     Returns
     -------
     tmp_rna : pandas.DataFrame
@@ -169,7 +176,14 @@ def add_complexes_to_expression(rnaseq_data, complexes):
     for k, v in complexes.items():
         if all(g in tmp_rna.index for g in v):
             df = tmp_rna.loc[v, :]
-            tmp_rna.loc[k] = df.min().values.tolist()
+            if agg_method == 'min':
+                tmp_rna.loc[k] = df.min().values.tolist()
+            elif agg_method == 'mean':
+                tmp_rna.loc[k] = df.mean().values.tolist()
+            # elif agg_method == 'gmean':
+            #    tmp_rna.loc[k] = df.gmean().values.tolist() # Not implemented
+            else:
+                ValueError("{} is not a valid agg_method".format(agg_method))
         else:
             tmp_rna.loc[k] = [0] * tmp_rna.shape[1]
     return tmp_rna
