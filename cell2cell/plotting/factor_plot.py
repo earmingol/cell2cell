@@ -218,7 +218,7 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
 
 def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='euclidean', method='ward',
                        optimal_leaf=True, figsize=(15, 8), heatmap_lw=0.2, cbar_fontsize=12, tick_fontsize=10, cmap=None,
-                       filename=None, **kwargs):
+                       cbar_label=None, filename=None, **kwargs):
     '''
     Plots a clustermap of the tensor-factorization loadings from one tensor dimension or
     the joint loadings from multiple tensor dimensions.
@@ -285,6 +285,10 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
         Name of the color palette for coloring the heatmap. If None,
         cmap='Blues' would be used when use_zscore=False; and cmap='vlag' when use_zscore=True.
 
+    cbar_label : str, default=None
+        Label for the color bar. If None, default labels will be 'Z-scores \n across factors'
+        or 'Loadings', depending on `use_zcore` is True or False, respectively.
+
     filename : str, default=None
         Path to save the figure of the elbow analysis. If None, the figure is not
         saved.
@@ -305,13 +309,14 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
             cmap = 'vlag'
         val = np.ceil(max([abs(df.min().min()), abs(df.max().max())]))
         vmin, vmax = -1. * val, val
-        cbar_label = 'Z-scores \n across factors'
+        if cbar_label is None:
+            cbar_label = 'Z-scores \n across factors'
     else:
         if cmap is None:
             cmap='Blues'
         vmin, vmax = 0., df.max().max()
-        cbar_label = 'Loadings'
-
+        if cbar_label is None:
+            cbar_label = 'Loadings'
     # Clustering
     dm_rows = compute_distance(df, axis=0, metric=metric)
     row_linkage = compute_linkage(dm_rows, method=method, optimal_ordering=optimal_leaf)
