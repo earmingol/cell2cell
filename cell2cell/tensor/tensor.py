@@ -268,7 +268,8 @@ class BaseTensor():
 
         manual_elbow : int, default=None
             Rank or number of factors to highlight in the curve of error achieved by
-            the Tensor Factorization.
+            the Tensor Factorization. This input is considered only when
+            `automatic_elbow=True`
 
         mask : ndarray list, default=None
             Helps avoiding missing values during a tensor factorization. A mask should be
