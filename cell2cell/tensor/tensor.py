@@ -237,7 +237,7 @@ class BaseTensor():
         self.rank = rank
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', random_state=None,
-                             automatic_elbow=True, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
+                             automatic_elbow=True, manual_elbow=None, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
                              verbose=False, **kwargs):
         '''Elbow analysis on the error achieved by the Tensor Factorization for
         selecting the number of factors to use. A plot is made with the results.
@@ -265,6 +265,10 @@ class BaseTensor():
         automatic_elbow : boolean, default=True
             Whether using an automatic strategy to find the elbow. If True, the method
             implemented by the package kneed is used.
+
+        manual_elbow : int, default=None
+            Rank or number of factors to highlight in the curve of error achieved by
+            the Tensor Factorization.
 
         mask : ndarray list, default=None
             Helps avoiding missing values during a tensor factorization. A mask should be
@@ -322,7 +326,7 @@ class BaseTensor():
             if automatic_elbow:
                 rank = _compute_elbow(loss)
             else:
-                rank = None
+                rank = manual_elbow
             fig = plot_elbow(loss=loss,
                              elbow=rank,
                              figsize=figsize,
@@ -347,7 +351,7 @@ class BaseTensor():
             if automatic_elbow:
                 rank = _compute_elbow(loss)
             else:
-                rank = None
+                rank = manual_elbow
 
             fig = plot_multiple_run_elbow(all_loss=all_loss,
                                           ci=ci,
@@ -359,8 +363,9 @@ class BaseTensor():
         else:
             assert runs > 0, "Input runs must be an integer greater than 0"
 
-        if automatic_elbow:
-            self.rank = rank
+        self.rank = rank
+        if rank is not None:
+            assert(isinstance(rank, int)), 'rank must be an integer.'
             print('The rank at the elbow is: {}'.format(self.rank))
         return fig, loss
 
