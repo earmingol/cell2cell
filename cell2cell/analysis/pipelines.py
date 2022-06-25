@@ -744,7 +744,7 @@ class SingleCellInteractions:
                                                              cutoff_setup=self.cutoff_setup,
                                                              analysis_setup=self.analysis_setup,
                                                              complex_sep=self.complex_sep,
-                                                             complex_agg_method=complex_agg_method,
+                                                             complex_agg_method=self.complex_agg_method,
                                                              interaction_columns=self.interaction_columns,
                                                              verbose=False)
 
