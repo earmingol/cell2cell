@@ -325,7 +325,7 @@ class BaseTensor():
                                        **kwargs
                                        )
             if automatic_elbow:
-                rank = _compute_elbow(loss)
+                rank = int(_compute_elbow(loss))
             else:
                 rank = manual_elbow
             fig = plot_elbow(loss=loss,
@@ -350,7 +350,7 @@ class BaseTensor():
             loss = [(i + 1, l) for i, l in enumerate(loss)]
 
             if automatic_elbow:
-                rank = _compute_elbow(loss)
+                rank = int(_compute_elbow(loss))
             else:
                 rank = manual_elbow
 
@@ -365,7 +365,7 @@ class BaseTensor():
             assert runs > 0, "Input runs must be an integer greater than 0"
 
         self.rank = rank
-        if rank is not None:
+        if self.rank is not None:
             assert(isinstance(rank, int)), 'rank must be an integer.'
             print('The rank at the elbow is: {}'.format(self.rank))
         return fig, loss
