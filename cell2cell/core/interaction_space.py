@@ -69,7 +69,8 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
 
 
 def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirected', cci_matrix_template=None,
-                                  complex_sep=None, interaction_columns=('A', 'B'), verbose=True):
+                                  complex_sep=None, complex_agg_method='min', interaction_columns=('A', 'B'),
+                                  verbose=True):
     '''Create all elements needed to perform the analyses of pairwise
     cell-cell interactions/communication. Corresponds to the interaction
     elements used by the class InteractionSpace.
@@ -103,6 +104,13 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
 
+    complex_agg_method : str, default='min'
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
+
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a
         dataframe of protein-protein interactions. If the list is for
@@ -134,7 +142,10 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
                                                                                              complex_sep=complex_sep,
                                                                                              interaction_columns=interaction_columns
                                                                                              )
-        modified_rnaseq = add_complexes_to_expression(modified_rnaseq, complexes)
+        modified_rnaseq = add_complexes_to_expression(rnaseq_data=modified_rnaseq,
+                                                      complexes=complexes,
+                                                      agg_method=complex_agg_method
+                                                      )
 
     # Cells
     cell_instances = list(modified_rnaseq.columns)  # @Erick, check if position 0 of columns contain index header.
@@ -255,6 +266,13 @@ class InteractionSpace():
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
 
+    complex_agg_method : str, default='min'
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
+
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a
         dataframe of protein-protein interactions. If the list is for
@@ -324,7 +342,7 @@ class InteractionSpace():
 
     def __init__(self, rnaseq_data, ppi_data, gene_cutoffs, communication_score='expression_thresholding',
                  cci_score='bray_curtis', cci_type='undirected', cci_matrix_template=None, complex_sep=None,
-                 interaction_columns=('A', 'B'), verbose=True):
+                 complex_agg_method='min', interaction_columns=('A', 'B'), verbose=True):
 
         self.communication_score = communication_score
         self.cci_score = cci_score
@@ -361,6 +379,7 @@ class InteractionSpace():
                                                                   cci_matrix_template=cci_matrix_template,
                                                                   cci_type=self.cci_type,
                                                                   complex_sep=complex_sep,
+                                                                  complex_agg_method=complex_agg_method,
                                                                   verbose=verbose)
 
         self.interaction_elements['ppi_score'] = self.ppi_data['score'].values

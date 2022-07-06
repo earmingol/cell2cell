@@ -41,8 +41,14 @@ class BaseTensor():
 
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts
-                    (union).
+        - 'outer' : Considers all cell types and genes that are present
+                    across contexts (union).
+        - 'outer_genes' : Considers only cell types that are present in all
+                          contexts (intersection), while all genes that are
+                          present across contexts (union).
+        - 'outer_cells' : Considers only genes that are present in all
+                          contexts (intersection), while all cell types that are
+                          present across contexts (union).
 
     tensor : tensorly.tensor
         Tensor object created with the library tensorly.
@@ -90,9 +96,19 @@ class BaseTensor():
     explained_variance : float
         Explained variance score for a tnesor factorization.
 
-    explained_variance_ratio_ : ndarray
+    explained_variance_ratio_ : ndarray list
         Percentage of variance explained by each of the factors. Only present when
         "normalize_loadings" is True. Otherwise, it is None.
+
+    loc_nans : ndarray list
+        An array of shape equal to `tensor` with ones where NaN values were assigned
+        when building the tensor. Other values are zeros. It stores the
+        location of the NaN values.
+
+    loc_zeros : ndarray list
+        An array of shape equal to `tensor` with ones where zeros that are not in
+        `loc_nans` are located. Other values are assigned a zero. It tracks the
+        real zero values rather than NaN values that were converted to zero.
     '''
     def __init__(self):
         # Save variables for this class
@@ -110,6 +126,8 @@ class BaseTensor():
         self.mask = None
         self.explained_variance_ = None
         self.explained_variance_ratio_ = None
+        self.loc_nans = None
+        self.loc_zeros = None
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
                                      runs=1, normalize_loadings=True, var_ordered_factors=True, **kwargs):
@@ -231,7 +249,7 @@ class BaseTensor():
         self.rank = rank
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', random_state=None,
-                             automatic_elbow=True, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
+                             automatic_elbow=True, manual_elbow=None, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
                              verbose=False, **kwargs):
         '''Elbow analysis on the error achieved by the Tensor Factorization for
         selecting the number of factors to use. A plot is made with the results.
@@ -259,6 +277,11 @@ class BaseTensor():
         automatic_elbow : boolean, default=True
             Whether using an automatic strategy to find the elbow. If True, the method
             implemented by the package kneed is used.
+
+        manual_elbow : int, default=None
+            Rank or number of factors to highlight in the curve of error achieved by
+            the Tensor Factorization. This input is considered only when
+            `automatic_elbow=True`
 
         mask : ndarray list, default=None
             Helps avoiding missing values during a tensor factorization. A mask should be
@@ -314,9 +337,9 @@ class BaseTensor():
                                        **kwargs
                                        )
             if automatic_elbow:
-                rank = _compute_elbow(loss)
+                rank = int(_compute_elbow(loss))
             else:
-                rank = None
+                rank = manual_elbow
             fig = plot_elbow(loss=loss,
                              elbow=rank,
                              figsize=figsize,
@@ -339,9 +362,9 @@ class BaseTensor():
             loss = [(i + 1, l) for i, l in enumerate(loss)]
 
             if automatic_elbow:
-                rank = _compute_elbow(loss)
+                rank = int(_compute_elbow(loss))
             else:
-                rank = None
+                rank = manual_elbow
 
             fig = plot_multiple_run_elbow(all_loss=all_loss,
                                           ci=ci,
@@ -353,8 +376,9 @@ class BaseTensor():
         else:
             assert runs > 0, "Input runs must be an integer greater than 0"
 
-        if automatic_elbow:
-            self.rank = rank
+        self.rank = rank
+        if self.rank is not None:
+            assert(isinstance(rank, int)), 'rank must be an integer.'
             print('The rank at the elbow is: {}'.format(self.rank))
         return fig, loss
 
@@ -474,8 +498,14 @@ class InteractionTensor(BaseTensor):
 
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts
-                    (union).
+        - 'outer' : Considers all cell types and genes that are present
+                    across contexts (union).
+        - 'outer_genes' : Considers only cell types that are present in all
+                          contexts (intersection), while all genes that are
+                          present across contexts (union).
+        - 'outer_cells' : Considers only genes that are present in all
+                          contexts (intersection), while all cell types that are
+                          present across contexts (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -496,6 +526,13 @@ class InteractionTensor(BaseTensor):
         Symbol that separates the protein subunits in a multimeric complex.
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
+
+    complex_agg_method : str, default='min'
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
 
     upper_letter_comparison : boolean, default=True
         Whether making uppercase the gene names in the expression matrices and the
@@ -530,9 +567,9 @@ class InteractionTensor(BaseTensor):
             Whether printing or not steps of the analysis.
     '''
     def __init__(self, rnaseq_matrices, ppi_data, order_labels=None, context_names=None, how='inner',
-                 communication_score='expression_mean', complex_sep=None, upper_letter_comparison=True,
-                 interaction_columns=('A', 'B'), group_ppi_by=None, group_ppi_method='gmean', device=None,
-                 verbose=True):
+                 communication_score='expression_mean', complex_sep=None, complex_agg_method='min',
+                 upper_letter_comparison=True, interaction_columns=('A', 'B'), group_ppi_by=None,
+                 group_ppi_method='gmean', device=None, verbose=True):
         # Asserts
         if group_ppi_by is not None:
             assert group_ppi_by in ppi_data.columns, "Using {} for grouping PPIs is not possible. Not present among columns in ppi_data".format(group_ppi_by)
@@ -549,7 +586,7 @@ class InteractionTensor(BaseTensor):
                                                                                                  complex_sep=complex_sep,
                                                                                                  interaction_columns=interaction_columns
                                                                                                  )
-            mod_rnaseq_matrices = [add_complexes_to_expression(rnaseq, complexes) for rnaseq in rnaseq_matrices]
+            mod_rnaseq_matrices = [add_complexes_to_expression(rnaseq, complexes, agg_method=complex_agg_method) for rnaseq in rnaseq_matrices]
         else:
             mod_rnaseq_matrices = [df.copy() for df in rnaseq_matrices]
 
@@ -572,6 +609,14 @@ class InteractionTensor(BaseTensor):
                                                                          group_ppi_by=group_ppi_by,
                                                                          group_ppi_method=group_ppi_method,
                                                                          verbose=verbose)
+
+        # Distinguish NaNs from real zeros
+        if mask is None:
+            self.loc_nans = np.zeros(tensor.shape, dtype=int)
+        else:
+            self.loc_nans = np.ones(tensor.shape, dtype=int) - np.array(mask)
+        self.loc_zeros = (tensor == 0).astype(int) - self.loc_nans
+        self.loc_zeros = (self.loc_zeros > 0).astype(int)
 
         # Generate names for the elements in each dimension (order) in the tensor
         if context_names is None:
@@ -617,37 +662,57 @@ class PreBuiltTensor(BaseTensor):
 
     order_labels : list, default=None
         List containing the labels for each order or dimension of the tensor. For
-        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']'
+        example: ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
 
     mask : ndarray list, default=None
         Helps avoiding missing values during a tensor factorization. A mask should be
         a boolean array of the same shape as the original tensor and should be 0
         where the values are missing and 1 everywhere else.
 
+    loc_nans : ndarray list, default=None
+        An array of shape equal to `tensor` with ones where NaN values were assigned
+        when building the tensor. Other values are zeros. It stores the
+        location of the NaN values.
+
     device : str, default=None
         Device to use when backend is pytorch. Options are:
          {'cpu', 'cuda:0', None}
     '''
-    def __init__(self, tensor, order_names, order_labels=None, mask=None, device=None):
+    def __init__(self, tensor, order_names, order_labels=None, mask=None, loc_nans=None, loc_zeros=None, device=None):
         # Init BaseTensor
         BaseTensor.__init__(self)
 
+        # Location of NaNs and zeros
+        tmp_nans = (np.isnan(tensor)).astype(int) # Find extra NaNs that were not considered
+        if loc_nans is None:
+            self.loc_nans = np.zeros(tuple(tensor.shape), dtype=int)
+        else:
+            assert loc_nans.shape == tensor.shape, "`loc_nans` and `tensor` must be of the same shape"
+            self.loc_nans = np.array(loc_nans.copy())
+        self.loc_nans = self.loc_nans + tmp_nans
+        self.loc_nans = (self.loc_nans > 0).astype(int)
+
+        self.loc_zeros = (np.array(tensor) == 0.).astype(int) - self.loc_nans
+        self.loc_zeros = (self.loc_zeros > 0).astype(int)
+
+        # Store tensor
+        tensor_ = np.nan_to_num(tensor)
         if device is None:
-            self.tensor = tl.tensor(tensor)
+            self.tensor = tl.tensor(tensor_)
             self.mask = mask
         else:
             if tl.get_backend() == 'pytorch':
-                self.tensor = tl.tensor(tensor, device=device)
+                self.tensor = tl.tensor(tensor_, device=device)
                 if mask is not None:
                     self.mask = tl.tensor(mask, device=device)
                 else:
                     self.mask = mask
             else:
-                self.tensor = tl.tensor(tensor)
+                self.tensor = tl.tensor(tensor_)
                 self.mask = mask
         self.order_names = order_names
         if order_labels is None:
-            self.order_labels = ['Dimension-{}'.format(i+1) for i in range(self.tensor.shape)]
+            self.order_labels = ['Dimension-{}'.format(i + 1) for i in range(self.tensor.shape)]
         else:
             self.order_labels = order_labels
         assert len(self.tensor.shape) == len(self.order_labels), "The length of order_labels must match the number of orders/dimensions in the tensor"
@@ -677,8 +742,14 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
 
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts
-                    (union).
+        - 'outer' : Considers all cell types and genes that are present
+                    across contexts (union).
+        - 'outer_genes' : Considers only cell types that are present in all
+                          contexts (intersection), while all genes that are
+                          present across contexts (union).
+        - 'outer_cells' : Considers only genes that are present in all
+                          contexts (intersection), while all cell types that are
+                          present across contexts (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -752,14 +823,25 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
     '''
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
     df_cols = [list(rnaseq.columns) for rnaseq in rnaseq_matrices]
+    inter_genes = set.intersection(*map(set, df_idxs))
+    inter_cells = set.intersection(*map(set, df_cols))
+    union_genes = set.union(*map(set, df_idxs))
+    union_cells = set.union(*map(set, df_cols))
+
     if how == 'inner':
-        genes = set.intersection(*map(set, df_idxs))
-        cells = set.intersection(*map(set, df_cols))
+        genes = inter_genes
+        cells = inter_cells
     elif how == 'outer':
-        genes = set.union(*map(set, df_idxs))
-        cells = set.union(*map(set, df_cols))
+        genes = union_genes
+        cells = union_cells
+    elif how == 'outer_genes':
+        genes = union_genes
+        cells = inter_cells
+    elif how == 'outer_cells':
+        genes = inter_genes
+        cells = union_cells
     else:
-        raise ValueError('Provide a valid way to build the tensor; "how" must be "inner" or "outer" ')
+        raise ValueError('Provide a valid way to build the tensor; "how" must be "inner", "outer", "outer_genes" or "outer_cells"')
 
     # Preserve order or sort new set (either inner or outer)
     if set(df_idxs[0]) == genes:
@@ -782,7 +864,6 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
     if verbose:
         print('Building tensor for the provided context')
 
-    #tensors = [generate_ccc_tensor(rnaseq_data=rnaseq.reindex(genes, fill_value=0.).reindex(cells, axis='columns', fill_value=0.),
     tensors = [generate_ccc_tensor(rnaseq_data=rnaseq.reindex(genes).reindex(cells, axis='columns'),
                                    ppi_data=ppi_data_,
                                    communication_score=communication_score,
@@ -798,15 +879,7 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         ppi_names = [row[interaction_columns[0]] + '^' + row[interaction_columns[1]] for idx, row in ppi_data_.iterrows()]
 
     # Generate mask:
-    if how == 'outer':
-        #mask_tensor = []
-        #for rnaseq in rnaseq_matrices:
-        #    rna_cells = list(rnaseq.columns)
-        #    ppi_mask = pd.DataFrame(np.ones((len(rna_cells), len(rna_cells))), columns=rna_cells, index=rna_cells)
-        #    ppi_mask = ppi_mask.reindex(cells, fill_value=0.).reindex(cells, axis='columns', fill_value=0.) # Here we mask those cells that are not in the rnaseq data
-        #    rna_tensor = [ppi_mask.values for i in range(len(ppi_names))] # Replicate the mask across all PPIs in ppi_data_
-        #    mask_tensor.append(rna_tensor)
-        #mask_tensor = np.asarray(mask_tensor)
+    if how != 'inner':
         mask_tensor = (~np.isnan(np.asarray(tensors))).astype(int)
     else:
         mask_tensor = None
@@ -1008,8 +1081,14 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
 
         - 'inner' : Considers only cell types and genes that are present in all
                     contexts (intersection).
-        - 'outer' : Considers all cell types and genes present across contexts
-                    (union).
+        - 'outer' : Considers all cell types and genes that are present
+                    across contexts (union).
+        - 'outer_genes' : Considers only cell types that are present in all
+                          contexts (intersection), while all genes that are
+                          present across contexts (union).
+        - 'outer_cells' : Considers only genes that are present in all
+                          contexts (intersection), while all cell types that are
+                          present across contexts (union).
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-

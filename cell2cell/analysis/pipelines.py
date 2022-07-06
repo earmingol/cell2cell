@@ -87,6 +87,13 @@ class BulkInteractions:
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
 
+    complex_agg_method : str, default='min'
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
+
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
 
@@ -114,6 +121,14 @@ class BulkInteractions:
         Symbol that separates the protein subunits in a multimeric complex.
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
+
+
+    complex_agg_method : str
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
 
     ref_ppi : pandas.DataFrame
         Reference list of protein-protein interactions (or ligand-receptor pairs) used
@@ -193,7 +208,8 @@ class BulkInteractions:
     '''
     def __init__(self, rnaseq_data, ppi_data, metadata=None, interaction_columns=('A', 'B'),
                  communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
-                 sample_col='sampleID', group_col='tissue', expression_threshold=10, complex_sep=None, verbose=False):
+                 sample_col='sampleID', group_col='tissue', expression_threshold=10, complex_sep=None,
+                 complex_agg_method='min', verbose=False):
         # Placeholders
         self.rnaseq_data = rnaseq_data
         self.metadata = metadata
@@ -202,6 +218,7 @@ class BulkInteractions:
         self.analysis_setup = dict()
         self.cutoff_setup = dict()
         self.complex_sep = complex_sep
+        self.complex_agg_method = complex_agg_method
         self.interaction_columns = interaction_columns
 
         # Analysis setup
@@ -238,6 +255,7 @@ class BulkInteractions:
                                                               cutoff_setup=self.cutoff_setup,
                                                               analysis_setup=self.analysis_setup,
                                                               complex_sep=complex_sep,
+                                                              complex_agg_method=complex_agg_method,
                                                               interaction_columns=self.interaction_columns,
                                                               verbose=verbose)
 
@@ -442,6 +460,13 @@ class SingleCellInteractions:
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
 
+    complex_agg_method : str, default='min'
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
+
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
 
@@ -471,6 +496,13 @@ class SingleCellInteractions:
         Symbol that separates the protein subunits in a multimeric complex.
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
+
+    complex_agg_method : str
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
 
     ref_ppi : pandas.DataFrame
         Reference list of protein-protein interactions (or ligand-receptor pairs) used
@@ -578,7 +610,7 @@ class SingleCellInteractions:
     def __init__(self, rnaseq_data, ppi_data, metadata, interaction_columns=('A', 'B'),
                  communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
                  expression_threshold=0.20, aggregation_method='nn_cell_fraction', barcode_col='barcodes',
-                 celltype_col='cell_types', complex_sep=None, verbose=False):
+                 celltype_col='cell_types', complex_sep=None, complex_agg_method='min', verbose=False):
         # Placeholders
         self.rnaseq_data = rnaseq_data
         self.metadata = metadata
@@ -588,6 +620,7 @@ class SingleCellInteractions:
         self.analysis_setup = dict()
         self.cutoff_setup = dict()
         self.complex_sep = complex_sep
+        self.complex_agg_method = complex_agg_method
         self.interaction_columns = interaction_columns
         self.ccc_permutation_pvalues = None
         self.cci_permutation_pvalues = None
@@ -641,6 +674,7 @@ class SingleCellInteractions:
                                                               cutoff_setup=self.cutoff_setup,
                                                               analysis_setup=self.analysis_setup,
                                                               complex_sep=self.complex_sep,
+                                                              complex_agg_method=self.complex_agg_method,
                                                               interaction_columns=self.interaction_columns,
                                                               verbose=verbose)
 
@@ -710,6 +744,7 @@ class SingleCellInteractions:
                                                              cutoff_setup=self.cutoff_setup,
                                                              analysis_setup=self.analysis_setup,
                                                              complex_sep=self.complex_sep,
+                                                             complex_agg_method=self.complex_agg_method,
                                                              interaction_columns=self.interaction_columns,
                                                              verbose=False)
 
@@ -757,7 +792,8 @@ class SpatialSingleCellInteractions:
 
 
 def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_setup, excluded_cells=None,
-                                 complex_sep=None, interaction_columns=('A', 'B'), verbose=True):
+                                 complex_sep=None, complex_agg_method='min', interaction_columns=('A', 'B'),
+                                 verbose=True):
     '''Initializes a InteractionSpace object to perform the analyses
 
     Parameters
@@ -838,6 +874,13 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
 
+    complex_agg_method : str, default='min'
+        Method to aggregate the expression value of multiple genes in a
+        complex.
+
+        - 'min' : Minimum expression value among all genes.
+        - 'mean' : Average expression value among all genes.
+
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a
         dataframe of protein-protein interactions. If the list is for
@@ -866,6 +909,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
                                                 cci_score=analysis_setup['cci_score'],
                                                 cci_type=analysis_setup['cci_type'],
                                                 complex_sep=complex_sep,
+                                                complex_agg_method=complex_agg_method,
                                                 interaction_columns=interaction_columns,
                                                 verbose=verbose)
     return interaction_space
