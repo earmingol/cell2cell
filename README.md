@@ -86,7 +86,7 @@ associated with Memory. This may happen when the tensor is big enough to make th
        *bioRxiv*, (2020). **DOI: 10.1101/2020.11.22.392217**
 
 
-- **Tensor-cell2cell** should be cited using this pre-print in bioRxiv:
+- **Tensor-cell2cell** should be cited using this research article:
     - Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Aamodt C., Knight R., Lewis N.E.
-     [Context-aware deconvolution of cell-cell communication with Tensor-cell2cell](https://doi.org/10.1101/2021.09.20.461129)
-     *bioRxiv*, (2021). **DOI: 10.1101/2021.09.20.461129**
+     [Context-aware deconvolution of cell-cell communication with Tensor-cell2cell](https://doi.org/10.1038/s41467-022-31369-2)
+     *Nat. Commun.* **13**, 3665 (2022). **DOI: 10.1038/s41467-022-31369-2**
