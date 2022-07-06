@@ -8,8 +8,8 @@ from cell2cell.tensor.tensor import PreBuiltTensor
 
 
 def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, receptor_col, score_col, how='inner',
-                         lr_sep='^', context_order=None, order_labels=None, sort_elements=True,
-                         lr_fill=np.nan, cell_fill=np.nan, device=None):
+                         lr_fill=np.nan, cell_fill=np.nan, lr_sep='^', context_order=None, order_labels=None,
+                         sort_elements=True, device=None):
     '''Generates an InteractionTensor from a dictionary
     containing dataframes for all contexts.
 

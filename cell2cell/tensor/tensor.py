@@ -102,14 +102,13 @@ class BaseTensor():
 
     loc_nans : ndarray list
         An array of shape equal to `tensor` with ones where NaN values were assigned
-        when building the tensor. Other values are zeros. This keep stored the
+        when building the tensor. Other values are zeros. It stores the
         location of the NaN values.
 
     loc_zeros : ndarray list
         An array of shape equal to `tensor` with ones where zeros that are not in
-        `loc_nans` are located. Other values are assigned a zero. This is useful
-        for keeping track of the real zero values rather than NaN values that
-        were converted to zeros.
+        `loc_nans` are located. Other values are assigned a zero. It tracks the
+        real zero values rather than NaN values that were converted to zero.
     '''
     def __init__(self):
         # Save variables for this class
@@ -617,6 +616,7 @@ class InteractionTensor(BaseTensor):
         else:
             self.loc_nans = np.ones(tensor.shape, dtype=int) - np.array(mask)
         self.loc_zeros = (tensor == 0).astype(int) - self.loc_nans
+        self.loc_zeros = (self.loc_zeros > 0).astype(int)
 
         # Generate names for the elements in each dimension (order) in the tensor
         if context_names is None:
@@ -671,7 +671,7 @@ class PreBuiltTensor(BaseTensor):
 
     loc_nans : ndarray list, default=None
         An array of shape equal to `tensor` with ones where NaN values were assigned
-        when building the tensor. Other values are zeros. This keep stored the
+        when building the tensor. Other values are zeros. It stores the
         location of the NaN values.
 
     device : str, default=None
@@ -692,7 +692,8 @@ class PreBuiltTensor(BaseTensor):
         self.loc_nans = self.loc_nans + tmp_nans
         self.loc_nans = (self.loc_nans > 0).astype(int)
 
-        self.loc_zeros = (np.array(tensor) == 0).astype(int) - self.loc_nans
+        self.loc_zeros = (np.array(tensor) == 0.).astype(int) - self.loc_nans
+        self.loc_zeros = (self.loc_zeros > 0).astype(int)
 
         # Store tensor
         tensor_ = np.nan_to_num(tensor)
