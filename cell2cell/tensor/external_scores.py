@@ -55,6 +55,14 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
                           contexts (intersection), while all cell types that are
                           present across contexts (union).
 
+    lr_fill : float, default=numpy.nan
+        Value to fill communication scores when a ligand-receptor pair is not
+        present across all contexts.
+
+    cell_fill : float, default=numpy.nan
+        Value to fill communication scores when a cell is not
+        present across all ligand-receptor pairs or all contexts.
+
     lr_sep : str, default='^'
         Separation character to join ligands and receptors into a LR pair name.
 
