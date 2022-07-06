@@ -96,9 +96,20 @@ class BaseTensor():
     explained_variance : float
         Explained variance score for a tnesor factorization.
 
-    explained_variance_ratio_ : ndarray
+    explained_variance_ratio_ : ndarray list
         Percentage of variance explained by each of the factors. Only present when
         "normalize_loadings" is True. Otherwise, it is None.
+
+    loc_nans : ndarray list
+        An array of shape equal to `tensor` with ones where NaN values were assigned
+        when building the tensor. Other values are zeros. This keep stored the
+        location of the NaN values.
+
+    loc_zeros : ndarray list
+        An array of shape equal to `tensor` with ones where zeros that are not in
+        `loc_nans` are located. Other values are assigned a zero. This is useful
+        for keeping track of the real zero values rather than NaN values that
+        were converted to zeros.
     '''
     def __init__(self):
         # Save variables for this class
@@ -116,6 +127,8 @@ class BaseTensor():
         self.mask = None
         self.explained_variance_ = None
         self.explained_variance_ratio_ = None
+        self.loc_nans = None
+        self.loc_zeros = None
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
                                      runs=1, normalize_loadings=True, var_ordered_factors=True, **kwargs):
@@ -598,6 +611,13 @@ class InteractionTensor(BaseTensor):
                                                                          group_ppi_method=group_ppi_method,
                                                                          verbose=verbose)
 
+        # Distinguish NaNs from real zeros
+        if mask is None:
+            self.loc_nans = np.zeros(tensor.shape, dtype=int)
+        else:
+            self.loc_nans = np.ones(tensor.shape, dtype=int) - np.array(mask)
+        self.loc_zeros = (tensor == 0).astype(int) - self.loc_nans
+
         # Generate names for the elements in each dimension (order) in the tensor
         if context_names is None:
             context_names = ['C-' + str(i) for i in range(1, len(mod_rnaseq_matrices)+1)]
@@ -649,30 +669,49 @@ class PreBuiltTensor(BaseTensor):
         a boolean array of the same shape as the original tensor and should be 0
         where the values are missing and 1 everywhere else.
 
+    loc_nans : ndarray list, default=None
+        An array of shape equal to `tensor` with ones where NaN values were assigned
+        when building the tensor. Other values are zeros. This keep stored the
+        location of the NaN values.
+
     device : str, default=None
         Device to use when backend is pytorch. Options are:
          {'cpu', 'cuda:0', None}
     '''
-    def __init__(self, tensor, order_names, order_labels=None, mask=None, device=None):
+    def __init__(self, tensor, order_names, order_labels=None, mask=None, loc_nans=None, loc_zeros=None, device=None):
         # Init BaseTensor
         BaseTensor.__init__(self)
 
+        # Location of NaNs and zeros
+        tmp_nans = (np.isnan(tensor)).astype(int) # Find extra NaNs that were not considered
+        if loc_nans is None:
+            self.loc_nans = np.zeros(tuple(tensor.shape), dtype=int)
+        else:
+            assert loc_nans.shape == tensor.shape, "`loc_nans` and `tensor` must be of the same shape"
+            self.loc_nans = np.array(loc_nans.copy())
+        self.loc_nans = self.loc_nans + tmp_nans
+        self.loc_nans = (self.loc_nans > 0).astype(int)
+
+        self.loc_zeros = (np.array(tensor) == 0).astype(int) - self.loc_nans
+
+        # Store tensor
+        tensor_ = np.nan_to_num(tensor)
         if device is None:
-            self.tensor = tl.tensor(tensor)
+            self.tensor = tl.tensor(tensor_)
             self.mask = mask
         else:
             if tl.get_backend() == 'pytorch':
-                self.tensor = tl.tensor(tensor, device=device)
+                self.tensor = tl.tensor(tensor_, device=device)
                 if mask is not None:
                     self.mask = tl.tensor(mask, device=device)
                 else:
                     self.mask = mask
             else:
-                self.tensor = tl.tensor(tensor)
+                self.tensor = tl.tensor(tensor_)
                 self.mask = mask
         self.order_names = order_names
         if order_labels is None:
-            self.order_labels = ['Dimension-{}'.format(i+1) for i in range(self.tensor.shape)]
+            self.order_labels = ['Dimension-{}'.format(i + 1) for i in range(self.tensor.shape)]
         else:
             self.order_labels = order_labels
         assert len(self.tensor.shape) == len(self.order_labels), "The length of order_labels must match the number of orders/dimensions in the tensor"

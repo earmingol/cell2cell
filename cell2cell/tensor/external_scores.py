@@ -8,7 +8,8 @@ from cell2cell.tensor.tensor import PreBuiltTensor
 
 
 def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, receptor_col, score_col, how='inner',
-                         lr_sep='^', context_order=None, order_labels=None, sort_elements=True, device=None):
+                         lr_sep='^', context_order=None, order_labels=None, sort_elements=True,
+                         lr_fill=np.nan, cell_fill=np.nan, device=None):
     '''Generates an InteractionTensor from a dictionary
     containing dataframes for all contexts.
 
@@ -168,10 +169,10 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
         for lr in lr_pairs:
             df = v.loc[v['LRs'] == lr]
             if df.shape[0] == 0:  # TODO: Check behavior when df is empty
-                df = pd.DataFrame(np.nan, index=sender_cells, columns=receiver_cells)
+                df = pd.DataFrame(lr_fill, index=sender_cells, columns=receiver_cells)
             else:
                 df = df.pivot(index=sender_col, columns=receiver_col, values=score_col)
-                df = df.reindex(sender_cells).reindex(receiver_cells, axis='columns')
+                df = df.reindex(sender_cells, fill_value=cell_fill).reindex(receiver_cells, fill_value=cell_fill, axis='columns')
 
             tmp_3d_tensor.append(df.values)
         tmp_tensor.append(tmp_3d_tensor)
@@ -180,11 +181,15 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
     tensor = np.asarray(tmp_tensor)
     if how != 'inner':
         mask = (~np.isnan(tensor)).astype(int)
+        loc_nans = np.ones(tensor.shape, dtype=int) - mask
     else:
         mask = None
-    interaction_tensor = PreBuiltTensor(tensor=np.nan_to_num(tensor),
+        loc_nans = np.zeros(tensor.shape, dtype=int)
+
+    interaction_tensor = PreBuiltTensor(tensor=tensor,
                                         order_names=[context_order, lr_pairs, sender_cells, receiver_cells],
                                         order_labels=order_labels,
                                         mask=mask,
+                                        loc_nans=loc_nans,
                                         device=device)
     return interaction_tensor
