@@ -163,6 +163,7 @@ def add_complexes_to_expression(rnaseq_data, complexes, agg_method='min'):
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     Returns
     -------
@@ -180,8 +181,8 @@ def add_complexes_to_expression(rnaseq_data, complexes, agg_method='min'):
                 tmp_rna.loc[k] = df.min().values.tolist()
             elif agg_method == 'mean':
                 tmp_rna.loc[k] = df.mean().values.tolist()
-            # elif agg_method == 'gmean':
-            #    tmp_rna.loc[k] = df.gmean().values.tolist() # Not implemented
+            elif agg_method == 'gmean':
+                tmp_rna.loc[k] = df.apply(lambda x: np.exp(np.mean(np.log(x)))).values.tolist()
             else:
                 ValueError("{} is not a valid agg_method".format(agg_method))
         else:

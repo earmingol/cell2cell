@@ -30,7 +30,7 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
     self_interaction : boolean, default=True
         Whether considering autocrine interactions (pair A-A, B-B, etc).
 
-    remove_duplicates : booleanm default=True
+    remove_duplicates : boolean, default=True
         Whether removing duplicates when a list of cells is passed and names are
         duplicated. If False and a list [A, A, B] is passed, pairs could be
         [A-A, A-A, A-B, A-A, A-A, A-B, B-A, B-A, B-B] when self_interaction is True
@@ -110,6 +110,7 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a
@@ -272,6 +273,7 @@ class InteractionSpace():
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a

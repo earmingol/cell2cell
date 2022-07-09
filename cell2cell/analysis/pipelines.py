@@ -93,6 +93,7 @@ class BulkInteractions:
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -122,13 +123,13 @@ class BulkInteractions:
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
 
-
     complex_agg_method : str
         Method to aggregate the expression value of multiple genes in a
         complex.
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     ref_ppi : pandas.DataFrame
         Reference list of protein-protein interactions (or ligand-receptor pairs) used
@@ -466,6 +467,7 @@ class SingleCellInteractions:
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -503,6 +505,7 @@ class SingleCellInteractions:
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     ref_ppi : pandas.DataFrame
         Reference list of protein-protein interactions (or ligand-receptor pairs) used
@@ -638,15 +641,16 @@ class SingleCellInteractions:
         self.analysis_setup['cci_type'] = cci_type
 
         # Initialize PPI
-
         ppi_data_ = ppi.filter_ppi_by_proteins(ppi_data=ppi_data,
                                                proteins=genes,
                                                complex_sep=complex_sep,
                                                upper_letter_comparison=False,
                                                interaction_columns=interaction_columns)
+
         self.ppi_data = ppi.remove_ppi_bidirectionality(ppi_data=ppi_data_,
                                                         interaction_columns=interaction_columns,
                                                         verbose=verbose)
+
         if self.analysis_setup['cci_type'] == 'undirected':
             self.ref_ppi = self.ppi_data
             self.ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
