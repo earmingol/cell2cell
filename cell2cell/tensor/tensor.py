@@ -129,8 +129,13 @@ class BaseTensor():
         self.loc_nans = None
         self.loc_zeros = None
 
-    def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', random_state=None, verbose=False,
-                                     runs=1, normalize_loadings=True, var_ordered_factors=True, **kwargs):
+    def copy(self):
+        import copy
+        return copy.deepcopy(self)
+
+    def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', svd='numpy_svd', random_state=None,
+                                     runs=1, normalize_loadings=True, var_ordered_factors=True, n_iter_max=100, tol=10e-7,
+                                     verbose=False, **kwargs):
         '''Performs a Tensor Factorization.
         There are no returns, instead the attributes factors and rank
          of the Tensor class are updated.
@@ -150,11 +155,11 @@ class BaseTensor():
             Initialization method for computing the Tensor Factorization.
             {‘svd’, ‘random’}
 
+        svd : str, default='numpy_svd'
+            Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
+
         random_state : int, default=None
             Seed for randomization.
-
-        verbose : boolean, default=False
-            Whether printing or not steps of the analysis.
 
         runs : int, default=1
             Number of models to choose among and find the lowest error.
@@ -168,6 +173,20 @@ class BaseTensor():
             Whether ordering factors by the variance they explain. The order is from
             highest to lowest variance. `normalize_loadings` must be True. Otherwise,
             this parameter is ignored.
+
+        tol : float, default=10e-7
+            Tolerance for the decomposition algorithm to stop when the variation in
+            the reconstruction error is less than the tolerance. Lower `tol` helps
+            to improve the solution obtained from the decomposition, but it takes
+            longer to run.
+
+        n_iter_max : int, default=100
+            Maximum number of iteration to reach an optimal solution with the
+            decomposition algorithm. Higher `n_iter_max`helps to improve the solution
+            obtained from the decomposition, but it takes longer to run.
+
+        verbose : boolean, default=False
+            Whether printing or not steps of the analysis.
 
         **kwargs : dict
             Extra arguments for the tensor factorization according to inputs in tensorly.
@@ -190,8 +209,11 @@ class BaseTensor():
                                                              rank=rank,
                                                              tf_type=tf_type,
                                                              init=init,
+                                                             svd=svd,
                                                              random_state=random_state_,
                                                              mask=self.mask,
+                                                             n_iter_max=n_iter_max,
+                                                             tol=tol,
                                                              verbose=verbose,
                                                              **kwargs)
             # This helps to obtain proper error when the mask is not None.
@@ -248,9 +270,9 @@ class BaseTensor():
                                        [pd.DataFrame(tl.to_numpy(f), index=idx, columns=factor_names) for f, idx in zip(factors, self.order_names)]))
         self.rank = rank
 
-    def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', random_state=None,
-                             automatic_elbow=True, manual_elbow=None, mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
-                             verbose=False, **kwargs):
+    def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', svd='numpy_svd',
+                             random_state=None, n_iter_max=100, tol=10e-7, automatic_elbow=True, manual_elbow=None,
+                             mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None, verbose=False, **kwargs):
         '''Elbow analysis on the error achieved by the Tensor Factorization for
         selecting the number of factors to use. A plot is made with the results.
 
@@ -265,14 +287,39 @@ class BaseTensor():
 
         tf_type : str, default='non_negative_cp'
             Type of Tensor Factorization.
-            - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
+
+            - 'non_negative_cp' : Non-negative PARAFAC through the traditional ALS.
+            - 'non_negative_cp_hals' : Non-negative PARAFAC through the Hierarchical ALS.
+                                       It reaches an optimal solution faster than the
+                                       traditional ALS, but it does not allow a mask.
+            - 'parafac' : PARAFAC through the traditional ALS. It allows negative loadings.
+            - 'constrained_parafac' : PARAFAC through the traditional ALS. It allows
+                                      negative loadings. Also, it incorporates L1 and L2
+                                      regularization, includes a 'non_negative' option, and
+                                      allows constraining the sparsity of the decomposition.
+                                      For more information, see
+                                      http://tensorly.org/stable/modules/generated/tensorly.decomposition.constrained_parafac.html#tensorly.decomposition.constrained_parafac
 
         init : str, default='svd'
             Initialization method for computing the Tensor Factorization.
             {‘svd’, ‘random’}
 
+        svd : str, default='numpy_svd'
+            Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
+
         random_state : int, default=None
             Seed for randomization.
+
+        tol : float, default=10e-7
+            Tolerance for the decomposition algorithm to stop when the variation in
+            the reconstruction error is less than the tolerance. Lower `tol` helps
+            to improve the solution obtained from the decomposition, but it takes
+            longer to run.
+
+        n_iter_max : int, default=100
+            Maximum number of iteration to reach an optimal solution with the
+            decomposition algorithm. Higher `n_iter_max`helps to improve the solution
+            obtained from the decomposition, but it takes longer to run.
 
         automatic_elbow : boolean, default=True
             Whether using an automatic strategy to find the elbow. If True, the method
@@ -331,8 +378,11 @@ class BaseTensor():
                                        upper_rank=upper_rank,
                                        tf_type=tf_type,
                                        init=init,
+                                       svd=svd,
                                        random_state=random_state,
                                        mask=mask,
+                                       n_iter_max=n_iter_max,
+                                       tol=tol,
                                        verbose=verbose,
                                        **kwargs
                                        )
@@ -351,8 +401,11 @@ class BaseTensor():
                                                      runs=runs,
                                                      tf_type=tf_type,
                                                      init=init,
+                                                     svd=svd,
                                                      random_state=random_state,
                                                      mask=mask,
+                                                     n_iter_max=n_iter_max,
+                                                     tol=tol,
                                                      verbose=verbose,
                                                      **kwargs
                                                      )
@@ -533,6 +586,7 @@ class InteractionTensor(BaseTensor):
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     upper_letter_comparison : boolean, default=True
         Whether making uppercase the gene names in the expression matrices and the
@@ -1120,6 +1174,7 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
     ppis = []
     rnaseq_matrices = []
     complex_sep = interactions[0].complex_sep
+    complex_agg_method = interactions[0].complex_agg_method
     interaction_columns = interactions[0].interaction_columns
     for Int_ in interactions:
         if Int_.analysis_setup['cci_type'] == 'undirected':
@@ -1142,6 +1197,7 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
                                context_names=context_names,
                                how=how,
                                complex_sep=complex_sep,
+                               complex_agg_method=complex_agg_method,
                                interaction_columns=interaction_columns,
                                communication_score=communication_score,
                                upper_letter_comparison=upper_letter_comparison,
