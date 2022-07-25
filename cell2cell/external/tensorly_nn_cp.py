@@ -5,7 +5,7 @@
 
 import warnings
 import tensorly as tl
-from tensorly.random import check_random_state, random_cp
+from tensorly.random import random_cp # check_random_state,
 from tensorly.base import unfold
 from tensorly.cp_tensor import (CPTensor,
                          unfolding_dot_khatri_rao, cp_norm,
