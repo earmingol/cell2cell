@@ -139,6 +139,45 @@ def compute_count_score(cell1, cell2, ppi_score=None):
     return cci_score
 
 
+def compute_icellnet_score(cell1, cell2, ppi_score=None):
+    '''Calculates the sum of communication scores
+    for the interaction between two cells. Based on ICELLNET.
+
+    Parameters
+    ----------
+    cell1 : cell2cell.core.cell.Cell
+        First cell-type/tissue/sample to compute interaction
+        between a pair of them. In a directed interaction,
+        this is the sender.
+
+    cell2 : cell2cell.core.cell.Cell
+        Second cell-type/tissue/sample to compute interaction
+        between a pair of them. In a directed interaction,
+        this is the receiver.
+
+    Returns
+    -------
+    cci_score : float
+        Overall score for the interaction between a pair of
+        cell-types/tissues/samples.
+    '''
+    c1 = cell1.weighted_ppi['A'].values
+    c2 = cell2.weighted_ppi['B'].values
+
+    if (len(c1) == 0) or (len(c2) == 0):
+        return 0.0
+
+    if ppi_score is None:
+        ppi_score = np.array([1.0] * len(c1))
+
+    mult = c1 * c2 * ppi_score
+    cci_score = np.nansum(mult)
+
+    if cci_score is np.nan:
+        return 0.0
+    return cci_score
+
+
 def matmul_jaccard_like(A_scores, B_scores, ppi_score=None):
     '''Computes Jaccard-like scores using matrices of proteins by
     cell-types/tissues/samples.

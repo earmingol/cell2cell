@@ -62,6 +62,7 @@ class BulkInteractions:
         - 'bray_curtis' : Bray-Curtis-like score.
         - 'jaccard' : Jaccard-like score.
         - 'count' : Number of LR pairs that the pair of cells use.
+        - 'icellnet' : Sum of the L-R expression product of a pair of cells
 
     cci_type : str, default='undirected'
         Specifies whether computing the cci_score in a directed or undirected
@@ -165,6 +166,7 @@ class BulkInteractions:
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+            - 'icellnet'
 
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
@@ -275,6 +277,7 @@ class BulkInteractions:
             - 'bray_curtis' : Bray-Curtis-like score.
             - 'jaccard' : Jaccard-like score.
             - 'count' : Number of LR pairs that the pair of cells use.
+            - 'icellnet' : Sum of the L-R expression product of a pair of cells
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
@@ -423,6 +426,7 @@ class SingleCellInteractions:
         - 'bray_curtis' : Bray-Curtis-like score.
         - 'jaccard' : Jaccard-like score.
         - 'count' : Number of LR pairs that the pair of cells use.
+        - 'icellnet' : Sum of the L-R expression product of a pair of cells
 
     cci_type : str, default='undirected'
         Specifies whether computing the cci_score in a directed or undirected
@@ -541,6 +545,7 @@ class SingleCellInteractions:
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+            - 'icellnet'
 
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
@@ -858,6 +863,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+            - 'icellnet'
 
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
