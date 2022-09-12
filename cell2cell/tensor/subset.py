@@ -76,7 +76,7 @@ def subset_tensor(interaction_tensor, subset_dict, remove_duplicates=True, origi
         Whether removing duplicated names in `elements`.
 
     original_order : boolean, default=False
-        Wheter keeping the original order of the elements in
+        Whether keeping the original order of the elements in
         interaction_tensor.order_names or keeping the
         new order as indicated in the lists in the `subset_dict`.
 
