@@ -4,8 +4,9 @@ import copy
 import numpy as np
 import tensorly as tl
 
+from cell2cell.preprocessing.find_elements import find_duplicates
 
-def find_element_indexes(interaction_tensor, elements, axis=0, remove_duplicates=True, original_order=False):
+def find_element_indexes(interaction_tensor, elements, axis=0, remove_duplicates=True, keep='first', original_order=False):
     '''Finds the location/indexes of a list of elements in one of the
     axis of an InteractionTensor.
 
@@ -25,8 +26,16 @@ def find_element_indexes(interaction_tensor, elements, axis=0, remove_duplicates
     remove_duplicates : boolean, default=True
         Whether removing duplicated names in `elements`.
 
+    keep : str, default='first'
+        Determines which duplicates (if any) to keep.
+        Options are:
+
+        - first : Drop duplicates except for the first occurrence.
+        - last : Drop duplicates except for the last occurrence.
+        - False : Drop all duplicates.
+
     original_order : boolean, default=False
-        Wheter keeping the original order of the elements in
+        Whether keeping the original order of the elements in
         interaction_tensor.order_names[axis] or keeping the
         new order as indicated in `elements`.
 
@@ -41,20 +50,42 @@ def find_element_indexes(interaction_tensor, elements, axis=0, remove_duplicates
     assert axis < len \
         (interaction_tensor.order_names), "List index out of range. interaction_tensor.order_names must have element names for each axis of the tensor."
 
-    if remove_duplicates:
-        elements = sorted(set(elements), key=elements.index)
+    elements = sorted(set(elements), key=list(elements).index)
 
     if original_order:
         # Avoids error for considering elements not in the tensor
         elements = set(elements).intersection(set(interaction_tensor.order_names[axis]))
         elements = sorted(elements, key=interaction_tensor.order_names[axis].index)
 
+
+    # Find duplicates if we are removing them
+    to_exclude = []
+    if remove_duplicates:
+        dup_dict = find_duplicates(interaction_tensor.order_names[axis])
+
+        if len(dup_dict) > 0:  # Only if we have duplicate items
+            if keep == 'first':
+                for k, v in dup_dict.items():
+                    to_exclude.extend(v[1:])
+            elif keep == 'last':
+                for k, v in dup_dict.items():
+                    to_exclude.extend(v[:-1])
+            elif not keep:
+                for k, v in dup_dict.items():
+                    to_exclude.extend(v)
+            else:
+                raise ValueError("Not a valid option was selected for the parameter `keep`")
+
+    # Find indexes in the tensor
     indexes = sum \
         ([np.where(np.asarray(interaction_tensor.order_names[axis]) == element)[0].tolist() for element in elements], [])
+
+    # Exclude duplicates if any to exclude
+    indexes = [idx for idx in indexes if idx not in to_exclude]
     return indexes
 
 
-def subset_tensor(interaction_tensor, subset_dict, remove_duplicates=True, original_order=False):
+def subset_tensor(interaction_tensor, subset_dict, remove_duplicates=True, keep='first', original_order=False):
     '''Subsets an InteractionTensor to contain only specific elements in
     respective dimensions.
 
@@ -74,6 +105,14 @@ def subset_tensor(interaction_tensor, subset_dict, remove_duplicates=True, origi
 
     remove_duplicates : boolean, default=True
         Whether removing duplicated names in `elements`.
+
+    keep : str, default='first'
+        Determines which duplicates (if any) to keep.
+        Options are:
+
+        - first : Drop duplicates except for the first occurrence.
+        - last : Drop duplicates except for the last occurrence.
+        - False : Drop all duplicates.
 
     original_order : boolean, default=False
         Whether keeping the original order of the elements in
@@ -110,6 +149,7 @@ def subset_tensor(interaction_tensor, subset_dict, remove_duplicates=True, origi
                                            elements=v,
                                            axis=k,
                                            remove_duplicates=remove_duplicates,
+                                           keep=keep,
                                            original_order=original_order
                                            )
                 if len(idx) == 0:
