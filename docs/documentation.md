@@ -1,7 +1,7 @@
 # Documentation for *cell2cell*
 
 This documentation is for our *cell2cell* suite, which includes the [regular cell2cell](https://www.biorxiv.org/content/10.1101/2020.11.22.392217v3)
-and [Tensor-cell2cell](https://doi.org/10.1101/2021.09.20.461129) tools. The former is for inferring cell-cell interactions
+and [Tensor-cell2cell](https://doi.org/10.1038/s41467-022-31369-2) tools. The former is for inferring cell-cell interactions
 and communication in one sample or context, while the latter is for deconvolving complex patterns
 of cell-cell communication across multiple samples or contexts simultaneously into interpretable factors
 representing patterns of communication.

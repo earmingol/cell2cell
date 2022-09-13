@@ -30,7 +30,7 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
     self_interaction : boolean, default=True
         Whether considering autocrine interactions (pair A-A, B-B, etc).
 
-    remove_duplicates : booleanm default=True
+    remove_duplicates : boolean, default=True
         Whether removing duplicates when a list of cells is passed and names are
         duplicated. If False and a list [A, A, B] is passed, pairs could be
         [A-A, A-A, A-B, A-A, A-A, A-B, B-A, B-A, B-B] when self_interaction is True
@@ -110,6 +110,7 @@ def generate_interaction_elements(modified_rnaseq, ppi_data, cci_type='undirecte
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a
@@ -245,6 +246,7 @@ class InteractionSpace():
         - 'bray_curtis'
         - 'jaccard'
         - 'count'
+        - 'icellnet'
 
     cci_type : str, default='undirected'
         Type of interaction between two cells. If it is undirected, all ligands
@@ -272,6 +274,7 @@ class InteractionSpace():
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     interaction_columns : tuple, default=('A', 'B')
         Contains the names of the columns where to find the partners in a
@@ -303,6 +306,7 @@ class InteractionSpace():
         - 'bray_curtis'
         - 'jaccard'
         - 'count'
+        - 'icellnet'
 
     cci_type : str
         Type of interaction between two cells. If it is undirected, all ligands
@@ -332,7 +336,7 @@ class InteractionSpace():
         to store CCI scores(under key 'cci_matrix'). A communication matrix
         is also stored in this object when the communication scores are
         computed in the InteractionSpace class (under key
-        'communication_score')
+        'communication_matrix')
 
     distance_matrix : pandas.DataFrame
         Contains distances for each pair of cells, computed from
@@ -408,6 +412,7 @@ class InteractionSpace():
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells uses
+            - 'icellnet' : Sum of the L-R expression product of a pair of cells
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
@@ -438,6 +443,8 @@ class InteractionSpace():
             cci_value = cci_scores.compute_jaccard_like_cci_score(cell1, cell2, ppi_score=ppi_score)
         elif cci_score == 'count':
             cci_value = cci_scores.compute_count_score(cell1, cell2, ppi_score=ppi_score)
+        elif cci_score == 'icellnet':
+            cci_value = cci_scores.compute_icellnet_score(cell1, cell2, ppi_score=ppi_score)
         else:
             raise NotImplementedError("CCI score {} to compute pairwise cell-interactions is not implemented".format(cci_score))
         return cci_value
@@ -457,6 +464,7 @@ class InteractionSpace():
             - 'bray_curtis' : Bray-Curtis-like score
             - 'jaccard' : Jaccard-like score
             - 'count' : Number of LR pairs that the pair of cells uses
+            - 'icellnet' : Sum of the L-R expression product of a pair of cells
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
@@ -502,7 +510,7 @@ class InteractionSpace():
         #                                                        )
 
         # Generate distance matrix
-        if cci_score != 'count':
+        if ~(cci_score in ['count', 'icellnet']):
             self.distance_matrix = self.interaction_elements['cci_matrix'].apply(lambda x: 1 - x)
         else:
             #self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'].max().max()).apply(lambda x: 1 - x)

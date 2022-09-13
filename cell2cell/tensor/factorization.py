@@ -4,14 +4,12 @@ import numpy as np
 from tqdm.auto import tqdm
 from kneed import KneeLocator
 
-from cell2cell.external import non_negative_parafac
-# Replace previous line with line below once the random_state is available for init='random'
-#from tensorly.decomposition import non_negative_parafac
+from tensorly.decomposition import non_negative_parafac, non_negative_parafac_hals, parafac, constrained_parafac
 import tensorly as tl
 
 
-def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init='svd', random_state=None, mask=None,
-                                  verbose=False, **kwargs):
+def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init='svd', svd='numpy_svd', random_state=None,
+                                  mask=None, n_iter_max=100, tol=10e-7, verbose=False, **kwargs):
     '''Performs the Tensor Factorization
 
     Parameters
@@ -26,11 +24,25 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
 
     tf_type : str, default='non_negative_cp'
         Type of Tensor Factorization.
-        - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
+
+        - 'non_negative_cp' : Non-negative PARAFAC through the traditional ALS.
+        - 'non_negative_cp_hals' : Non-negative PARAFAC through the Hierarchical ALS.
+                                   It reaches an optimal solution faster than the
+                                   traditional ALS, but it does not allow a mask.
+        - 'parafac' : PARAFAC through the traditional ALS. It allows negative loadings.
+        - 'constrained_parafac' : PARAFAC through the traditional ALS. It allows
+                                  negative loadings. Also, it incorporates L1 and L2
+                                  regularization, includes a 'non_negative' option, and
+                                  allows constraining the sparsity of the decomposition.
+                                  For more information, see
+                                  http://tensorly.org/stable/modules/generated/tensorly.decomposition.constrained_parafac.html#tensorly.decomposition.constrained_parafac
 
     init : str, default='svd'
         Initialization method for computing the Tensor Factorization.
         {‘svd’, ‘random’}
+
+    svd : str, default='numpy_svd'
+        Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
     random_state : int, default=None
         Seed for randomization.
@@ -39,6 +51,17 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
         Helps avoiding missing values during a tensor factorization. A mask should be
         a boolean array of the same shape as the original tensor and should be 0
         where the values are missing and 1 everywhere else.
+
+    tol : float, default=10e-7
+        Tolerance for the decomposition algorithm to stop when the variation in
+        the reconstruction error is less than the tolerance. Lower `tol` helps
+        to improve the solution obtained from the decomposition, but it takes
+        longer to run.
+
+    n_iter_max : int, default=100
+        Maximum number of iteration to reach an optimal solution with the
+        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
+        obtained from the decomposition, but it takes longer to run.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -51,21 +74,70 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
     cp_tf : CPTensor
         A tensorly object containing a list of initialized factors of the tensor
         decomposition where element `i` is of shape (tensor.shape[i], rank).
+
+    errors : list
+        A list of reconstruction errors at each iteration of the algorithms.
+        Returned only when `kwargs` contains 'return_errors' : True.
     '''
-    if mask is not None:
-        init = 'random'
+    # For returning errors
+    return_errors = False
+    if kwargs is not None:
+        if 'return_errors' in kwargs.keys():
+            return_errors = kwargs['return_errors']
+
     if tf_type == 'non_negative_cp':
         cp_tf = non_negative_parafac(tensor=tensor,
                                      rank=rank,
-                                     init=init,
+                                     init='random' if mask is not None else init,
+                                     svd=svd,
                                      random_state=random_state,
                                      mask=mask,
+                                     n_iter_max=n_iter_max,
+                                     tol=tol,
                                      verbose=verbose,
                                      **kwargs)
+
+        if return_errors:
+            cp_tf, errors = cp_tf
+
+    elif tf_type == 'non_negative_cp_hals':
+        cp_tf, errors = non_negative_parafac_hals(tensor=tensor,
+                                                  rank=rank,
+                                                  init=init,
+                                                  svd=svd,
+                                                  #random_state=random_state, # Not implemented in tensorly 0.7.0 commented for now
+                                                  n_iter_max=n_iter_max,
+                                                  tol=tol,
+                                                  verbose=verbose,
+                                                  **kwargs)
+    elif tf_type == 'parafac':
+        cp_tf, errors = parafac(tensor=tensor,
+                                rank=rank,
+                                init='random' if mask is not None else init,
+                                svd=svd,
+                                random_state=random_state,
+                                mask=mask,
+                                n_iter_max=n_iter_max,
+                                tol=tol,
+                                verbose=verbose,
+                                **kwargs)
+
+    elif tf_type == 'constrained_parafac':
+        cp_tf, errors = constrained_parafac(tensor=tensor,
+                                            rank=rank,
+                                            init='random' if mask is not None else init,
+                                            svd=svd,
+                                            random_state=random_state,
+                                            n_iter_max=n_iter_max,
+                                            verbose=verbose,
+                                            **kwargs)
     else:
         raise ValueError('Not a valid tf_type.')
 
-    return cp_tf
+    if return_errors:
+        return cp_tf, errors
+    else:
+        return cp_tf
 
 
 def _compute_elbow(loss):
@@ -86,8 +158,8 @@ def _compute_elbow(loss):
     return rank
 
 
-def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='svd', random_state=None, mask=None,
-                        verbose=False, disable_pbar=False, **kwargs):
+def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='svd', svd='numpy_svd', random_state=None,
+                        mask=None, n_iter_max=100, tol=10e-7, verbose=False, disable_pbar=False, **kwargs):
     '''Performs an elbow analysis with just one run of a tensor factorization for each
     rank
 
@@ -108,6 +180,9 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
         Initialization method for computing the Tensor Factorization.
         {‘svd’, ‘random’}
 
+    svd : str, default='numpy_svd'
+        Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
+
     random_state : int, default=None
         Seed for randomization.
 
@@ -115,6 +190,17 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
         Helps avoiding missing values during a tensor factorization. A mask should be
         a boolean array of the same shape as the original tensor and should be 0
         where the values are missing and 1 everywhere else.
+
+    tol : float, default=10e-7
+        Tolerance for the decomposition algorithm to stop when the variation in
+        the reconstruction error is less than the tolerance. Lower `tol` helps
+        to improve the solution obtained from the decomposition, but it takes
+        longer to run.
+
+    n_iter_max : int, default=100
+        Maximum number of iteration to reach an optimal solution with the
+        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
+        obtained from the decomposition, but it takes longer to run.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -142,8 +228,11 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
                                                           rank=r,
                                                           tf_type=tf_type,
                                                           init=init,
+                                                          svd=svd,
                                                           random_state=random_state,
                                                           mask=mask,
+                                                          n_iter_max=n_iter_max,
+                                                          tol=tol,
                                                           verbose=verbose,
                                                           **kwargs)
         # This helps to obtain proper error when the mask is not None.
@@ -155,8 +244,8 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
     return loss
 
 
-def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_negative_cp', init='svd', random_state=None,
-                                  mask=None, verbose=False, **kwargs):
+def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_negative_cp', init='svd', svd='numpy_svd',
+                                  random_state=None, mask=None, n_iter_max=100, tol=10e-7, verbose=False, **kwargs):
     '''Performs an elbow analysis with multiple runs of a tensor factorization for each
     rank
 
@@ -219,8 +308,11 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
                                                               rank=r,
                                                               tf_type=tf_type,
                                                               init=init,
+                                                              svd=svd,
                                                               random_state=rs,
                                                               mask=mask,
+                                                              n_iter_max=n_iter_max,
+                                                              tol=tol,
                                                               verbose=verbose,
                                                               **kwargs)
             # This helps to obtain proper error when the mask is not None.

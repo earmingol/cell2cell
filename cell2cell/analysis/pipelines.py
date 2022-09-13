@@ -62,6 +62,7 @@ class BulkInteractions:
         - 'bray_curtis' : Bray-Curtis-like score.
         - 'jaccard' : Jaccard-like score.
         - 'count' : Number of LR pairs that the pair of cells use.
+        - 'icellnet' : Sum of the L-R expression product of a pair of cells
 
     cci_type : str, default='undirected'
         Specifies whether computing the cci_score in a directed or undirected
@@ -93,6 +94,7 @@ class BulkInteractions:
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -122,13 +124,13 @@ class BulkInteractions:
         For example, '&' is the complex_sep for a list of ligand-receptor pairs
         where a protein partner could be "CD74&CD44".
 
-
     complex_agg_method : str
         Method to aggregate the expression value of multiple genes in a
         complex.
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     ref_ppi : pandas.DataFrame
         Reference list of protein-protein interactions (or ligand-receptor pairs) used
@@ -164,6 +166,7 @@ class BulkInteractions:
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+            - 'icellnet'
 
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
@@ -274,6 +277,7 @@ class BulkInteractions:
             - 'bray_curtis' : Bray-Curtis-like score.
             - 'jaccard' : Jaccard-like score.
             - 'count' : Number of LR pairs that the pair of cells use.
+            - 'icellnet' : Sum of the L-R expression product of a pair of cells
 
         use_ppi_score : boolean, default=False
             Whether using a weight of LR pairs specified in the ppi_data
@@ -422,6 +426,7 @@ class SingleCellInteractions:
         - 'bray_curtis' : Bray-Curtis-like score.
         - 'jaccard' : Jaccard-like score.
         - 'count' : Number of LR pairs that the pair of cells use.
+        - 'icellnet' : Sum of the L-R expression product of a pair of cells
 
     cci_type : str, default='undirected'
         Specifies whether computing the cci_score in a directed or undirected
@@ -466,6 +471,7 @@ class SingleCellInteractions:
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -503,6 +509,7 @@ class SingleCellInteractions:
 
         - 'min' : Minimum expression value among all genes.
         - 'mean' : Average expression value among all genes.
+        - 'gmean' : Geometric mean expression value among all genes.
 
     ref_ppi : pandas.DataFrame
         Reference list of protein-protein interactions (or ligand-receptor pairs) used
@@ -538,6 +545,7 @@ class SingleCellInteractions:
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+            - 'icellnet'
 
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.
@@ -638,15 +646,16 @@ class SingleCellInteractions:
         self.analysis_setup['cci_type'] = cci_type
 
         # Initialize PPI
-
         ppi_data_ = ppi.filter_ppi_by_proteins(ppi_data=ppi_data,
                                                proteins=genes,
                                                complex_sep=complex_sep,
                                                upper_letter_comparison=False,
                                                interaction_columns=interaction_columns)
+
         self.ppi_data = ppi.remove_ppi_bidirectionality(ppi_data=ppi_data_,
                                                         interaction_columns=interaction_columns,
                                                         verbose=verbose)
+
         if self.analysis_setup['cci_type'] == 'undirected':
             self.ref_ppi = self.ppi_data
             self.ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
@@ -854,6 +863,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
             - 'bray_curtis'
             - 'jaccard'
             - 'count'
+            - 'icellnet'
 
         - 'cci_type' : is the type of interaction between two cells. If it is
             undirected, all ligands and receptors are considered from both cells.

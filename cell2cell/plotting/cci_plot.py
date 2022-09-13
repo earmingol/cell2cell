@@ -105,9 +105,9 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
     # Drop excluded cells
     if excluded_cells is not None:
         df = distance_matrix.loc[~distance_matrix.index.isin(excluded_cells),
-                                 ~distance_matrix.columns.isin(excluded_cells)]
+                                 ~distance_matrix.columns.isin(excluded_cells)].copy()
     else:
-        df = distance_matrix
+        df = distance_matrix.copy()
 
     # Check symmetry to get linkage
     symmetric = check_symmetry(df)
