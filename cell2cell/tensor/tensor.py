@@ -737,7 +737,10 @@ class PreBuiltTensor(BaseTensor):
         BaseTensor.__init__(self)
 
         # Initialize tensor
-        context = tl.context(tensor)
+        try:
+            context = tl.context(tensor)
+        except:
+            context = {'dtype': tensor.dtype}
         tensor = tl.to_numpy(tensor)
         if mask is not None:
             mask = tl.to_numpy(mask)
