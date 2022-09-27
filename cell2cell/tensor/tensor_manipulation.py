@@ -59,7 +59,11 @@ def concatenate_interaction_tensors(interaction_tensors, axis, order_labels, rem
                 assert elements == tensor.order_names[i], "Tensors must have the same elements in the other axes."
 
     # Initialize tensors into a numpy object for performing subset
-    context = tl.context(interaction_tensors[0].tensor) # Use the same context as first tensor for everything
+    # Use the same context as first tensor for everything
+    try:
+        context = tl.context(interaction_tensors[0].tensor)
+    except:
+        context = {'dtype': interaction_tensors[0].tensor.dtype}
 
     # Concatenate tensors
     concat_tensor = tl.concatenate([tensor.tensor.to('cpu') for tensor in interaction_tensors], axis=axis)
