@@ -740,7 +740,7 @@ class PreBuiltTensor(BaseTensor):
         try:
             context = tl.context(tensor)
         except:
-            context = {'dtype': tensor.dtype}
+            context = {'dtype': tensor.dtype, 'device' : None}
         tensor = tl.to_numpy(tensor)
         if mask is not None:
             mask = tl.to_numpy(mask)
@@ -762,11 +762,11 @@ class PreBuiltTensor(BaseTensor):
         tensor_ = np.nan_to_num(tensor)
         if device is not None:
             context['device'] = device
-        self.tensor = tl.tensor(tensor_, **context)
+        self.tensor = tl.tensor(tensor_, device=context['device'])
         if mask is None:
             self.mask = mask
         else:
-            self.mask = tl.tensor(mask, **context)
+            self.mask = tl.tensor(mask, device=context['device'])
         # Potential TODO: make loc_nans and loc_zeros to be a tensor object using the same context.
 
         self.order_names = order_names

@@ -63,7 +63,7 @@ def concatenate_interaction_tensors(interaction_tensors, axis, order_labels, rem
     try:
         context = tl.context(interaction_tensors[0].tensor)
     except:
-        context = {'dtype': interaction_tensors[0].tensor.dtype}
+        context = {'dtype': interaction_tensors[0].tensor.dtype, 'device' : None}
 
     # Concatenate tensors
     concat_tensor = tl.concatenate([tensor.tensor.to('cpu') for tensor in interaction_tensors], axis=axis)
@@ -75,9 +75,9 @@ def concatenate_interaction_tensors(interaction_tensors, axis, order_labels, rem
         else:
             mask = None
 
-    concat_tensor = tl.tensor(concat_tensor, **context)
+    concat_tensor = tl.tensor(concat_tensor, device=context['device'])
     if mask is not None:
-        mask = tl.tensor(mask, **context)
+        mask = tl.tensor(mask, device=context['device'])
 
     # Concatenate names of elements for the given axis but keep the others as in one tensor
     order_names = []
