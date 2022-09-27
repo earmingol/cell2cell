@@ -736,6 +736,12 @@ class PreBuiltTensor(BaseTensor):
         # Init BaseTensor
         BaseTensor.__init__(self)
 
+        # Initialize tensor
+        context = tl.context(tensor)
+        tensor = tl.to_numpy(tensor)
+        if mask is not None:
+            mask = tl.to_numpy(mask)
+
         # Location of NaNs and zeros
         tmp_nans = (np.isnan(tensor)).astype(int) # Find extra NaNs that were not considered
         if loc_nans is None:
@@ -751,19 +757,15 @@ class PreBuiltTensor(BaseTensor):
 
         # Store tensor
         tensor_ = np.nan_to_num(tensor)
-        if device is None:
-            self.tensor = tl.tensor(tensor_)
+        if device is not None:
+            context['device'] = device
+        self.tensor = tl.tensor(tensor_, **context)
+        if mask is None:
             self.mask = mask
         else:
-            if tl.get_backend() == 'pytorch':
-                self.tensor = tl.tensor(tensor_, device=device)
-                if mask is not None:
-                    self.mask = tl.tensor(mask, device=device)
-                else:
-                    self.mask = mask
-            else:
-                self.tensor = tl.tensor(tensor_)
-                self.mask = mask
+            self.mask = tl.tensor(mask, **context)
+        # Potential TODO: make loc_nans and loc_zeros to be a tensor object using the same context.
+
         self.order_names = order_names
         if order_labels is None:
             self.order_labels = ['Dimension-{}'.format(i + 1) for i in range(self.tensor.shape)]
