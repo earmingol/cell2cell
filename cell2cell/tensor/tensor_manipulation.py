@@ -62,12 +62,12 @@ def concatenate_interaction_tensors(interaction_tensors, axis, order_labels, rem
     context = tl.context(interaction_tensors[0].tensor) # Use the same context as first tensor for everything
 
     # Concatenate tensors
-    concat_tensor = tl.concatenate([tl.to_numpy(tensor.tensor) for tensor in interaction_tensors], axis=axis)
+    concat_tensor = tl.concatenate([tensor.tensor.to('cpu') for tensor in interaction_tensors], axis=axis)
     if mask is not None:
         assert mask.shape == concat_tensor.shape, "Mask must have the same shape of the concatenated tensor. Here: {}".format(concat_tensor.shape)
     else: # Generate a new mask from all previous masks if all are not None
         if all([tensor.mask is not None for tensor in interaction_tensors]):
-            mask = tl.concatenate([tl.to_numpy(tensor.mask) for tensor in interaction_tensors], axis=axis)
+            mask = tl.concatenate([tensor.mask.to('cpu') for tensor in interaction_tensors], axis=axis)
         else:
             mask = None
 
