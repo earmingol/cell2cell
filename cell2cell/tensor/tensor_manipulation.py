@@ -58,16 +58,22 @@ def concatenate_interaction_tensors(interaction_tensors, axis, order_labels, rem
             for tensor in interaction_tensors[1:]:
                 assert elements == tensor.order_names[i], "Tensors must have the same elements in the other axes."
 
+    # Initialize tensors into a numpy object for performing subset
+    context = tl.context(interaction_tensors[0].tensor) # Use the same context as first tensor for everything
 
     # Concatenate tensors
-    concat_tensor = tl.concatenate([tensor.tensor for tensor in interaction_tensors], axis=axis)
+    concat_tensor = tl.concatenate([tl.to_numpy(tensor.tensor) for tensor in interaction_tensors], axis=axis)
     if mask is not None:
         assert mask.shape == concat_tensor.shape, "Mask must have the same shape of the concatenated tensor. Here: {}".format(concat_tensor.shape)
     else: # Generate a new mask from all previous masks if all are not None
         if all([tensor.mask is not None for tensor in interaction_tensors]):
-            mask = tl.concatenate([tensor.mask for tensor in interaction_tensors], axis=axis)
+            mask = tl.concatenate([tl.to_numpy(tensor.mask) for tensor in interaction_tensors], axis=axis)
         else:
             mask = None
+
+    concat_tensor = tl.tensor(concat_tensor, **context)
+    if mask is not None:
+        mask = tl.tensor(mask, **context)
 
     # Concatenate names of elements for the given axis but keep the others as in one tensor
     order_names = []
