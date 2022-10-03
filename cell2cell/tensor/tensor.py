@@ -774,7 +774,7 @@ class PreBuiltTensor(BaseTensor):
 
         self.order_names = order_names
         if order_labels is None:
-            self.order_labels = ['Dimension-{}'.format(i + 1) for i in range(self.tensor.shape)]
+            self.order_labels = ['Dimension-{}'.format(i + 1) for i in range(len(self.tensor.shape))]
         else:
             self.order_labels = order_labels
         assert len(self.tensor.shape) == len(self.order_labels), "The length of order_labels must match the number of orders/dimensions in the tensor"
