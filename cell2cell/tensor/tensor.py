@@ -762,10 +762,10 @@ class PreBuiltTensor(BaseTensor):
         tensor_ = np.nan_to_num(tensor)
         if device is not None:
             context['device'] = device
+        if 'device' not in context.keys():
+            self.tensor = tl.tensor(tensor_)
         else:
-            if 'device' not in context.keys():
-                context['device'] = None
-        self.tensor = tl.tensor(tensor_, device=context['device'])
+            self.tensor = tl.tensor(tensor_, device=context['device'])
         if mask is None:
             self.mask = mask
         else:
