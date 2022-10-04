@@ -767,13 +767,13 @@ class PreBuiltTensor(BaseTensor):
             if mask is None:
                 self.mask = mask
             else:
-                self.mask = tl.tensor(mask, device=context['device'])
+                self.mask = tl.tensor(mask)
         else:
             self.tensor = tl.tensor(tensor_, device=context['device'])
             if mask is None:
                 self.mask = mask
             else:
-                self.mask = tl.tensor(mask)
+                self.mask = tl.tensor(mask, device=context['device'])
 
         # Potential TODO: make loc_nans and loc_zeros to be a tensor object using the same context.
 
