@@ -764,12 +764,17 @@ class PreBuiltTensor(BaseTensor):
             context['device'] = device
         if 'device' not in context.keys():
             self.tensor = tl.tensor(tensor_)
+            if mask is None:
+                self.mask = mask
+            else:
+                self.mask = tl.tensor(mask, device=context['device'])
         else:
             self.tensor = tl.tensor(tensor_, device=context['device'])
-        if mask is None:
-            self.mask = mask
-        else:
-            self.mask = tl.tensor(mask, device=context['device'])
+            if mask is None:
+                self.mask = mask
+            else:
+                self.mask = tl.tensor(mask)
+
         # Potential TODO: make loc_nans and loc_zeros to be a tensor object using the same context.
 
         self.order_names = order_names
