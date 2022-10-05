@@ -4,12 +4,13 @@ import numpy as np
 import pandas as pd
 
 from collections import defaultdict
+from cell2cell.preprocessing.find_elements import get_element_abundances, get_elements_over_fraction
 from cell2cell.tensor.tensor import PreBuiltTensor
 
 
 def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, receptor_col, score_col, how='inner',
-                         lr_fill=np.nan, cell_fill=np.nan, lr_sep='^', context_order=None, order_labels=None,
-                         sort_elements=True, device=None):
+                         outer_fraction=0.0, lr_fill=np.nan, cell_fill=np.nan, lr_sep='^', context_order=None,
+                         order_labels=None, sort_elements=True, device=None):
     '''Generates an InteractionTensor from a dictionary
     containing dataframes for all contexts.
 
@@ -54,6 +55,13 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
         - 'outer_cells' : Considers only LR pairs that are present in all
                           contexts (intersection), while all cell types that are
                           present across contexts (union).
+
+    outer_fraction : float
+        Threshold to filter the elements when `how` includes any outer option.
+        Elements with a fraction abundance across contexts (in `context_df_dict`)
+        at least this threshold will be included. When this value is 0, considers
+        all elements across the samples. When this value is 1, it acts as using
+        `how='inner'`.
 
     lr_fill : float, default=numpy.nan
         Value to fill communication scores when a ligand-receptor pair is not
@@ -123,43 +131,73 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
         receiver_dict[k].update(df[receiver_col].unique().tolist())
 
     # Subset LR pairs, sender and receiver cells given parameter 'how'
-    for i, k in enumerate(context_order):
-        if i == 0:
-            inter_lrs = set(lr_dict[k])
-            inter_senders = set(sender_dict[k])
-            inter_receivers = set(receiver_dict[k])
-
-            union_lrs = set(lr_dict[k])
-            union_senders = set(sender_dict[k])
-            union_receivers = set(receiver_dict[k])
-
-        else:
-            inter_lrs = inter_lrs.intersection(set(lr_dict[k]))
-            inter_senders = inter_senders.intersection(set(sender_dict[k]))
-            inter_receivers = inter_receivers.intersection(set(receiver_dict[k]))
-
-            union_lrs = union_lrs.union(set(lr_dict[k]))
-            union_senders = union_senders.union(set(sender_dict[k]))
-            union_receivers = union_receivers.union(set(receiver_dict[k]))
+    df_lrs = [list(lr_dict[k]) for k in context_order]
+    df_senders = [list(sender_dict[k]) for k in context_order]
+    df_receivers  = [list(receiver_dict[k]) for k in context_order]
 
     if how == 'inner':
-        lr_pairs = list(inter_lrs)
-        sender_cells = list(inter_senders)
-        receiver_cells = list(inter_receivers)
+        lr_pairs = list(set.intersection(*map(set, df_lrs)))
+        sender_cells = list(set.intersection(*map(set, df_senders)))
+        receiver_cells = list(set.intersection(*map(set, df_receivers)))
     elif how == 'outer':
-        lr_pairs = list(union_lrs)
-        sender_cells = list(union_senders)
-        receiver_cells = list(union_receivers)
+        lr_pairs = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_lrs),
+                                              fraction=outer_fraction)
+        sender_cells = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_senders),
+                                              fraction=outer_fraction)
+        receiver_cells = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_receivers),
+                                              fraction=outer_fraction)
     elif how == 'outer_lrs':
-        lr_pairs = list(union_lrs)
-        sender_cells = list(inter_senders)
-        receiver_cells = list(inter_receivers)
+        lr_pairs = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_lrs),
+                                              fraction=outer_fraction)
+        sender_cells = list(set.intersection(*map(set, df_senders)))
+        receiver_cells = list(set.intersection(*map(set, df_receivers)))
     elif how == 'outer_cells':
-        lr_pairs = list(inter_lrs)
-        sender_cells = list(union_senders)
-        receiver_cells = list(union_receivers)
+        lr_pairs = list(set.intersection(*map(set, df_lrs)))
+        sender_cells = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_senders),
+                                                  fraction=outer_fraction)
+        receiver_cells = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_receivers),
+                                                    fraction=outer_fraction)
     else:
         raise ValueError("Not a valid input for parameter 'how'")
+
+    # Old code when `outer_fraction` was not implemented.
+    # for i, k in enumerate(context_order):
+    #     if i == 0:
+    #         inter_lrs = set(lr_dict[k])
+    #         inter_senders = set(sender_dict[k])
+    #         inter_receivers = set(receiver_dict[k])
+    #
+    #         union_lrs = set(lr_dict[k])
+    #         union_senders = set(sender_dict[k])
+    #         union_receivers = set(receiver_dict[k])
+    #
+    #     else:
+    #         inter_lrs = inter_lrs.intersection(set(lr_dict[k]))
+    #         inter_senders = inter_senders.intersection(set(sender_dict[k]))
+    #         inter_receivers = inter_receivers.intersection(set(receiver_dict[k]))
+    #
+    #         union_lrs = union_lrs.union(set(lr_dict[k]))
+    #         union_senders = union_senders.union(set(sender_dict[k]))
+    #         union_receivers = union_receivers.union(set(receiver_dict[k]))
+    #
+    # if how == 'inner':
+    #     lr_pairs = list(inter_lrs)
+    #     sender_cells = list(inter_senders)
+    #     receiver_cells = list(inter_receivers)
+    # elif how == 'outer':
+    #     lr_pairs = list(union_lrs)
+    #     sender_cells = list(union_senders)
+    #     receiver_cells = list(union_receivers)
+    # elif how == 'outer_lrs':
+    #     lr_pairs = list(union_lrs)
+    #     sender_cells = list(inter_senders)
+    #     receiver_cells = list(inter_receivers)
+    # elif how == 'outer_cells':
+    #     lr_pairs = list(inter_lrs)
+    #     sender_cells = list(union_senders)
+    #     receiver_cells = list(union_receivers)
+    # else:
+    #     raise ValueError("Not a valid input for parameter 'how'")
 
     if sort_elements:
         if sort_context:
