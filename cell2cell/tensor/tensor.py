@@ -915,11 +915,6 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', outer_fract
     '''
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
     df_cols = [list(rnaseq.columns) for rnaseq in rnaseq_matrices]
-    # This is old code used when `outer_fraction` was not implemented.
-    # inter_genes = set.intersection(*map(set, df_idxs))
-    # inter_cells = set.intersection(*map(set, df_cols))
-    # union_genes = set.union(*map(set, df_idxs))
-    # union_cells = set.union(*map(set, df_cols))
 
     if how == 'inner':
         genes = set.intersection(*map(set, df_idxs))

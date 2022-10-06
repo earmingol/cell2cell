@@ -56,7 +56,7 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
                           contexts (intersection), while all cell types that are
                           present across contexts (union).
 
-    outer_fraction : float
+    outer_fraction : float, default=0.0
         Threshold to filter the elements when `how` includes any outer option.
         Elements with a fraction abundance across contexts (in `context_df_dict`)
         at least this threshold will be included. When this value is 0, considers
@@ -159,45 +159,6 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
                                                     fraction=outer_fraction)
     else:
         raise ValueError("Not a valid input for parameter 'how'")
-
-    # Old code when `outer_fraction` was not implemented.
-    # for i, k in enumerate(context_order):
-    #     if i == 0:
-    #         inter_lrs = set(lr_dict[k])
-    #         inter_senders = set(sender_dict[k])
-    #         inter_receivers = set(receiver_dict[k])
-    #
-    #         union_lrs = set(lr_dict[k])
-    #         union_senders = set(sender_dict[k])
-    #         union_receivers = set(receiver_dict[k])
-    #
-    #     else:
-    #         inter_lrs = inter_lrs.intersection(set(lr_dict[k]))
-    #         inter_senders = inter_senders.intersection(set(sender_dict[k]))
-    #         inter_receivers = inter_receivers.intersection(set(receiver_dict[k]))
-    #
-    #         union_lrs = union_lrs.union(set(lr_dict[k]))
-    #         union_senders = union_senders.union(set(sender_dict[k]))
-    #         union_receivers = union_receivers.union(set(receiver_dict[k]))
-    #
-    # if how == 'inner':
-    #     lr_pairs = list(inter_lrs)
-    #     sender_cells = list(inter_senders)
-    #     receiver_cells = list(inter_receivers)
-    # elif how == 'outer':
-    #     lr_pairs = list(union_lrs)
-    #     sender_cells = list(union_senders)
-    #     receiver_cells = list(union_receivers)
-    # elif how == 'outer_lrs':
-    #     lr_pairs = list(union_lrs)
-    #     sender_cells = list(inter_senders)
-    #     receiver_cells = list(inter_receivers)
-    # elif how == 'outer_cells':
-    #     lr_pairs = list(inter_lrs)
-    #     sender_cells = list(union_senders)
-    #     receiver_cells = list(union_receivers)
-    # else:
-    #     raise ValueError("Not a valid input for parameter 'how'")
 
     if sort_elements:
         if sort_context:
