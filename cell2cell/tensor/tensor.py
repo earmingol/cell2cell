@@ -499,6 +499,18 @@ class BaseTensor():
             excluded_fraction = 1.0 - fraction.item()
             return excluded_fraction
 
+    def sparsity_fraction(self):
+        '''Returns the fraction of values that are zeros in the tensor,
+        given the values that are in tensor.loc_zeros
+
+        Returns
+        -------
+        sparsity_fraction : float
+            Fraction of values that are real zeros.
+        '''
+        sparsity_fraction = tl.sum(self.loc_zeros) / tl.prod(tl.tensor(self.tensor.shape))
+        return sparsity_fraction
+
     def explained_variance(self):
         '''Computes the explained variance score for a tensor decomposition. Inspired on the
         function in sklearn.metrics.explained_variance_score.
