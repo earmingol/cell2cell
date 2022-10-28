@@ -8,6 +8,7 @@ from collections import OrderedDict
 from tqdm.auto import tqdm
 
 from cell2cell.core.communication_scores import compute_ccc_matrix, aggregate_ccc_matrices
+from cell2cell.preprocessing.find_elements import get_element_abundances, get_elements_over_fraction
 from cell2cell.preprocessing.ppi import get_genes_from_complexes
 from cell2cell.preprocessing.rnaseq import add_complexes_to_expression
 from cell2cell.preprocessing.ppi import filter_ppi_by_proteins
@@ -49,6 +50,13 @@ class BaseTensor():
         - 'outer_cells' : Considers only genes that are present in all
                           contexts (intersection), while all cell types that are
                           present across contexts (union).
+
+    outer_fraction : float
+        Threshold to filter the elements when `how` includes any outer option.
+        Elements with a fraction abundance across samples (in `rnaseq_matrices`)
+        at least this threshold will be included. When this value is 0, considers
+        all elements across the samples. When this value is 1, it acts as using
+        `how='inner'`.
 
     tensor : tensorly.tensor
         Tensor object created with the library tensorly.
@@ -114,6 +122,7 @@ class BaseTensor():
         # Save variables for this class
         self.communication_score = None
         self.how = None
+        self.outer_fraction = None
         self.tensor = None
         self.genes = None
         self.cells = None
@@ -474,7 +483,7 @@ class BaseTensor():
         print('Loadings of the tensor factorization were successfully saved into {}'.format(filename))
 
     def excluded_value_fraction(self):
-        '''Returns the fraction of missing/excluded values in the tensor,
+        '''Returns the fraction of excluded values in the tensor,
         given the values that are masked in tensor.mask
 
         Returns
@@ -489,6 +498,38 @@ class BaseTensor():
             fraction = tl.sum(self.mask) / tl.prod(tl.tensor(self.tensor.shape))
             excluded_fraction = 1.0 - fraction.item()
             return excluded_fraction
+
+    def sparsity_fraction(self):
+        '''Returns the fraction of values that are zeros in the tensor,
+        given the values that are in tensor.loc_zeros
+
+        Returns
+        -------
+        sparsity_fraction : float
+            Fraction of values that are real zeros.
+        '''
+        if self.loc_zeros is None:
+            print("The interaction tensor does not have zeros")
+            return 0.0
+        else:
+            sparsity_fraction = tl.sum(self.loc_zeros) / tl.prod(tl.tensor(self.tensor.shape))
+        return sparsity_fraction
+
+    def missing_fraction(self):
+        '''Returns the fraction of values that are missing (NaNs) in the tensor,
+        given the values that are in tensor.loc_nans
+
+        Returns
+        -------
+        missing_fraction : float
+            Fraction of values that are real zeros.
+        '''
+        if self.loc_nans is None:
+            print("The interaction tensor does not have zeros")
+            return 0.0
+        else:
+            missing_fraction = tl.sum(self.loc_nans) / tl.prod(tl.tensor(self.tensor.shape))
+        return missing_fraction
 
     def explained_variance(self):
         '''Computes the explained variance score for a tensor decomposition. Inspired on the
@@ -560,6 +601,13 @@ class InteractionTensor(BaseTensor):
                           contexts (intersection), while all cell types that are
                           present across contexts (union).
 
+    outer_fraction : float, default=0.0
+        Threshold to filter the elements when `how` includes any outer option.
+        Elements with a fraction abundance across samples (in `rnaseq_matrices`)
+        at least this threshold will be included. When this value is 0, considers
+        all elements across the samples. When this value is 1, it acts as using
+        `how='inner'`.
+
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
         receptor pair by a pair of cells/tissues/samples.
@@ -620,7 +668,7 @@ class InteractionTensor(BaseTensor):
     verbose : boolean, default=False
             Whether printing or not steps of the analysis.
     '''
-    def __init__(self, rnaseq_matrices, ppi_data, order_labels=None, context_names=None, how='inner',
+    def __init__(self, rnaseq_matrices, ppi_data, order_labels=None, context_names=None, how='inner', outer_fraction=0.0,
                  communication_score='expression_mean', complex_sep=None, complex_agg_method='min',
                  upper_letter_comparison=True, interaction_columns=('A', 'B'), group_ppi_by=None,
                  group_ppi_method='gmean', device=None, verbose=True):
@@ -656,6 +704,7 @@ class InteractionTensor(BaseTensor):
         tensor, genes, cells, ppi_names, mask = build_context_ccc_tensor(rnaseq_matrices=mod_rnaseq_matrices,
                                                                          ppi_data=ppi_data,
                                                                          how=how,
+                                                                         outer_fraction=outer_fraction,
                                                                          communication_score=communication_score,
                                                                          complex_sep=complex_sep,
                                                                          upper_letter_comparison=upper_letter_comparison,
@@ -680,6 +729,7 @@ class InteractionTensor(BaseTensor):
         # Save variables for this class
         self.communication_score = communication_score
         self.how = how
+        self.outer_fraction = outer_fraction
         if device is None:
             self.tensor = tl.tensor(tensor)
             self.mask = mask
@@ -736,6 +786,15 @@ class PreBuiltTensor(BaseTensor):
         # Init BaseTensor
         BaseTensor.__init__(self)
 
+        # Initialize tensor
+        try:
+            context = tl.context(tensor)
+        except:
+            context = {'dtype': tensor.dtype, 'device' : None}
+        tensor = tl.to_numpy(tensor)
+        if mask is not None:
+            mask = tl.to_numpy(mask)
+
         # Location of NaNs and zeros
         tmp_nans = (np.isnan(tensor)).astype(int) # Find extra NaNs that were not considered
         if loc_nans is None:
@@ -751,30 +810,34 @@ class PreBuiltTensor(BaseTensor):
 
         # Store tensor
         tensor_ = np.nan_to_num(tensor)
-        if device is None:
+        if device is not None:
+            context['device'] = device
+        if 'device' not in context.keys():
             self.tensor = tl.tensor(tensor_)
-            self.mask = mask
-        else:
-            if tl.get_backend() == 'pytorch':
-                self.tensor = tl.tensor(tensor_, device=device)
-                if mask is not None:
-                    self.mask = tl.tensor(mask, device=device)
-                else:
-                    self.mask = mask
-            else:
-                self.tensor = tl.tensor(tensor_)
+            if mask is None:
                 self.mask = mask
+            else:
+                self.mask = tl.tensor(mask)
+        else:
+            self.tensor = tl.tensor(tensor_, device=context['device'])
+            if mask is None:
+                self.mask = mask
+            else:
+                self.mask = tl.tensor(mask, device=context['device'])
+
+        # Potential TODO: make loc_nans and loc_zeros to be a tensor object using the same context.
+
         self.order_names = order_names
         if order_labels is None:
-            self.order_labels = ['Dimension-{}'.format(i + 1) for i in range(self.tensor.shape)]
+            self.order_labels = ['Dimension-{}'.format(i + 1) for i in range(len(self.tensor.shape))]
         else:
             self.order_labels = order_labels
         assert len(self.tensor.shape) == len(self.order_labels), "The length of order_labels must match the number of orders/dimensions in the tensor"
 
 
-def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communication_score='expression_product',
-                             complex_sep=None, upper_letter_comparison=True, interaction_columns=('A', 'B'),
-                             group_ppi_by=None, group_ppi_method='gmean', verbose=True):
+def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', outer_fraction=0.0,
+                             communication_score='expression_product', complex_sep=None, upper_letter_comparison=True,
+                             interaction_columns=('A', 'B'), group_ppi_by=None, group_ppi_method='gmean', verbose=True):
     '''Builds a 4D-Communication tensor.
     Takes the gene expression matrices and the list of PPIs to compute
     the communication scores between the interacting cells for each PPI.
@@ -804,6 +867,13 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
         - 'outer_cells' : Considers only genes that are present in all
                           contexts (intersection), while all cell types that are
                           present across contexts (union).
+
+    outer_fraction : float, default=0.0
+        Threshold to filter the elements when `how` includes any outer option.
+        Elements with a fraction abundance across samples (in `rnaseq_matrices`)
+        at least this threshold will be included. When this value is 0, considers
+        all elements across the samples. When this value is 1, it acts as using
+        `how='inner'`.
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -877,23 +947,23 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', communicati
     '''
     df_idxs = [list(rnaseq.index) for rnaseq in rnaseq_matrices]
     df_cols = [list(rnaseq.columns) for rnaseq in rnaseq_matrices]
-    inter_genes = set.intersection(*map(set, df_idxs))
-    inter_cells = set.intersection(*map(set, df_cols))
-    union_genes = set.union(*map(set, df_idxs))
-    union_cells = set.union(*map(set, df_cols))
 
     if how == 'inner':
-        genes = inter_genes
-        cells = inter_cells
+        genes = set.intersection(*map(set, df_idxs))
+        cells = set.intersection(*map(set, df_cols))
     elif how == 'outer':
-        genes = union_genes
-        cells = union_cells
+        genes = set(get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_idxs),
+                                               fraction=outer_fraction))
+        cells = set(get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_cols),
+                                               fraction=outer_fraction))
     elif how == 'outer_genes':
-        genes = union_genes
-        cells = inter_cells
+        genes = set(get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_idxs),
+                                               fraction=outer_fraction))
+        cells = set.intersection(*map(set, df_cols))
     elif how == 'outer_cells':
-        genes = inter_genes
-        cells = union_cells
+        genes = set.intersection(*map(set, df_idxs))
+        cells = set(get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_cols),
+                                               fraction=outer_fraction))
     else:
         raise ValueError('Provide a valid way to build the tensor; "how" must be "inner", "outer", "outer_genes" or "outer_cells"')
 
@@ -1110,7 +1180,7 @@ def generate_tensor_metadata(interaction_tensor, metadata_dicts, fill_with_order
     return metadata
 
 
-def interactions_to_tensor(interactions, experiment='single_cell', context_names=None, how='inner',
+def interactions_to_tensor(interactions, experiment='single_cell', context_names=None, how='inner', outer_fraction=0.0,
                            communication_score='expression_product', upper_letter_comparison=True, verbose=True):
     '''Takes a list of Interaction pipelines (see classes in
     cell2cell.analysis.pipelines) and generates a communication
@@ -1143,6 +1213,13 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
         - 'outer_cells' : Considers only genes that are present in all
                           contexts (intersection), while all cell types that are
                           present across contexts (union).
+
+    outer_fraction : float, default=0.0
+        Threshold to filter the elements when `how` includes any outer option.
+        Elements with a fraction abundance across samples at least this
+        threshold will be included. When this value is 0, considers
+        all elements across the samples. When this value is 1, it acts as using
+        `how='inner'`.
 
     communication_score : str, default='expression_mean'
         Type of communication score to infer the potential use of a given ligand-
@@ -1196,6 +1273,7 @@ def interactions_to_tensor(interactions, experiment='single_cell', context_names
                                ppi_data=ppi_data,
                                context_names=context_names,
                                how=how,
+                               outer_fraction=outer_fraction,
                                complex_sep=complex_sep,
                                complex_agg_method=complex_agg_method,
                                interaction_columns=interaction_columns,

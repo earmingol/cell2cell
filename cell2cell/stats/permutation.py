@@ -49,12 +49,20 @@ def compute_pvalue_from_dist(obs_value, dist, consider_size=False, comparison='u
         P-value obtained from comparing the observed value and values in the
         distribution.
     '''
+    # Omit nan values
+    dist_ = [x for x in dist if ~np.isnan(x)]
+
+    # All values in dist are NaNs or obs_value is NaN
+    if (len(dist_) == 0) | np.isnan(obs_value):
+        return 1.0
+
+    # No NaN values
     if comparison == 'lower':
-        pval = scipy.stats.percentileofscore(dist, obs_value) / 100.0
+        pval = scipy.stats.percentileofscore(dist_, obs_value) / 100.0
     elif comparison == 'upper':
-        pval = 1.0 - scipy.stats.percentileofscore(dist, obs_value) / 100.0
+        pval = 1.0 - scipy.stats.percentileofscore(dist_, obs_value) / 100.0
     elif comparison == 'different':
-        percentile = scipy.stats.percentileofscore(dist, obs_value) / 100.0
+        percentile = scipy.stats.percentileofscore(dist_, obs_value) / 100.0
         if percentile <= 0.5:
             pval = 2.0 * percentile
         else:
@@ -63,7 +71,7 @@ def compute_pvalue_from_dist(obs_value, dist, consider_size=False, comparison='u
         raise NotImplementedError('Comparison {} is not implemented'.format(comparison))
 
     if (consider_size) & (pval == 0.):
-        pval = 1./(len(dist) + 1e-6)
+        pval = 1./(len(dist_) + 1e-6)
 
     return pval
 
