@@ -483,7 +483,7 @@ class BaseTensor():
         print('Loadings of the tensor factorization were successfully saved into {}'.format(filename))
 
     def excluded_value_fraction(self):
-        '''Returns the fraction of missing/excluded values in the tensor,
+        '''Returns the fraction of excluded values in the tensor,
         given the values that are masked in tensor.mask
 
         Returns
@@ -508,8 +508,28 @@ class BaseTensor():
         sparsity_fraction : float
             Fraction of values that are real zeros.
         '''
-        sparsity_fraction = tl.sum(self.loc_zeros) / tl.prod(tl.tensor(self.tensor.shape))
+        if self.loc_zeros is None:
+            print("The interaction tensor does not have zeros")
+            return 0.0
+        else:
+            sparsity_fraction = tl.sum(self.loc_zeros) / tl.prod(tl.tensor(self.tensor.shape))
         return sparsity_fraction
+
+    def missing_fraction(self):
+        '''Returns the fraction of values that are missing (NaNs) in the tensor,
+        given the values that are in tensor.loc_nans
+
+        Returns
+        -------
+        missing_fraction : float
+            Fraction of values that are real zeros.
+        '''
+        if self.loc_nans is None:
+            print("The interaction tensor does not have zeros")
+            return 0.0
+        else:
+            missing_fraction = tl.sum(self.loc_nans) / tl.prod(tl.tensor(self.tensor.shape))
+        return missing_fraction
 
     def explained_variance(self):
         '''Computes the explained variance score for a tensor decomposition. Inspired on the
