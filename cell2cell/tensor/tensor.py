@@ -525,7 +525,7 @@ class BaseTensor():
             Fraction of values that are real zeros.
         '''
         if self.loc_nans is None:
-            print("The interaction tensor does not have zeros")
+            print("The interaction tensor does not have missing values")
             return 0.0
         else:
             missing_fraction = tl.sum(self.loc_nans) / tl.prod(tl.tensor(self.tensor.shape))
