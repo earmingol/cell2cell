@@ -155,10 +155,18 @@ class BaseTensor():
             Rank of the Tensor Factorization (number of factors to deconvolve the original
             tensor).
 
-        tf_type : str, default='non_negative_cp'
-            Type of Tensor Factorization.
+        - 'non_negative_cp' : Non-negative PARAFAC through the traditional ALS.
+        - 'non_negative_cp_hals' : Non-negative PARAFAC through the Hierarchical ALS.
+                                   It reaches an optimal solution faster than the
+                                   traditional ALS, but it does not allow a mask.
+        - 'parafac' : PARAFAC through the traditional ALS. It allows negative loadings.
+        - 'constrained_parafac' : PARAFAC through the traditional ALS. It allows
+                                  negative loadings. Also, it incorporates L1 and L2
+                                  regularization, includes a 'non_negative' option, and
+                                  allows constraining the sparsity of the decomposition.
+                                  For more information, see
+                                  http://tensorly.org/stable/modules/generated/tensorly.decomposition.constrained_parafac.html#tensorly.decomposition.constrained_parafac
 
-            - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
 
         init : str, default='svd'
             Initialization method for computing the Tensor Factorization.
