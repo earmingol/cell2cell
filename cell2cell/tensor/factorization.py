@@ -365,8 +365,10 @@ def _compute_norm_error(tensor, tl_object, mask=None):
             mask_ = tl.tensor(mask, **context)
         else:
             mask_ = mask
-        diff = tl.tensor(np.ones(mask.shape), **context) - mask_
-        tensor_ = tensor * mask_ + rec_ * diff
+        #diff = tl.tensor(np.ones(mask.shape), **context) - mask_
+        #tensor_ = tensor * mask_ + rec_ * diff
+        tensor_ = tensor * mask_
+        rec_ = rec_ * mask_
     else:
         tensor_ = tensor
 
