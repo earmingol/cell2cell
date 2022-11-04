@@ -7,6 +7,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from cell2cell.plotting.aesthetics import generate_legend, get_colors_from_labels, map_colors_to_metadata
+from cell2cell.preprocessing.signal import smooth_curve
 
 
 def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=None, metadata=None,
@@ -341,7 +342,7 @@ def reorder_dimension_elements(factors, reorder_elements, metadata=None):
     return reordered_factors, new_metadata
 
 
-def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
+def plot_elbow(loss, elbow=None, figsize=(4, 2.25), ylabel='Normalized Error', fontsize=14, filename=None):
     '''Plots the errors of an elbow analysis with just one run of a tensor factorization
     for each rank.
 
@@ -356,7 +357,10 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
         elbow.
 
     figsize : tuple, default=(4, 2.25)
-            Figure size, width by height
+        Figure size, width by height
+
+    ylabel : str, default='Normalized Error'
+        Label for the y-axis
 
     fontsize : int, default=14
         Fontsize for axis labels.
@@ -376,7 +380,7 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
     plt.plot(*zip(*loss))
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.xlabel('Rank', fontsize=int(1.2*fontsize))
-    plt.ylabel('Error', fontsize=int(1.2 * fontsize))
+    plt.ylabel(ylabel, fontsize=int(1.2 * fontsize))
 
     if elbow is not None:
         _ = plt.plot(*loss[elbow - 1], 'ro')
@@ -387,7 +391,8 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), fontsize=14, filename=None):
     return fig
 
 
-def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), fontsize=14, filename=None):
+def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), ylabel='Normalized Error', fontsize=14,
+                            smooth=False, filename=None):
     '''Plots the errors of an elbow analysis with multiple runs of a tensor
     factorization for each rank.
 
@@ -406,10 +411,16 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), f
         {'std', '95%'}
 
     figsize : tuple, default=(4, 2.25)
-            Figure size, width by height
+        Figure size, width by height
+
+    ylabel : str, default='Normalized Error'
+        Label for the y-axis
 
     fontsize : int, default=14
         Fontsize for axis labels.
+
+    smooth : boolean, default=False
+        Whether smoothing the curve with a Savitzky-Golay filter.
 
     filename : str, default=None
         Path to save the figure of the elbow analysis. If None, the figure is not
@@ -425,6 +436,9 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), f
     x = list(range(1, all_loss.shape[1]+1))
     mean = np.nanmean(all_loss, axis=0)
     std = np.nanstd(all_loss, axis=0)
+
+    if smooth:
+        mean = smooth_curve(mean)
 
     # Plot Mean
     plt.plot(x, mean, 'ob')
@@ -443,7 +457,7 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), f
 
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.xlabel('Rank', fontsize=int(1.2*fontsize))
-    plt.ylabel('Error', fontsize=int(1.2 * fontsize))
+    plt.ylabel(ylabel, fontsize=int(1.2 * fontsize))
 
     if elbow is not None:
         _ = plt.plot(x[elbow - 1], mean[elbow - 1], 'ro')
