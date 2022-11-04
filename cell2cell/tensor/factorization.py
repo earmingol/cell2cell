@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import scipy.spatial as sp
 from tqdm.auto import tqdm
 from kneed import KneeLocator
 
 from tensorly.decomposition import non_negative_parafac, non_negative_parafac_hals, parafac, constrained_parafac
 import tensorly as tl
+
+from cell2cell.tensor.metrics import pairwise_correlation_index
 
 
 def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init='svd', svd='numpy_svd', random_state=None,
@@ -140,7 +143,7 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
         return cp_tf
 
 
-def _compute_elbow(loss):
+def _compute_elbow(loss, S=1.0, curve='convex', direction='decreasing', interp_method='interp1d'):
     '''Computes the elbow of a curve
 
     Parameters
@@ -148,12 +151,34 @@ def _compute_elbow(loss):
     loss : list
         List of lists or tuples with (x, y) coordinates for a curve.
 
+    S : float, default=1.0
+        The sensitivity parameter allows us to adjust how aggressive
+        we want Kneedle to be when detecting knees. Smaller values
+        for S detect knees quicker, while larger values are more conservative.
+        Put simply, S is a measure of how many “flat” points we expect to
+        see in the unmodified data curve before declaring a knee.
+
+    curve : str, default='convex'
+        If curve='concave', kneed will detect knees. If curve='convex',
+        it will detect elbows.
+
+    direction : str, default='decreasing'
+        The direction parameter describes the line from left to right on the
+        x-axis. If the knee/elbow you are trying to identify is on a positive
+        slope use direction='increasing', if the knee/elbow you are trying to
+        identify is on a negative slope, use direction='decreasing'.
+
+    interp_method : str, default=''
+        This parameter controls the interpolation method for fitting a
+        spline to the input x and y data points.
+        Valid arguments are 'interp1d' and 'polynomial'.
+
     Returns
     -------
     rank : int
         X coordinate where the elbow is located in the curve.
     '''
-    kneedle = KneeLocator(*zip(*loss), S=1.0, curve="convex", direction="decreasing")
+    kneedle = KneeLocator(*zip(*loss), S=S, curve=curve, direction=direction, interp_method=interp_method)
     rank = kneedle.elbow
     return rank
 
@@ -245,7 +270,8 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
 
 
 def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_negative_cp', init='svd', svd='numpy_svd',
-                                  random_state=None, mask=None, n_iter_max=100, tol=10e-7, verbose=False, **kwargs):
+                                  metric='error', random_state=None, mask=None, n_iter_max=100, tol=10e-7,
+                                  verbose=False, **kwargs):
     '''Performs an elbow analysis with multiple runs of a tensor factorization for each
     rank
 
@@ -269,6 +295,15 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
     init : str, default='svd'
         Initialization method for computing the Tensor Factorization.
         {‘svd’, ‘random’}
+
+    svd : str, default='numpy_svd'
+            Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
+
+    metric : str, default='error'
+        Metric to perform the elbow analysis (y-axis)
+
+        - 'error' : Normalized error to compute the elbow.
+        - 'similarity' : Similarity based on CorrIndex (1-CorrIndex).
 
     random_state : int, default=None
         Seed for randomization.
@@ -315,11 +350,22 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
                                                               tol=tol,
                                                               verbose=verbose,
                                                               **kwargs)
-            # This helps to obtain proper error when the mask is not None.
-            if mask is None:
-                run_errors.append(tl.to_numpy(errors[-1]))
-            else:
-                run_errors.append(_compute_norm_error(tensor, tl_object, mask))
+
+            if metric == 'error':
+                # This helps to obtain proper error when the mask is not None.
+                if mask is None:
+                    run_errors.append(tl.to_numpy(errors[-1]))
+                else:
+                    run_errors.append(_compute_norm_error(tensor, tl_object, mask))
+            elif metric == 'similarity':
+                (weights, factors) = tl_object
+                run_errors.append(dict(zip(list(range(len(factors))), factors)))
+
+        if metric == 'similarity':
+            corridx_df = pairwise_correlation_index(run_errors)
+            run_errors = 1.0 - sp.distance.squareform(corridx_df.values)
+            #run_errors = 1.0 - corridx_df.max().values
+            run_errors = run_errors.tolist()
         all_loss.append(run_errors)
 
     all_loss = np.array(all_loss).T
