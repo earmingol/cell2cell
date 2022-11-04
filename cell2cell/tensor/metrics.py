@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pandas as pd
+
+from itertools import combinations
 
 # Authors: Hratch Baghdassarian <hmbaghdassarian@gmail.com>, Erick Armingol <earmingol14@gmail.com>
 # similarity metrics for tensor decompositions
@@ -123,3 +126,54 @@ def _compute_correlation_index(x1, x2, tol=5e-16):
     if score < tol:
         score = 0
     return score
+
+
+def pairwise_correlation_index(factors, tol=5e-16, method='stacked'):
+    '''
+    Computes the CorrIndex between all pairs of factors
+
+    Parameters
+    ----------
+    factors : list
+        List with multiple Ordered dictionaries, each containing a dataframe with
+        the factor loadings for each dimension/order of the tensor. This is the
+        result from a tensor decomposition, it can be found as the attribute
+        `factors` in any tensor class derived from the class BaseTensor
+        (e.g. BaseTensor.factors).
+
+    tol : float, default=5e-16
+        Precision threshold below which to call the CorrIndex score 0.
+
+    method : str, default='stacked'
+        Method to obtain the CorrIndex by comparing the A matrices from two decompositions.
+        Possible options are:
+
+        - 'stacked' : The original method implemented in [1]. Here all A matrices from the same decomposition are
+                      vertically concatenated, building a big A matrix for each decomposition.
+        - 'max_score' : This computes the CorrIndex for each pair of A matrices (i.e. between A_1 in factors_1 and
+                        factors_2, between A_2 in factors_1 and factors_2, and so on). Then the max score is
+                        selected (the most conservative approach). In other words, it selects the max score among the
+                        CorrIndexes computed dimension-wise.
+        - 'min_score' : Similar to 'max_score', but the min score is selected (the least conservative approach).
+        - 'avg_score' : Similar to 'max_score', but the avg score is selected.
+
+    Returns
+    -------
+    scores : pd.DataFrame
+         Dataframe with CorrIndex metric for each pair of decompositions.
+         This metric bounds are [0,1]; lower score indicates higher similarity between matrices
+    '''
+    N = len(factors)
+    idxs = list(range(N))
+    pairs = list(combinations(idxs, 2))
+    scores = pd.DataFrame(np.zeros((N, N)),index=idxs, columns=idxs)
+    for p1, p2 in pairs:
+        corrindex = correlation_index(factors_1=factors[p1],
+                                      factors_2=factors[p2],
+                                      tol=tol,
+                                      method=method
+                                      )
+
+        scores.at[p1, p2] = corrindex
+        scores.at[p2, p1] = corrindex
+    return scores

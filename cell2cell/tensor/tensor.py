@@ -12,6 +12,7 @@ from cell2cell.preprocessing.find_elements import get_element_abundances, get_el
 from cell2cell.preprocessing.ppi import get_genes_from_complexes
 from cell2cell.preprocessing.rnaseq import add_complexes_to_expression
 from cell2cell.preprocessing.ppi import filter_ppi_by_proteins
+from cell2cell.preprocessing.signal import smooth_curve
 from cell2cell.tensor.factorization import _compute_tensor_factorization, _run_elbow_analysis, _multiple_runs_elbow_analysis, _compute_elbow, _compute_norm_error
 from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow
 
@@ -155,10 +156,18 @@ class BaseTensor():
             Rank of the Tensor Factorization (number of factors to deconvolve the original
             tensor).
 
-        tf_type : str, default='non_negative_cp'
-            Type of Tensor Factorization.
+        - 'non_negative_cp' : Non-negative PARAFAC through the traditional ALS.
+        - 'non_negative_cp_hals' : Non-negative PARAFAC through the Hierarchical ALS.
+                                   It reaches an optimal solution faster than the
+                                   traditional ALS, but it does not allow a mask.
+        - 'parafac' : PARAFAC through the traditional ALS. It allows negative loadings.
+        - 'constrained_parafac' : PARAFAC through the traditional ALS. It allows
+                                  negative loadings. Also, it incorporates L1 and L2
+                                  regularization, includes a 'non_negative' option, and
+                                  allows constraining the sparsity of the decomposition.
+                                  For more information, see
+                                  http://tensorly.org/stable/modules/generated/tensorly.decomposition.constrained_parafac.html#tensorly.decomposition.constrained_parafac
 
-            - 'non_negative_cp' : Non-negative PARAFAC, as implemented in Tensorly
 
         init : str, default='svd'
             Initialization method for computing the Tensor Factorization.
@@ -280,8 +289,9 @@ class BaseTensor():
         self.rank = rank
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', svd='numpy_svd',
-                             random_state=None, n_iter_max=100, tol=10e-7, automatic_elbow=True, manual_elbow=None,
-                             mask=None, ci='std', figsize=(4, 2.25), fontsize=14, filename=None, verbose=False, **kwargs):
+                             metric='error', random_state=None, n_iter_max=100, tol=10e-7, automatic_elbow=True,
+                             manual_elbow=None, smooth=False, mask=None, ci='std', figsize=(4, 2.25), fontsize=14,
+                             filename=None, output_fig=True, verbose=False, **kwargs):
         '''Elbow analysis on the error achieved by the Tensor Factorization for
         selecting the number of factors to use. A plot is made with the results.
 
@@ -316,6 +326,12 @@ class BaseTensor():
         svd : str, default='numpy_svd'
             Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
+        metric : str, default='error'
+            Metric to perform the elbow analysis (y-axis)
+
+            - 'error' : Normalized error to compute the elbow.
+            - 'similarity' : Similarity based on CorrIndex (1-CorrIndex).
+
         random_state : int, default=None
             Seed for randomization.
 
@@ -339,6 +355,9 @@ class BaseTensor():
             the Tensor Factorization. This input is considered only when
             `automatic_elbow=True`
 
+        smooth : boolean, default=False
+            Whether smoothing the curve with a Savitzky-Golay filter.
+
         mask : ndarray list, default=None
             Helps avoiding missing values during a tensor factorization. A mask should be
             a boolean array of the same shape as the original tensor and should be 0
@@ -358,6 +377,9 @@ class BaseTensor():
             Path to save the figure of the elbow analysis. If None, the figure is not
             saved.
 
+        output_fig : boolean, default=True
+            Whether generating the figure with matplotlib.
+
         verbose : boolean, default=False
             Whether printing or not steps of the analysis.
 
@@ -374,6 +396,9 @@ class BaseTensor():
             List of normalized errors for each rank. Here the errors are te average
             across distinct runs for each rank.
         '''
+        assert metric in ['similarity', 'error'], "`metric` must be either 'similarity' or 'error'"
+        ylabel = {'similarity' : 'Similarity\n(1-CorrIndex)', 'error' : 'Normalized Error'}
+
         # Run analysis
         if verbose:
             print('Running Elbow Analysis')
@@ -382,6 +407,8 @@ class BaseTensor():
             if self.mask is not None:
                 mask = self.mask
 
+        if metric == 'similarity':
+            assert runs > 1, "`runs` must be greater than 1 when `metric` = 'similarity'"
         if runs == 1:
             loss = _run_elbow_analysis(tensor=self.tensor,
                                        upper_rank=upper_rank,
@@ -395,15 +422,24 @@ class BaseTensor():
                                        verbose=verbose,
                                        **kwargs
                                        )
+            loss = [(l[0], l[1].item()) for l in loss]
             if automatic_elbow:
+                if smooth:
+                    loss_ = [l[1] for l in loss]
+                    loss = smooth_curve(loss_)
+                    loss = [(i + 1, l) for i, l in enumerate(loss)]
                 rank = int(_compute_elbow(loss))
             else:
                 rank = manual_elbow
-            fig = plot_elbow(loss=loss,
-                             elbow=rank,
-                             figsize=figsize,
-                             fontsize=fontsize,
-                             filename=filename)
+            if output_fig:
+                fig = plot_elbow(loss=loss,
+                                 elbow=rank,
+                                 figsize=figsize,
+                                 ylabel=ylabel[metric],
+                                 fontsize=fontsize,
+                                 filename=filename)
+            else:
+                fig = None
         elif runs > 1:
             all_loss = _multiple_runs_elbow_analysis(tensor=self.tensor,
                                                      upper_rank=upper_rank,
@@ -411,6 +447,7 @@ class BaseTensor():
                                                      tf_type=tf_type,
                                                      init=init,
                                                      svd=svd,
+                                                     metric=metric,
                                                      random_state=random_state,
                                                      mask=mask,
                                                      n_iter_max=n_iter_max,
@@ -421,6 +458,8 @@ class BaseTensor():
 
             # Same outputs as runs = 1
             loss = np.nanmean(all_loss, axis=0).tolist()
+            if smooth:
+                loss = smooth_curve(loss)
             loss = [(i + 1, l) for i, l in enumerate(loss)]
 
             if automatic_elbow:
@@ -428,12 +467,17 @@ class BaseTensor():
             else:
                 rank = manual_elbow
 
-            fig = plot_multiple_run_elbow(all_loss=all_loss,
-                                          ci=ci,
-                                          elbow=rank,
-                                          figsize=figsize,
-                                          fontsize=fontsize,
-                                          filename=filename)
+            if output_fig:
+                fig = plot_multiple_run_elbow(all_loss=all_loss,
+                                              ci=ci,
+                                              elbow=rank,
+                                              figsize=figsize,
+                                              ylabel=ylabel[metric],
+                                              smooth=smooth,
+                                              fontsize=fontsize,
+                                              filename=filename)
+            else:
+                fig = None
 
         else:
             assert runs > 0, "Input runs must be an integer greater than 0"
@@ -525,7 +569,7 @@ class BaseTensor():
             Fraction of values that are real zeros.
         '''
         if self.loc_nans is None:
-            print("The interaction tensor does not have zeros")
+            print("The interaction tensor does not have missing values")
             return 0.0
         else:
             missing_fraction = tl.sum(self.loc_nans) / tl.prod(tl.tensor(self.tensor.shape))
