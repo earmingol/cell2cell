@@ -15,7 +15,7 @@ def dot_plot(sc_interactions, evaluation='communication', significance=0.05, sen
 
     Parameters
     ----------
-    sc_interactions : cell2cell.analysis.pipelines.SingleCellInteractions
+    sc_interactions : cell2cell.analysis.cell2cell_pipelines.SingleCellInteractions
         Interaction class with all necessary methods to run the cell2cell
         pipeline on a single-cell RNA-seq dataset. The method
         permute_cell_labels() must be run before generating this plot.
