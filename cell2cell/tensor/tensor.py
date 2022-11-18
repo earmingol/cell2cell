@@ -118,6 +118,20 @@ class BaseTensor():
         An array of shape equal to `tensor` with ones where zeros that are not in
         `loc_nans` are located. Other values are assigned a zero. It tracks the
         real zero values rather than NaN values that were converted to zero.
+
+    elbow_metric_mean : ndarray list
+        Metric computed from the elbow analysis for each of the different rank
+        evaluated. This list contains (X,Y) pairs where X values are the
+        different ranks and Y values are the mean value of the metric employed.
+        This mean is computed from multiple runs, or the values for just one run.
+        Metric could be the normalized error of the decomposition or the similarity
+        between multiple runs with different initialization, based on the
+        CorrIndex.
+
+    elbow_metric_raw : ndarray list
+        Similar to `elbow_metric_mean`, but instead of containing (X, Y) pairs,
+        it is an array of shape runs by ranks that were used for the analysis.
+        It contains all the metrics for each run in each of the evaluated ranks.
     '''
     def __init__(self):
         # Save variables for this class
@@ -138,6 +152,8 @@ class BaseTensor():
         self.explained_variance_ratio_ = None
         self.loc_nans = None
         self.loc_zeros = None
+        self.elbow_metric_mean = None
+        self.elbow_metric_raw = None
 
     def copy(self):
         import copy
@@ -423,6 +439,7 @@ class BaseTensor():
                                        **kwargs
                                        )
             loss = [(l[0], l[1].item()) for l in loss]
+            all_loss = np.array([[l[1] for l in loss]])
             if automatic_elbow:
                 if smooth:
                     loss_ = [l[1] for l in loss]
@@ -482,7 +499,11 @@ class BaseTensor():
         else:
             assert runs > 0, "Input runs must be an integer greater than 0"
 
+        # Store results
         self.rank = rank
+        self.elbow_metric_mean = loss
+        self.elbow_metric_raw = all_loss
+
         if self.rank is not None:
             assert(isinstance(rank, int)), 'rank must be an integer.'
             print('The rank at the elbow is: {}'.format(self.rank))
@@ -826,7 +847,7 @@ class PreBuiltTensor(BaseTensor):
         Device to use when backend is pytorch. Options are:
          {'cpu', 'cuda:0', None}
     '''
-    def __init__(self, tensor, order_names, order_labels=None, mask=None, loc_nans=None, loc_zeros=None, device=None):
+    def __init__(self, tensor, order_names, order_labels=None, mask=None, loc_nans=None, device=None):
         # Init BaseTensor
         BaseTensor.__init__(self)
 
