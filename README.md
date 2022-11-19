@@ -81,10 +81,9 @@ associated with Memory. This may happen when the tensor is big enough to make th
 
 - **cell2cell** should be cited using this pre-print in bioRxiv:
     - Armingol E., Ghaddar A., Joshi C.J., Baghdassarian H., Shamie I., Chan J.,
-      Her H.L., O’Rourke E.J., Lewis N.E. 
-      [Inferring a spatial code of cell-cell interactions across a whole animal body](https://www.biorxiv.org/content/10.1101/2020.11.22.392217v3).
-       *bioRxiv*, (2020). **DOI: 10.1101/2020.11.22.392217**
-
+      Her H.L., Berhanu S., Dar A., Rodriguez-Armstrong F., Yang O., O’Rourke E.J., Lewis N.E. 
+      [Inferring a spatial code of cell-cell interactions across a whole animal body](https://doi.org/10.1371/journal.pcbi.1010715).
+       *PLOS Computational Biology **18(11)**: e1010715*, (2022). **DOI: 10.1371/journal.pcbi.1010715**
 
 - **Tensor-cell2cell** should be cited using this research article:
     - Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Aamodt C., Knight R., Lewis N.E.

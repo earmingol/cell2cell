@@ -118,6 +118,26 @@ class BaseTensor():
         An array of shape equal to `tensor` with ones where zeros that are not in
         `loc_nans` are located. Other values are assigned a zero. It tracks the
         real zero values rather than NaN values that were converted to zero.
+
+    elbow_metric : str
+        Stores the metric used to perform the elbow analysis (y-axis).
+
+            - 'error' : Normalized error to compute the elbow.
+            - 'similarity' : Similarity based on CorrIndex (1-CorrIndex).
+
+    elbow_metric_mean : ndarray list
+        Metric computed from the elbow analysis for each of the different rank
+        evaluated. This list contains (X,Y) pairs where X values are the
+        different ranks and Y values are the mean value of the metric employed.
+        This mean is computed from multiple runs, or the values for just one run.
+        Metric could be the normalized error of the decomposition or the similarity
+        between multiple runs with different initialization, based on the
+        CorrIndex.
+
+    elbow_metric_raw : ndarray list
+        Similar to `elbow_metric_mean`, but instead of containing (X, Y) pairs,
+        it is an array of shape runs by ranks that were used for the analysis.
+        It contains all the metrics for each run in each of the evaluated ranks.
     '''
     def __init__(self):
         # Save variables for this class
@@ -138,6 +158,9 @@ class BaseTensor():
         self.explained_variance_ratio_ = None
         self.loc_nans = None
         self.loc_zeros = None
+        self.elbow_metric = None
+        self.elbow_metric_mean = None
+        self.elbow_metric_raw = None
 
     def copy(self):
         import copy
@@ -156,17 +179,20 @@ class BaseTensor():
             Rank of the Tensor Factorization (number of factors to deconvolve the original
             tensor).
 
-        - 'non_negative_cp' : Non-negative PARAFAC through the traditional ALS.
-        - 'non_negative_cp_hals' : Non-negative PARAFAC through the Hierarchical ALS.
-                                   It reaches an optimal solution faster than the
-                                   traditional ALS, but it does not allow a mask.
-        - 'parafac' : PARAFAC through the traditional ALS. It allows negative loadings.
-        - 'constrained_parafac' : PARAFAC through the traditional ALS. It allows
-                                  negative loadings. Also, it incorporates L1 and L2
-                                  regularization, includes a 'non_negative' option, and
-                                  allows constraining the sparsity of the decomposition.
-                                  For more information, see
-                                  http://tensorly.org/stable/modules/generated/tensorly.decomposition.constrained_parafac.html#tensorly.decomposition.constrained_parafac
+        tf_type : str, default='non_negative_cp'
+            Type of Tensor Factorization.
+
+            - 'non_negative_cp' : Non-negative PARAFAC through the traditional ALS.
+            - 'non_negative_cp_hals' : Non-negative PARAFAC through the Hierarchical ALS.
+                                       It reaches an optimal solution faster than the
+                                       traditional ALS, but it does not allow a mask.
+            - 'parafac' : PARAFAC through the traditional ALS. It allows negative loadings.
+            - 'constrained_parafac' : PARAFAC through the traditional ALS. It allows
+                                      negative loadings. Also, it incorporates L1 and L2
+                                      regularization, includes a 'non_negative' option, and
+                                      allows constraining the sparsity of the decomposition.
+                                      For more information, see
+                                      http://tensorly.org/stable/modules/generated/tensorly.decomposition.constrained_parafac.html#tensorly.decomposition.constrained_parafac
 
 
         init : str, default='svd'
@@ -324,7 +350,7 @@ class BaseTensor():
             {‘svd’, ‘random’}
 
         svd : str, default='numpy_svd'
-            Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
+            Function to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
         metric : str, default='error'
             Metric to perform the elbow analysis (y-axis)
@@ -423,6 +449,7 @@ class BaseTensor():
                                        **kwargs
                                        )
             loss = [(l[0], l[1].item()) for l in loss]
+            all_loss = np.array([[l[1] for l in loss]])
             if automatic_elbow:
                 if smooth:
                     loss_ = [l[1] for l in loss]
@@ -482,7 +509,12 @@ class BaseTensor():
         else:
             assert runs > 0, "Input runs must be an integer greater than 0"
 
+        # Store results
         self.rank = rank
+        self.elbow_metric = metric
+        self.elbow_metric_mean = loss
+        self.elbow_metric_raw = all_loss
+
         if self.rank is not None:
             assert(isinstance(rank, int)), 'rank must be an integer.'
             print('The rank at the elbow is: {}'.format(self.rank))
@@ -826,7 +858,7 @@ class PreBuiltTensor(BaseTensor):
         Device to use when backend is pytorch. Options are:
          {'cpu', 'cuda:0', None}
     '''
-    def __init__(self, tensor, order_names, order_labels=None, mask=None, loc_nans=None, loc_zeros=None, device=None):
+    def __init__(self, tensor, order_names, order_labels=None, mask=None, loc_nans=None, device=None):
         # Init BaseTensor
         BaseTensor.__init__(self)
 

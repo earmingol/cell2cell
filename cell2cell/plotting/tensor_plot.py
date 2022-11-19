@@ -20,7 +20,7 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
     ----------
     interaction_tensor : cell2cell.tensor.BaseTensor
         A communication tensor generated with any of the tensor class in
-        cell2cell.tensor
+        cell2cell.tensor.
 
     order_labels : list, default=None
         List with the labels of each dimension to use in the plot. If none, the
