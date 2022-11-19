@@ -359,6 +359,7 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
                     run_errors.append(_compute_norm_error(tensor, tl_object, mask))
             elif metric == 'similarity':
                 (weights, factors) = tl_object
+                factors = [tl.to_numpy(f) for f in factors]
                 run_errors.append(dict(zip(list(range(len(factors))), factors)))
 
         if metric == 'similarity':
