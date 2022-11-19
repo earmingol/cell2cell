@@ -119,6 +119,12 @@ class BaseTensor():
         `loc_nans` are located. Other values are assigned a zero. It tracks the
         real zero values rather than NaN values that were converted to zero.
 
+    elbow_metric : str
+        Stores the metric used to perform the elbow analysis (y-axis).
+
+            - 'error' : Normalized error to compute the elbow.
+            - 'similarity' : Similarity based on CorrIndex (1-CorrIndex).
+
     elbow_metric_mean : ndarray list
         Metric computed from the elbow analysis for each of the different rank
         evaluated. This list contains (X,Y) pairs where X values are the
@@ -152,6 +158,7 @@ class BaseTensor():
         self.explained_variance_ratio_ = None
         self.loc_nans = None
         self.loc_zeros = None
+        self.elbow_metric = None
         self.elbow_metric_mean = None
         self.elbow_metric_raw = None
 
@@ -504,6 +511,7 @@ class BaseTensor():
 
         # Store results
         self.rank = rank
+        self.elbow_metric = metric
         self.elbow_metric_mean = loss
         self.elbow_metric_raw = all_loss
 
