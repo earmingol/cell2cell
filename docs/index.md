@@ -79,7 +79,7 @@ associated with Memory. This may happen when the tensor is big enough to make th
 
 ## Citation
 
-- **cell2cell** should be cited using this pre-print in bioRxiv:
+- **cell2cell** should be cited using this research article:
     - Armingol E., Ghaddar A., Joshi C.J., Baghdassarian H., Shamie I., Chan J.,
       Her H.L., Berhanu S., Dar A., Rodriguez-Armstrong F., Yang O., O’Rourke E.J., Lewis N.E. 
       [Inferring a spatial code of cell-cell interactions across a whole animal body](https://doi.org/10.1371/journal.pcbi.1010715).
