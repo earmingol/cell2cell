@@ -808,6 +808,8 @@ class InteractionTensor(BaseTensor):
         self.outer_fraction = outer_fraction
         if device is None:
             self.tensor = tl.tensor(tensor)
+            self.loc_nans = tl.tensor(self.loc_nans)
+            self.loc_zeros = tl.tensor(self.loc_zeros)
             self.mask = mask
         else:
             if tl.get_backend() == 'pytorch': # Potential TODO: Include other backends that support different devices
