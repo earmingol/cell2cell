@@ -810,15 +810,22 @@ class InteractionTensor(BaseTensor):
             self.tensor = tl.tensor(tensor)
             self.mask = mask
         else:
-            if tl.get_backend() == 'pytorch':
+            if tl.get_backend() == 'pytorch': # Potential TODO: Include other backends that support different devices
                 self.tensor = tl.tensor(tensor, device=device)
+                self.loc_nans = tl.tensor(self.loc_nans, device=device)
+                self.loc_zeros = tl.tensor(self.loc_zeros, device=device)
                 if mask is not None:
                     self.mask = tl.tensor(mask, device=device)
                 else:
                     self.mask = mask
             else:
                 self.tensor = tl.tensor(tensor)
-                self.mask = mask
+                self.loc_nans = tl.tensor(self.loc_nans)
+                self.loc_zeros = tl.tensor(self.loc_zeros)
+                if mask is not None:
+                    self.mask = tl.tensor(mask)
+                else:
+                    self.mask = mask
         self.genes = genes
         self.cells = cells
         self.order_labels = order_labels
@@ -890,18 +897,20 @@ class PreBuiltTensor(BaseTensor):
             context['device'] = device
         if 'device' not in context.keys():
             self.tensor = tl.tensor(tensor_)
+            self.loc_nans = tl.tensor(self.loc_nans)
+            self.loc_zeros = tl.tensor(self.loc_zeros)
             if mask is None:
                 self.mask = mask
             else:
                 self.mask = tl.tensor(mask)
         else:
             self.tensor = tl.tensor(tensor_, device=context['device'])
+            self.loc_nans = tl.tensor(self.loc_nans, device=context['device'])
+            self.loc_zeros = tl.tensor(self.loc_zeros, device=context['device'])
             if mask is None:
                 self.mask = mask
             else:
                 self.mask = tl.tensor(mask, device=context['device'])
-
-        # Potential TODO: make loc_nans and loc_zeros to be a tensor object using the same context.
 
         self.order_names = order_names
         if order_labels is None:
