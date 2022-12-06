@@ -589,6 +589,7 @@ class BaseTensor():
             return 0.0
         else:
             sparsity_fraction = tl.sum(self.loc_zeros) / tl.prod(tl.tensor(self.tensor.shape))
+        sparsity_fraction = sparsity_fraction.item()
         return sparsity_fraction
 
     def missing_fraction(self):
@@ -605,6 +606,7 @@ class BaseTensor():
             return 0.0
         else:
             missing_fraction = tl.sum(self.loc_nans) / tl.prod(tl.tensor(self.tensor.shape))
+        missing_fraction = missing_fraction.item()
         return missing_fraction
 
     def explained_variance(self):
