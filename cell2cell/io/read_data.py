@@ -414,6 +414,62 @@ def load_variable_with_pickle(filename):
     return variable
 
 
+def load_tensor(filename, backend=None, device=None):
+    '''Imports a communication tensor that could be used
+    with Tensor-cell2cell.
+
+    Parameters
+    ----------
+    filename : str
+        Absolute path to a file storing a communication tensor
+        that was previously saved by using pickle.
+
+    backend : str, default=None
+        Backend that TensorLy will use to perform calculations
+        on this tensor. When None, the default backend is used
+        ('numpy'). Options are:
+        {'cupy', 'jax', 'mxnet', 'numpy', 'pytorch', 'tensorflow'}
+
+    device : str, default=None
+        Device to use when backend allows using multiple devices. Options are:
+         {'cpu', 'cuda:0', None}
+
+    Returns
+    -------
+    interaction_tensor : cell2cell.tensor.BaseTensor
+        A communication tensor generated with any of the tensor class in
+        cell2cell.tensor.
+    '''
+    interaction_tensor = load_variable_with_pickle(filename)
+
+    if 'tl' not in globals():
+        import tensorly as tl
+
+    if backend is not None:
+        tl.set_backend(backend)
+
+    if device is None:
+        interaction_tensor.tensor = tl.tensor(interaction_tensor.tensor)
+        interaction_tensor.loc_nans = tl.tensor(interaction_tensor.loc_nans)
+        interaction_tensor.loc_zeros = tl.tensor(interaction_tensor.loc_zeros)
+        if interaction_tensor.mask is not None:
+            interaction_tensor.mask = tl.tensor(interaction_tensor.mask)
+    else:
+        if tl.get_backend() in ['pytorch', 'tensorflow']:  # Potential TODO: Include other backends that support different devices
+            interaction_tensor.tensor = tl.tensor(interaction_tensor.tensor, device=device)
+            interaction_tensor.loc_nans = tl.tensor(interaction_tensor.loc_nans, device=device)
+            interaction_tensor.loc_zeros = tl.tensor(interaction_tensor.loc_zeros, device=device)
+            if interaction_tensor.mask is not None:
+                interaction_tensor.mask = tl.tensor(interaction_tensor.mask, device=device)
+        else:
+            interaction_tensor.tensor = tl.tensor(interaction_tensor.tensor)
+            interaction_tensor.loc_nans = tl.tensor(interaction_tensor.loc_nans)
+            interaction_tensor.loc_zeros = tl.tensor(interaction_tensor.loc_zeros)
+            if interaction_tensor.mask is not None:
+                interaction_tensor.mask = tl.tensor(interaction_tensor.mask)
+    return interaction_tensor
+
+
 def load_tensor_factors(filename):
     '''Imports factors previously exported from a tensor
     decomposition done in a cell2cell.tensor.BaseTensor-like object.
