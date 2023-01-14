@@ -2,7 +2,8 @@ from scanpy.readwrite import read
 
 
 def balf_covid(filename='BALF-COVID19-Liao_et_al-NatMed-2020.h5ad'):
-    """ BALF samples from COVID-19 patients
+    """
+        BALF samples from COVID-19 patients
         The data consists in 63k immune and epithelial cells in lungs
         from 3 control, 3 moderate COVID-19, and 6 severe COVID-19 patients.
 
@@ -25,7 +26,7 @@ def balf_covid(filename='BALF-COVID19-Liao_et_al-NatMed-2020.h5ad'):
         Returns
         -------
         Annotated data matrix.
-        """
+    """
     url = 'https://zenodo.org/record/7535867/files/BALF-COVID19-Liao_et_al-NatMed-2020.h5ad'
     adata = read(filename, backup_url=url)
     return adata
