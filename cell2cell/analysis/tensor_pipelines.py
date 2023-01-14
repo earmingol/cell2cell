@@ -50,7 +50,7 @@ def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tens
         Seed for randomization.
 
     device : str, default=None
-        Device to use when backend is pytorch. Options are:
+        Device to use when backend allows multiple devices. Options are:
          {'cpu', 'cuda:0', None}
 
     elbow_metric : str, default='error'
