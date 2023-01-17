@@ -188,6 +188,7 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
                 df = pd.DataFrame(lr_fill, index=sender_cells, columns=receiver_cells)
             else:
                 if df[cols[:-1]].duplicated().any():
+                    assert dup_aggregation in ['max', 'min', 'mean', 'median'], "Please use a valid option for `dup_aggregation`."
                     df = getattr(df.groupby(cols[:-1]), dup_aggregation)().reset_index()
                 df = df.pivot(index=sender_col, columns=receiver_col, values=score_col)
                 df = df.reindex(sender_cells, fill_value=cell_fill).reindex(receiver_cells, fill_value=cell_fill, axis='columns')
