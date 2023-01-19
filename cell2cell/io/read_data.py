@@ -7,6 +7,7 @@ import os
 import pandas as pd
 import numpy as np
 from cell2cell.preprocessing import rnaseq, ppi
+from cell2cell.io.directories import get_files_from_directory
 
 
 def load_table(filename, format='auto', sep='\t', sheet_name=0, compression=None, verbose=True, **kwargs):
@@ -94,6 +95,84 @@ def load_table(filename, format='auto', sep='\t', sheet_name=0, compression=None
     if verbose:
         print(filename + ' was correctly loaded')
     return table
+
+
+def load_tables_from_directory(pathname, extension, sep='\t', sheet_name=0, compression=None, verbose=True, **kwargs):
+    '''Opens all tables with the same extension in a folder.
+
+    Parameters
+    ----------
+    pathname : str
+        Full path of the folder to explore.
+
+    extension : str
+        Extension of the file.
+        Options are:
+
+        - 'excel' : An excel file, either .xls or .xlsx
+        - 'csv' : Comma separated value format
+        - 'tsv' : Tab separated value format
+        - 'txt' : Text file
+
+    sep : str, default='\t'
+        Separation between columns. Examples are: '\t', ' ', ';', ',', etc.
+
+    sheet_name : str, int, list, or None, default=0
+        Strings are used for sheet names. Integers are used in zero-indexed
+        sheet positions. Lists of strings/integers are used to request
+        multiple sheets. Specify None to get all sheets.
+        Available cases:
+
+        - Defaults to 0: 1st sheet as a DataFrame
+        - 1: 2nd sheet as a DataFrame
+        - "Sheet1": Load sheet with name “Sheet1”
+        - [0, 1, "Sheet5"]: Load first, second and sheet named
+            “Sheet5” as a dict of DataFrame
+        - None: All sheets.
+
+    compression : str, or None, default=‘infer’
+        For on-the-fly decompression of on-disk data. If ‘infer’, detects
+        compression from the following extensions: ‘.gz’, ‘.bz2’, ‘.zip’, or ‘.xz’
+        (otherwise no decompression). If using ‘zip’, the ZIP file must contain
+        only one data file to be read in. Set to None for no decompression.
+        Options: {‘gzip’, ‘bz2’, ‘zip’, ‘xz’, None}
+
+    verbose : boolean, default=True
+        Whether printing or not steps of the analysis.
+
+    **kwargs : dict
+        Extra arguments for loading files with the respective pandas function
+        given the format of the file.
+
+    Returns
+    -------
+    data : dict
+        Dictionary containing the tables (pandas.DataFrame) loaded from the files.
+        Keys are the filenames without the extension and values are the dataframes.
+    '''
+    assert extension in ['excel', 'csv', 'tsv', 'txt'], "Enter a valid `extension`."
+
+    filenames = get_files_from_directory(pathname=pathname,
+                                         dir_in_filepath=True)
+
+    data = dict()
+    if compression is None:
+        comp = ''
+    else:
+        assert compression in ['gzip', 'bz2', 'zip', 'xz'], "Enter a valid `compression`."
+        comp = '.' + compression
+    for filename in filenames:
+        if filename.endswith('.' + extension + comp):
+            print('Loading {}'.format(filename))
+            basename = os.path.basename(filename)
+            sample = basename.split('.' + extension)[0]
+            data[sample] = load_table(filename=filename,
+                                      format=extension,
+                                      sep=sep,
+                                      sheet_name=sheet_name,
+                                      compression=compression,
+                                      verbose=verbose, **kwargs)
+    return data
 
 
 def load_rnaseq(rnaseq_file, gene_column, drop_nangenes=True, log_transformation=False, verbose=True, **kwargs):
