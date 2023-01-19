@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from collections import defaultdict
+from tqdm.auto import tqdm
 from cell2cell.preprocessing.find_elements import get_element_abundances, get_elements_over_fraction
 from cell2cell.tensor.tensor import PreBuiltTensor
 
@@ -178,7 +179,7 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
 
     # Build temporal tensor to pass to PreBuiltTensor
     tmp_tensor = []
-    for k in context_order:
+    for k in tqdm(context_order):
         v = cont_dict[k]
         # 3D tensor for the context
         tmp_3d_tensor = []
