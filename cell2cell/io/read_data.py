@@ -505,8 +505,8 @@ def load_tensor(filename, backend=None, device=None):
 
     backend : str, default=None
         Backend that TensorLy will use to perform calculations
-        on this tensor. When None, the default backend is used
-        ('numpy'). Options are:
+        on this tensor. When None, the default backend used is
+        the currently active backend, usually is ('numpy'). Options are:
         {'cupy', 'jax', 'mxnet', 'numpy', 'pytorch', 'tensorflow'}
 
     device : str, default=None
