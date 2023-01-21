@@ -10,7 +10,6 @@ def balf_covid(filename='BALF-COVID19-Liao_et_al-NatMed-2020.h5ad'):
     the raw counts for the annotated cell types available in:
     https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE145926
 
-
     References:
     [1] Liao, M., Liu, Y., Yuan, J. et al.
         Single-cell landscape of bronchoalveolar immune cells in patients

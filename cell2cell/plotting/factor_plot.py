@@ -15,8 +15,7 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
                     pval_correction='benjamini-hochberg', text_format='star', nrows=1, figsize=(12, 6), cmap='tab10',
                     title_size=14, axis_label_size=12, group_label_rotation=45, ylabel='Context Loadings',
                     dot_color='lightsalmon', dot_edge_color='brown', filename=None, verbose=False):
-    '''
-    Plots a boxplot to compare the loadings of context groups in each
+    '''Plots a boxplot to compare the loadings of context groups in each
     of the factors resulting from a tensor decomposition.
 
     Parameters
@@ -219,8 +218,7 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
 def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='euclidean', method='ward',
                        optimal_leaf=True, figsize=(15, 8), heatmap_lw=0.2, cbar_fontsize=12, tick_fontsize=10, cmap=None,
                        cbar_label=None, filename=None, **kwargs):
-    '''
-    Plots a clustermap of the tensor-factorization loadings from one tensor dimension or
+    '''Plots a clustermap of the tensor-factorization loadings from one tensor dimension or
     the joint loadings from multiple tensor dimensions.
 
     Parameters
