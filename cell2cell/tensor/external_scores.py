@@ -4,13 +4,14 @@ import numpy as np
 import pandas as pd
 
 from collections import defaultdict
+from tqdm.auto import tqdm
 from cell2cell.preprocessing.find_elements import get_element_abundances, get_elements_over_fraction
 from cell2cell.tensor.tensor import PreBuiltTensor
 
 
 def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, receptor_col, score_col, how='inner',
-                         outer_fraction=0.0, lr_fill=np.nan, cell_fill=np.nan, lr_sep='^', context_order=None,
-                         order_labels=None, sort_elements=True, device=None):
+                         outer_fraction=0.0, lr_fill=np.nan, cell_fill=np.nan, lr_sep='^', dup_aggregation='max',
+                         context_order=None, order_labels=None, sort_elements=True, device=None):
     '''Generates an InteractionTensor from a dictionary
     containing dataframes for all contexts.
 
@@ -73,6 +74,15 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
 
     lr_sep : str, default='^'
         Separation character to join ligands and receptors into a LR pair name.
+
+    dup_aggregation : str, default='max'
+        Approach to aggregate communication score if there are multiple instances
+        of an LR pair for a specific sender-receiver pair in one of the dataframes.
+
+        - 'max' : Maximum of the multiple instances
+        - 'min' : Minimum of the multiple instances
+        - 'mean' : Average of the multiple instances
+        - 'median' : Median of the multiple instances
 
     context_order : list, default=None
         List used to sort the contexts when building the tensor. Elements must
@@ -169,7 +179,7 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
 
     # Build temporal tensor to pass to PreBuiltTensor
     tmp_tensor = []
-    for k in context_order:
+    for k in tqdm(context_order):
         v = cont_dict[k]
         # 3D tensor for the context
         tmp_3d_tensor = []
@@ -178,6 +188,9 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
             if df.shape[0] == 0:  # TODO: Check behavior when df is empty
                 df = pd.DataFrame(lr_fill, index=sender_cells, columns=receiver_cells)
             else:
+                if df[cols[:-1]].duplicated().any():
+                    assert dup_aggregation in ['max', 'min', 'mean', 'median'], "Please use a valid option for `dup_aggregation`."
+                    df = getattr(df.groupby(cols[:-1]), dup_aggregation)().reset_index()
                 df = df.pivot(index=sender_col, columns=receiver_col, values=score_col)
                 df = df.reindex(sender_cells, fill_value=cell_fill).reindex(receiver_cells, fill_value=cell_fill, axis='columns')
 

@@ -8,10 +8,10 @@ from cell2cell.plotting.tensor_plot import tensor_factors_plot
 
 
 def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tensor=False, rank=None,
-                                  tf_optimization='regular', random_state=None, device=None, elbow_metric='error',
-                                  smooth_elbow=False, upper_rank=25, tf_init='random', tf_svd='numpy_svd', cmaps=None,
-                                  sample_col='Element', group_col='Category', fig_fontsize=14, output_folder=None,
-                                  output_fig=True, fig_format='pdf'):
+                                  tf_optimization='regular', random_state=None, backend=None, device=None,
+                                  elbow_metric='error', smooth_elbow=False, upper_rank=25, tf_init='random',
+                                  tf_svd='numpy_svd', cmaps=None, sample_col='Element', group_col='Category',
+                                  fig_fontsize=14, output_folder=None, output_fig=True, fig_format='pdf'):
     '''
     Runs basic pipeline of Tensor-cell2cell (excluding downstream analyses).
 
@@ -49,8 +49,14 @@ def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tens
     random_state : boolean, default=None
         Seed for randomization.
 
+    backend : str, default=None
+        Backend that TensorLy will use to perform calculations
+        on this tensor. When None, the default backend used is
+        the currently active backend, usually is ('numpy'). Options are:
+        {'cupy', 'jax', 'mxnet', 'numpy', 'pytorch', 'tensorflow'}
+
     device : str, default=None
-        Device to use when backend is pytorch. Options are:
+        Device to use when backend allows multiple devices. Options are:
          {'cpu', 'cuda:0', None}
 
     elbow_metric : str, default='error'
@@ -148,6 +154,9 @@ def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tens
         n_iter_max = 100
     else:
         raise ValueError("`factorization_type` must be either 'robust' or 'regular'.")
+
+    if backend is not None:
+        tl.set_backend(backend)
 
     if device is not None:
         try:

@@ -589,6 +589,7 @@ class BaseTensor():
             return 0.0
         else:
             sparsity_fraction = tl.sum(self.loc_zeros) / tl.prod(tl.tensor(self.tensor.shape))
+        sparsity_fraction = sparsity_fraction.item()
         return sparsity_fraction
 
     def missing_fraction(self):
@@ -605,6 +606,7 @@ class BaseTensor():
             return 0.0
         else:
             missing_fraction = tl.sum(self.loc_nans) / tl.prod(tl.tensor(self.tensor.shape))
+        missing_fraction = missing_fraction.item()
         return missing_fraction
 
     def explained_variance(self):
@@ -738,7 +740,7 @@ class InteractionTensor(BaseTensor):
                   group for a given pair of cells/tissues/samples
 
     device : str, default=None
-        Device to use when backend is pytorch. Options are:
+        Device to use when backend allows using multiple devices. Options are:
          {'cpu', 'cuda:0', None}
 
     verbose : boolean, default=False
@@ -812,7 +814,7 @@ class InteractionTensor(BaseTensor):
             self.loc_zeros = tl.tensor(self.loc_zeros)
             self.mask = mask
         else:
-            if tl.get_backend() == 'pytorch': # Potential TODO: Include other backends that support different devices
+            if tl.get_backend() in ['pytorch', 'tensorflow']: # Potential TODO: Include other backends that support different devices
                 self.tensor = tl.tensor(tensor, device=device)
                 self.loc_nans = tl.tensor(self.loc_nans, device=device)
                 self.loc_zeros = tl.tensor(self.loc_zeros, device=device)
@@ -864,7 +866,7 @@ class PreBuiltTensor(BaseTensor):
         location of the NaN values.
 
     device : str, default=None
-        Device to use when backend is pytorch. Options are:
+        Device to use when backend allows using multiple devices. Options are:
          {'cpu', 'cuda:0', None}
     '''
     def __init__(self, tensor, order_names, order_labels=None, mask=None, loc_nans=None, device=None):
