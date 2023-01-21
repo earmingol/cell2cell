@@ -53,3 +53,4 @@ nav:
     - tutorials/ASD/01-Tensor-Factorization-ASD.ipynb
     - tutorials/ASD/02-Factor-Specific-ASD.ipynb
     - tutorials/ASD/03-GSEA-ASD.ipynb
+    - tutorials/TC2C_GoogleColab_GPU.ipynb

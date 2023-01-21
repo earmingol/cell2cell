@@ -64,7 +64,8 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
     - [Downstream analysis 2: Gene Set Enrichment Analysis](https://earmingol.github.io/cell2cell/tutorials/ASD/03-GSEA-ASD/)
 - **Do you have precomputed communication scores?** Re-use them as a prebuilt tensor as [exemplified here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Loading-PreBuiltTensor.ipynb).
   This allows reusing previous tensors you built or even plugging in communication scores from other tools.
-- **Run Tensor-cell2cell much faster!** An example to perform the analysis using a **Nvidia GPU** is [available here](https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/GPU-Example.ipynb)
+- **Run Tensor-cell2cell MUCH FASTER and ON THE CLOUD!** An example to perform the analysis on
+ **Google Colab while using a NVIDIA GPU** is [available here](https://colab.research.google.com/drive/1xE6Pm1u-XoSWV8a3oYpixUFj64FIDtl0?usp=sharing)
 
 
 ---
@@ -84,7 +85,6 @@ associated with Memory. This may happen when the tensor is big enough to make th
       Her H.L., Berhanu S., Dar A., Rodriguez-Armstrong F., Yang O., O’Rourke E.J., Lewis N.E. 
       [Inferring a spatial code of cell-cell interactions across a whole animal body](https://doi.org/10.1371/journal.pcbi.1010715).
        *PLOS Computational Biology **18(11)**: e1010715*, (2022). **DOI: 10.1371/journal.pcbi.1010715**
-
 
 - **Tensor-cell2cell** should be cited using this research article:
     - Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Aamodt C., Knight R., Lewis N.E.
