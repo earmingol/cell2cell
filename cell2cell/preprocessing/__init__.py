@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-
-from __future__ import absolute_import
-
 from cell2cell.preprocessing.cutoffs import (get_constant_cutoff, get_cutoffs, get_global_percentile_cutoffs,
                                              get_local_percentile_cutoffs)
 from cell2cell.preprocessing.find_elements import (find_duplicates, get_element_abundances, get_elements_over_fraction)

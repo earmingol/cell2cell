@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
-
 from cell2cell import analysis
 from cell2cell import clustering
 from cell2cell import core
