@@ -55,6 +55,8 @@ def get_joint_loadings(result, dim1, dim2, factor):
                               index=vec1.index,
                               columns=vec2.index)
 
+    joint_dist.index.name = dim1
+    joint_dist.columns.name = dim2
     return joint_dist
 
 
