@@ -360,6 +360,9 @@ def loading_clustermap(loadings, loading_threshold=0., use_zscore=True, metric='
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches='tight')
 
+    cm.ax_heatmap.set_xlabel(cm.ax_heatmap.get_xlabel(), fontsize=int(1.2 * tick_fontsize))
+    cm.ax_heatmap.set_ylabel(cm.ax_heatmap.get_ylabel(), fontsize=int(1.2 * tick_fontsize))
+
     return cm
 
 
