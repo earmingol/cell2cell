@@ -44,8 +44,8 @@ def get_joint_loadings(result, dim1, dim2, factor):
     else:
         raise ValueError('result is not of a valid type. It must be an InteractionTensor or a dict.')
 
-    assert dim1 in result.keys(), 'The specified dimension ' + dim1 + ' is not present in the tensor'
-    assert dim2 in result.keys(), 'The specified dimension ' + dim2 + ' is not present in the tensor'
+    assert dim1 in result.keys(), 'The specified dimension ' + dim1 + ' is not present in the `result` input'
+    assert dim2 in result.keys(), 'The specified dimension ' + dim2 + ' is not present in the `result` input'
 
     vec1 = result[dim1][factor]
     vec2 = result[dim2][factor]
@@ -204,3 +204,112 @@ def compute_gini_coefficients(result, sender_label='Sender Cells', receiver_labe
         ginis.append((f, gini))
     gini_df = pd.DataFrame.from_records(ginis, columns=['Factor', 'Gini'])
     return gini_df
+
+
+def get_lr_by_cell_pairs(result, lr_label, sender_label, receiver_label, order_cells_by='receivers', factor=None,
+                         cci_threshold=None, lr_threshold=None):
+    '''
+    Returns a dataframe containing the product loadings of a specific combination
+    of ligand-receptor pair and sender-receiver pair.
+
+    Parameters
+    ----------
+    result : any Tensor class in cell2cell.tensor.tensor or a dict
+        Either a Tensor type or a dictionary which resulted from the tensor
+        decomposition. If it is a dict, it should be the one in, for example,
+        InteractionTensor.factors
+
+    lr_label : str
+        Label for the dimension of the ligand-receptor pairs. Usually found in
+        InteractionTensor.order_labels
+
+    sender_label : str
+        Label for the dimension of sender cells. Usually found in
+        InteractionTensor.order_labels
+
+    receiver_label : str
+        Label for the dimension of receiver cells. Usually found in
+        InteractionTensor.order_labels
+
+    order_cells_by : str, default='receivers'
+        Order of the returned dataframe. Options are 'senders' and
+        'receivers'. 'senders' means to order the dataframe in a way that
+        all cell-cell pairs with a same sender cell are put next to each others.
+        'receivers' means the same, but by considering the receiver cell instead.
+
+    factor : str, default=None
+        Name of the factor to be used to compute the product loadings.
+        If None, all factors will be included to compute them.
+
+    cci_threshold : float, default=None
+        Threshold to be applied on the product loadings of the sender-cell pairs.
+        If specified, only cell-cell pairs with a product loading above the
+        threshold at least in one of the factors included will be included
+        in the returned dataframe.
+
+    lr_threshold : float, default=None
+        Threshold to be applied on the ligand-receptor loadings.
+        If specified, only LR pairs with a loading above the
+        threshold at least in one of the factors included will be included
+        in the returned dataframe.
+
+    Returns
+    -------
+    cci_lr : pandas.DataFrame
+        Dataframe containing the product loadings of a specific combination 
+        of ligand-receptor pair and sender-receiver pair. If the factor is specified,
+        the returned dataframe will contain the product loadings of that factor.
+        If the factor is not specified, the returned dataframe will contain the
+        product loadings across all factors.
+    '''
+    if hasattr(result, 'factors'):
+        result = result.factors
+        if result is None:
+            raise ValueError('A tensor factorization must be run on the tensor before calling this function.')
+    elif isinstance(result, dict):
+        pass
+    else:
+        raise ValueError('result is not of a valid type. It must be an InteractionTensor or a dict.')
+
+    assert lr_label in result.keys(), 'The specified dimension ' + lr_label + ' is not present in the `result` input'
+    assert sender_label in result.keys(), 'The specified dimension ' + sender_label + ' is not present in the `result` input'
+    assert receiver_label in result.keys(), 'The specified dimension ' + receiver_label + ' is not present in the `result` input'
+
+    # Sort factors
+    sorted_factors = sorted(result[lr_label].columns, key=lambda x: int(x.split(' ')[1]))
+
+    # Get CCI network per factor
+    networks = get_factor_specific_ccc_networks(result=result,
+                                                sender_label=sender_label,
+                                                receiver_label=receiver_label)
+
+    # Flatten networks
+    network_by_factors = flatten_factor_ccc_networks(networks=networks, orderby=order_cells_by)
+
+    # Get final dataframe
+    df1 = network_by_factors[sorted_factors]
+    df2 = result[lr_label][sorted_factors]
+
+    if factor is not None:
+        df1 = df1[factor]
+        df2 = df2[factor]
+        if cci_threshold is not None:
+            df1 = df1[(df1 > cci_threshold)]
+        if lr_threshold is not None:
+            df2 = df2[(df2 > lr_threshold)]
+        data = pd.DataFrame(np.outer(df1, df2), index=df1.index, columns=df2.index)
+    else:
+        if cci_threshold is not None:
+            df1 = df1[(df1.T > cci_threshold).any()]  # Top sender-receiver pairs
+        if lr_threshold is not None:
+            df2 = df2[(df2.T > lr_threshold).any()]  # Top LR Pairs
+        data = np.matmul(df1, df2.T)
+
+    cci_lr = pd.DataFrame(data.T.values,
+                          columns=df1.index,
+                          index=df2.index
+                          )
+
+    cci_lr.columns.name = 'Sender-Receiver Pair'
+    cci_lr.index.name = 'Ligand-Receptor Pair'
+    return cci_lr
