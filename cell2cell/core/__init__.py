@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
-
 from cell2cell.core.cci_scores import (compute_braycurtis_like_cci_score, compute_count_score, compute_icellnet_score,
                                        compute_jaccard_like_cci_score, matmul_bray_curtis_like, matmul_count_active,
                                        matmul_jaccard_like)
