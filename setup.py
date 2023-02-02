@@ -100,7 +100,8 @@ setup(name='cell2cell',
                         'statannotations',
                         'tensorly == 0.7.0',
                         'kneed',
-                        'scanpy'
+                        'scanpy',
+                        'gseapy == 1.0.3'
                         ],
       classifiers=classifiers,
       entry_points={},
