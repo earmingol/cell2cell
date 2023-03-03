@@ -11,7 +11,7 @@ def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tens
                                   tf_optimization='regular', random_state=None, backend=None, device=None,
                                   elbow_metric='error', smooth_elbow=False, upper_rank=25, tf_init='random',
                                   tf_svd='numpy_svd', cmaps=None, sample_col='Element', group_col='Category',
-                                  fig_fontsize=14, output_folder=None, output_fig=True, fig_format='pdf'):
+                                  fig_fontsize=14, output_folder=None, output_fig=True, fig_format='pdf', **kwargs):
     '''
     Runs basic pipeline of Tensor-cell2cell (excluding downstream analyses).
 
@@ -105,6 +105,10 @@ def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tens
         Format to store figures when an `output_folder` is specified
         and `output_fig` is True. Otherwise, this is not necessary.
 
+    **kwargs : dict
+            Extra arguments for the tensor factorization according to inputs in
+            tensorly.
+
     Returns
     -------
     interaction_tensor : cell2cell.tensor.tensor.BaseTensor
@@ -159,14 +163,7 @@ def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tens
         tl.set_backend(backend)
 
     if device is not None:
-        try:
-            interaction_tensor.tensor = tl.tensor(interaction_tensor.tensor, device=device)
-            if interaction_tensor.mask is not None:
-                interaction_tensor.mask = tl.tensor(interaction_tensor.mask, device=device)
-        except:
-            interaction_tensor.tensor = tl.tensor(interaction_tensor.tensor)
-            if interaction_tensor.mask is not None:
-                interaction_tensor.mask = tl.tensor(interaction_tensor.mask)
+        interaction_tensor.to_device(device=device)
 
     ### ANALYSIS ###
     # Elbow
@@ -183,7 +180,8 @@ def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tens
                                                               random_state=random_state,
                                                               fontsize=fig_fontsize,
                                                               filename=elbow_filename,
-                                                              tol=tol, n_iter_max=n_iter_max
+                                                              tol=tol, n_iter_max=n_iter_max,
+                                                              **kwargs
                                                               )
 
         rank = interaction_tensor.rank
@@ -196,7 +194,8 @@ def run_tensor_cell2cell_pipeline(interaction_tensor, tensor_metadata, copy_tens
                                                     random_state=random_state,
                                                     runs=tf_runs,
                                                     normalize_loadings=True,
-                                                    tol=tol, n_iter_max=n_iter_max
+                                                    tol=tol, n_iter_max=n_iter_max,
+                                                    **kwargs
                                                     )
 
     ### EXPORT RESULTS ###
