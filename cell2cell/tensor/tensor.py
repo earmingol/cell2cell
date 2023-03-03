@@ -138,6 +138,9 @@ class BaseTensor():
         Similar to `elbow_metric_mean`, but instead of containing (X, Y) pairs,
         it is an array of shape runs by ranks that were used for the analysis.
         It contains all the metrics for each run in each of the evaluated ranks.
+
+    shape : tuple
+        Shape of the tensor.
     '''
     def __init__(self):
         # Save variables for this class
@@ -163,8 +166,52 @@ class BaseTensor():
         self.elbow_metric_raw = None
 
     def copy(self):
+        '''Performs a deep copy of this object.'''
         import copy
         return copy.deepcopy(self)
+
+    @property
+    def shape(self):
+        '''Returns the shape of the tensor'''
+        if hasattr(self.tensor, 'shape'):
+            return self.tensor.shape
+        else:
+            return ()
+
+    def write_file(self, filename):
+        '''Exports this object into a pickle file.
+
+        Parameters
+        ----------
+        filename : str
+            Complete path to the file wherein the variable will be
+            stored. For example:
+            /home/user/variable.pkl
+        '''
+        from cell2cell.io.save_data import export_variable_with_pickle
+        export_variable_with_pickle(self, filename=filename)
+
+    def to_device(self, device):
+        '''Changes the device where the tensor
+        is analyzed.
+
+        Parameters
+        ----------
+        device : str
+            Device name to use for the decomposition.
+            Options could be 'cpu', 'cuda', 'gpu', depending on
+            the backend used with tensorly.
+        '''
+        try:
+            self.tensor = tl.tensor(self.tensor, device=device)
+            if self.mask is not None:
+                self.mask = tl.tensor(self.mask, device=device)
+        except:
+            print('Device is either not available or the backend used with tensorly does not support this device.\
+                   Try changing it with tensorly.set_backend("<backend_name>") before.')
+            self.tensor = tl.tensor(self.tensor)
+            if self.mask is not None:
+                self.mask = tl.tensor(self.mask)
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', svd='numpy_svd', random_state=None,
                                      runs=1, normalize_loadings=True, var_ordered_factors=True, n_iter_max=100, tol=10e-7,
@@ -915,7 +962,6 @@ class PreBuiltTensor(BaseTensor):
                 self.mask = mask
             else:
                 self.mask = tl.tensor(mask, device=context['device'])
-
         self.order_names = order_names
         if order_labels is None:
             self.order_labels = ['Dimension-{}'.format(i + 1) for i in range(len(self.tensor.shape))]

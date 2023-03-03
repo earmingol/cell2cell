@@ -5,7 +5,7 @@ from types import ModuleType
 
 
 def load_gmt(filename, backup_url=None, readable_name=False):
-    """Load a GMT file.
+    '''Load a GMT file.
 
     Parameters
     ----------
@@ -23,7 +23,7 @@ def load_gmt(filename, backup_url=None, readable_name=False):
     -------
     pathway_per_gene : dict
         Dictionary with genes as keys and pathways as values.
-    """
+    '''
     from pathlib import Path
 
     path = Path(filename)
@@ -55,7 +55,7 @@ def load_gmt(filename, backup_url=None, readable_name=False):
 
 def generate_lr_geneset(lr_list, complex_sep=None, lr_sep='^', pathway_per_gene=None, organism='human', pathwaydb='GOBP',
                         min_pathways=15, max_pathways=10000, readable_name=False):
-    """Generate a gene set from a list of LR pairs.
+    '''Generate a gene set from a list of LR pairs.
 
     Parameters
     ----------
@@ -94,7 +94,7 @@ def generate_lr_geneset(lr_list, complex_sep=None, lr_sep='^', pathway_per_gene=
     -------
     lr_set : dict
         Dictionary with pathways as keys and LR pairs as values.
-    """
+    '''
     # Check if the LR gene set is already available
     _check_pathwaydb(organism, pathwaydb)
 
@@ -146,7 +146,7 @@ def generate_lr_geneset(lr_list, complex_sep=None, lr_sep='^', pathway_per_gene=
 
 def run_gsea(loadings, lr_set, output_folder, weight=1, min_size=15, permutations=999, processes=6,
              random_state=6, significance_threshold=0.05):
-    """Run GSEA using the LR gene set.
+    '''Run GSEA using the LR gene set.
 
     Parameters
     ----------
@@ -191,7 +191,7 @@ def run_gsea(loadings, lr_set, output_folder, weight=1, min_size=15, permutation
 
     gsea_df : pandas.DataFrame
         Dataframe with the detailed GSEA results.
-    """
+    '''
     import numpy as np
     import pandas as pd
 
@@ -243,6 +243,11 @@ def run_gsea(loadings, lr_set, output_folder, weight=1, min_size=15, permutation
 
     pvals = gsea_df.pivot(index="Term", columns="Factor", values="Adj. P-value").fillna(1.)
     scores = gsea_df.pivot(index="Term", columns="Factor", values="NES").fillna(0)
+
+    # Sort factors
+    sorted_columns = [f for f in loadings.columns[1:] if (f in pvals.columns) & (f in scores.columns)]
+    pvals = pvals[sorted_columns]
+    scores = scores[sorted_columns]
     return pvals, scores, gsea_df
 
 
