@@ -767,7 +767,9 @@ class SingleCellInteractions:
         randomized_scores = np.array(randomized_scores)
         base_scores = score.values.flatten()
         pvals = np.ones(base_scores.shape)
-        for i in range(len(base_scores)):
+        n_pvals = len(base_scores)
+        randomized_scores = randomized_scores.reshape((-1, n_pvals))
+        for i in range(n_pvals):
             dist = randomized_scores[:, i]
             dist = np.append(dist, base_scores[i])
             pvals[i] = permutation.compute_pvalue_from_dist(obs_value=base_scores[i],
