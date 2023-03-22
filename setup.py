@@ -98,7 +98,7 @@ setup(name='cell2cell',
                         'tqdm',
                         'statsmodels',
                         'statannotations',
-                        'tensorly == 0.7.0',
+                        'tensorly == 0.8.1',
                         'kneed',
                         'scanpy',
                         'gseapy == 1.0.3'
