@@ -1,3 +1,5 @@
+import os
+
 from collections import defaultdict
 from tqdm import tqdm
 
@@ -54,7 +56,7 @@ def load_gmt(filename, backup_url=None, readable_name=False):
 
 
 def generate_lr_geneset(lr_list, complex_sep=None, lr_sep='^', pathway_per_gene=None, organism='human', pathwaydb='GOBP',
-                        min_pathways=15, max_pathways=10000, readable_name=False):
+                        min_pathways=15, max_pathways=10000, readable_name=False, output_folder=None):
     '''Generate a gene set from a list of LR pairs.
 
     Parameters
@@ -90,6 +92,10 @@ def generate_lr_geneset(lr_list, complex_sep=None, lr_sep='^', pathway_per_gene=
     readable_name : boolean, default=False
         If True, the pathway names are transformed to a more readable format.
 
+    output_folder : str, default=None
+        Path to store the GMT file. If None, it stores the gmt file in the
+        current directory.
+
     Returns
     -------
     lr_set : dict
@@ -99,8 +105,11 @@ def generate_lr_geneset(lr_list, complex_sep=None, lr_sep='^', pathway_per_gene=
     _check_pathwaydb(organism, pathwaydb)
 
     # Obtain annotations
+    gmt_info = PATHWAY_DATA[organism][pathwaydb]
+    if output_folder is not None:
+        gmt_info['filename'] = os.path.join(output_folder, gmt_info['filename'])
     if pathway_per_gene is None:
-        pathway_per_gene = load_gmt(readable_name=readable_name, **PATHWAY_DATA[organism][pathwaydb])
+        pathway_per_gene = load_gmt(readable_name=readable_name, **gmt_info)
 
     # Dictionary to save the LR interaction (key) and the annotated pathways (values).
     pathway_sets = defaultdict(set)
