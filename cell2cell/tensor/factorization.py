@@ -2,7 +2,7 @@
 
 import numpy as np
 import scipy.spatial as sp
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from kneed import KneeLocator
 
 from tensorly.decomposition import non_negative_parafac, non_negative_parafac_hals, parafac, constrained_parafac

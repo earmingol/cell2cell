@@ -5,7 +5,7 @@ import pandas as pd
 import tensorly as tl
 
 from collections import OrderedDict
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from cell2cell.core.communication_scores import compute_ccc_matrix, aggregate_ccc_matrices
 from cell2cell.preprocessing.find_elements import get_element_abundances, get_elements_over_fraction

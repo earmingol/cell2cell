@@ -13,7 +13,7 @@ import cell2cell.core.interaction_space as ispace
 from cell2cell.preprocessing import shuffle_rows_in_df
 
 from sklearn.utils import shuffle
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 
 def compute_pvalue_from_dist(obs_value, dist, consider_size=False, comparison='upper'):

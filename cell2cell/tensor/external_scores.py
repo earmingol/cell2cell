@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from collections import defaultdict
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from cell2cell.preprocessing.find_elements import get_element_abundances, get_elements_over_fraction
 from cell2cell.tensor.tensor import PreBuiltTensor
 

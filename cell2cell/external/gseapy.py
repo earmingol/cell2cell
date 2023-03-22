@@ -1,5 +1,5 @@
 from collections import defaultdict
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from types import ModuleType
 
