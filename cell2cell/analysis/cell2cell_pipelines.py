@@ -374,6 +374,14 @@ class BulkInteractions:
                                                                      cci_type=cci_type,
                                                                      verbose=verbose)
 
+    @property
+    def interaction_elements(self):
+        '''Returns the interaction elements within an interaction space.'''
+        if hasattr(self.interaction_space, 'interaction_elements'):
+            return self.interaction_space.interaction_elements
+        else:
+            return None
+
 
 class SingleCellInteractions:
     '''Interaction class with all necessary methods to run the cell2cell pipeline
@@ -614,6 +622,7 @@ class SingleCellInteractions:
     '''
     compute_pairwise_cci_scores = BulkInteractions.compute_pairwise_cci_scores
     compute_pairwise_communication_scores =  BulkInteractions.compute_pairwise_communication_scores
+    interaction_elements = BulkInteractions.interaction_elements
 
     def __init__(self, rnaseq_data, ppi_data, metadata, interaction_columns=('A', 'B'),
                  communication_score='expression_thresholding', cci_score='bray_curtis', cci_type='undirected',
