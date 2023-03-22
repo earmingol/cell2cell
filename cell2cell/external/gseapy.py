@@ -105,7 +105,7 @@ def generate_lr_geneset(lr_list, complex_sep=None, lr_sep='^', pathway_per_gene=
     _check_pathwaydb(organism, pathwaydb)
 
     # Obtain annotations
-    gmt_info = PATHWAY_DATA[organism][pathwaydb]
+    gmt_info = PATHWAY_DATA[organism][pathwaydb].copy()
     if output_folder is not None:
         gmt_info['filename'] = os.path.join(output_folder, gmt_info['filename'])
     if pathway_per_gene is None:
