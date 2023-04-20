@@ -233,7 +233,7 @@ def run_gsea(loadings, lr_set, output_folder, weight=1, min_size=15, permutation
     terms = []
     factors = []
     nes = []
-    for factor in loadings.columns[1:]:
+    for factor in df.columns[1:]:
         p_report = pd.read_csv(output_folder + '/GSEA/' + factor + '/gseapy.gene_set.prerank.report.csv')
         pval = p_report['NOM p-val'].values.tolist()
         pvals.extend(pval)
@@ -254,7 +254,7 @@ def run_gsea(loadings, lr_set, output_folder, weight=1, min_size=15, permutation
     scores = gsea_df.pivot(index="Term", columns="Factor", values="NES").fillna(0)
 
     # Sort factors
-    sorted_columns = [f for f in loadings.columns[1:] if (f in pvals.columns) & (f in scores.columns)]
+    sorted_columns = [f for f in df.columns[1:] if (f in pvals.columns) & (f in scores.columns)]
     pvals = pvals[sorted_columns]
     scores = scores[sorted_columns]
     return pvals, scores, gsea_df
