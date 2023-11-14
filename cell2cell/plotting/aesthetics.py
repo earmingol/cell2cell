@@ -165,27 +165,18 @@ def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), n
         color_patches.append(patches.Patch(color=v, label=str(k).replace('_', ' ')))
 
     if ax is None:
-        legend1 = plt.legend(handles=color_patches,
-                             loc=loc,
-                             bbox_to_anchor=bbox_to_anchor,
-                             ncol=ncol,
-                             fancybox=fancybox,
-                             shadow=shadow,
-                             title=title,
-                             fontsize=fontsize)
-    else:
-        legend1 = ax.legend(handles=color_patches,
-                             loc=loc,
-                             bbox_to_anchor=bbox_to_anchor,
-                             ncol=ncol,
-                             fancybox=fancybox,
-                             shadow=shadow,
-                             title=title,
-                             fontsize=fontsize)
+        ax = plt.gca()
 
-    if (fig is None) & (ax is None):
-        plt.setp(legend1.get_title(), fontsize=fontsize)
-        plt.gca().add_artist(legend1)
-    else:
-        plt.setp(legend1.get_title(), fontsize=fontsize)
+    legend1 = ax.legend(handles=color_patches,
+                        loc=loc,
+                        bbox_to_anchor=bbox_to_anchor,
+                        ncol=ncol,
+                        fancybox=fancybox,
+                        shadow=shadow,
+                        title=title,
+                        fontsize=fontsize)
+
+    #legend1.set_title(title, fontsize=fontsize)
+    plt.setp(legend1.get_title(), fontsize=fontsize)
+    ax.add_artist(legend1)
     return legend1
