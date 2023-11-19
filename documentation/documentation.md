@@ -17,6 +17,7 @@ visualizations to simplify the interpretation of results:
 - **cell2cell.io** : Includes functions for opening and saving diverse types of files.
 - **cell2cell.plotting** : Includes all the visualization options that *cell2cell* offers.
 - **cell2cell.preprocessing** : Includes functions for manipulating data and variables (e.g. data preprocessing, integration, permutation, among others).
+- **cell2cell.spatial** : Includes filtering of cell-cell interactions results given intercellular distance, as well as defining neighborhoods by grids or moving windows.
 - **cell2cell.stats** : Includes statistical analyses such as enrichment analysis, multiple test correction methods, permutation approaches, and Gini coefficient.
 - **cell2cell.tensor** : Includes all functions pertinent to the analysis of *Tensor-cell2cell*
 - **cell2cell.utils** : Includes general utilities for analyzing networks and performing parallel computing.
@@ -68,6 +69,12 @@ Below, all the inputs, parameters (including their different options), and outpu
       show_source: true
 
 ::: cell2cell.preprocessing
+    handler: python
+    rendering:
+      show_root_heading: true
+      show_source: true
+
+::: cell2cell.spatial
     handler: python
     rendering:
       show_root_heading: true
