@@ -91,7 +91,7 @@ def calculate_window_size(adata, num_windows):
     return window_size
 
 
-def create_moving_windows(adata, window_size, stride):
+def create_sliding_windows(adata, window_size, stride):
     """
     Maps windows to the cells they contain based on spatial transcriptomics data.
     Returns a dictionary where keys are window identifiers and values are sets of cell indices.
@@ -145,7 +145,7 @@ def create_moving_windows(adata, window_size, stride):
     return window_mapping
 
 
-def add_moving_window_info_to_adata(adata, window_mapping):
+def add_sliding_window_info_to_adata(adata, window_mapping):
     """
     Adds window information to the AnnData object's .obs DataFrame. Each window is represented
     as a column, and cells/spots belonging to a window are marked with a 1.0, while others are marked
