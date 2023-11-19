@@ -23388,8 +23388,8 @@ across the width of the coordinate space.</p></li>
 
 
 
-<h6 class="doc doc-heading" id="cell2cell.spatial.neighborhoods.create_moving_windows">
-<code class="highlight language-python"><span class="n">create_moving_windows</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">window_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">)</span></code>
+<h6 class="doc doc-heading" id="cell2cell.spatial.neighborhoods.create_sliding_windows">
+<code class="highlight language-python"><span class="n">create_sliding_windows</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">window_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">)</span></code>
 
 
 </h6>
@@ -23436,7 +23436,7 @@ must be stored in <code>adata.obsm['spatial']</code>.</p></li>
 </table>
         <details class="quote">
           <summary>Source code in <code>cell2cell/spatial/neighborhoods.py</code></summary>
-          <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span> <span class="nf">create_moving_windows</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">window_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">):</span>
+          <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span> <span class="nf">create_sliding_windows</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">window_size</span><span class="p">,</span> <span class="n">stride</span><span class="p">):</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="sd">    Maps windows to the cells they contain based on spatial transcriptomics data.</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="sd">    Returns a dictionary where keys are window identifiers and values are sets of cell indices.</span>
@@ -23500,8 +23500,8 @@ must be stored in <code>adata.obsm['spatial']</code>.</p></li>
 
 
 
-<h6 class="doc doc-heading" id="cell2cell.spatial.neighborhoods.add_moving_window_info_to_adata">
-<code class="highlight language-python"><span class="n">add_moving_window_info_to_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">window_mapping</span><span class="p">)</span></code>
+<h6 class="doc doc-heading" id="cell2cell.spatial.neighborhoods.add_sliding_window_info_to_adata">
+<code class="highlight language-python"><span class="n">add_sliding_window_info_to_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">window_mapping</span><span class="p">)</span></code>
 
 
 </h6>
@@ -23532,7 +23532,7 @@ This is the output from the <code>create_moving_windows</code> function.</p></li
 </table>
         <details class="quote">
           <summary>Source code in <code>cell2cell/spatial/neighborhoods.py</code></summary>
-          <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span> <span class="nf">add_moving_window_info_to_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">window_mapping</span><span class="p">):</span>
+          <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span> <span class="nf">add_sliding_window_info_to_adata</span><span class="p">(</span><span class="n">adata</span><span class="p">,</span> <span class="n">window_mapping</span><span class="p">):</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="sd">    Adds window information to the AnnData object&#39;s .obs DataFrame. Each window is represented</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="sd">    as a column, and cells/spots belonging to a window are marked with a 1.0, while others are marked</span>

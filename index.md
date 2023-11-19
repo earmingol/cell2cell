@@ -75,6 +75,7 @@ Quickstart and extended tutorials are available for [using Tensor-cell2cell in c
 
 These tutorials include the use of multiple LR-based tools running on LIANA, different databases of ligand-receptor interactions,
 downstream analyses, and the use of spatial transcriptomics.
+
 ---
 ## Common issues
 - When running Tensor-cell2cell (```InteractionTensor.compute_tensor_factorization()``` or ```InteractionTensor.elbow_rank_selection()```), a common error is
