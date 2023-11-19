@@ -105,7 +105,7 @@ def map_colors_to_metadata(metadata, ref_df=None, colors=None, sample_col='#Samp
 
 
 def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), ncol=1, fancybox=True, shadow=True,
-                    title='Legend', fontsize=14, sorted_labels=True, fig=None, ax=None):
+                    title='Legend', fontsize=14, sorted_labels=True, ax=None):
     '''Adds a legend to a previous plot or displays an independent legend
     given specific colors for labels.
 
@@ -172,20 +172,16 @@ def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), n
                              fancybox=fancybox,
                              shadow=shadow,
                              title=title,
+                             title_fontsize=fontsize,
                              fontsize=fontsize)
     else:
         legend1 = ax.legend(handles=color_patches,
-                             loc=loc,
-                             bbox_to_anchor=bbox_to_anchor,
-                             ncol=ncol,
-                             fancybox=fancybox,
-                             shadow=shadow,
-                             title=title,
-                             fontsize=fontsize)
-
-    if (fig is None) & (ax is None):
-        plt.setp(legend1.get_title(), fontsize=fontsize)
-        plt.gca().add_artist(legend1)
-    else:
-        plt.setp(legend1.get_title(), fontsize=fontsize)
+                            loc=loc,
+                            bbox_to_anchor=bbox_to_anchor,
+                            ncol=ncol,
+                            fancybox=fancybox,
+                            shadow=shadow,
+                            title=title,
+                            title_fontsize=fontsize,
+                            fontsize=fontsize)
     return legend1

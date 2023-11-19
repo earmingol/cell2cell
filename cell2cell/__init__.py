@@ -8,8 +8,9 @@ from cell2cell import external
 from cell2cell import io
 from cell2cell import plotting
 from cell2cell import preprocessing
+from cell2cell import spatial
 from cell2cell import stats
 from cell2cell import tensor
 from cell2cell import utils
 
-__version__ = "0.6.8"
+__version__ = "0.7.0"

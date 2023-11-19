@@ -201,7 +201,7 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
     tensor = np.asarray(tmp_tensor)
     if how != 'inner':
         mask = (~np.isnan(tensor)).astype(int)
-        loc_nans = np.ones(tensor.shape, dtype=int) - mask
+        loc_nans = (np.isnan(tensor)).astype(int)
     else:
         mask = None
         loc_nans = np.zeros(tensor.shape, dtype=int)

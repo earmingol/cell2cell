@@ -6,7 +6,7 @@
 [pypi]: https://pypi.org/project/cell2cell/
 
 ## Getting started
-Please refer to the [cell2cell website](https://earmingol.github.io/cell2cell/), 
+Please refer to the [cell2cell website](https://cell2cell.readthedocs.org/), 
 which includes tutorials and documentation
 
 
@@ -69,6 +69,13 @@ body of *C. elegans*** is [available here](https://github.com/LewisLabUCSD/Celeg
 
 
 ---
+## LIANA & Tensor-cell2cell
+
+Quickstart and extended tutorials are available for [using Tensor-cell2cell in combination with LIANA](https://ccc-protocols.readthedocs.io/).
+
+These tutorials include the use of multiple LR-based tools running on LIANA, different databases of ligand-receptor interactions,
+downstream analyses, and the use of spatial transcriptomics.
+---
 ## Common issues
 - When running Tensor-cell2cell (```InteractionTensor.compute_tensor_factorization()``` or ```InteractionTensor.elbow_rank_selection()```), a common error is
 associated with Memory. This may happen when the tensor is big enough to make the computer run out of memory when the input of the functions in the parentheses is
@@ -90,3 +97,8 @@ associated with Memory. This may happen when the tensor is big enough to make th
     - Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Aamodt C., Knight R., Lewis N.E.
      [Context-aware deconvolution of cell-cell communication with Tensor-cell2cell](https://doi.org/10.1038/s41467-022-31369-2)
      *Nat. Commun.* **13**, 3665 (2022). **DOI: 10.1038/s41467-022-31369-2**
+
+- **LIANA & Tensor-cell2cell tutorials** should be cited unsing this pre-print article:
+    - Baghdassarian H., Dimitrov D., Armingol E., Saez-Rodriguez J., Lewis N.E.
+      [Combining LIANA and Tensor-cell2cell to decipher cell-cell communication across multiple samples](https://doi.org/10.1101/2023.04.28.538731)
+      *bioRxiv* (2023) **DOI: 10.1101/2023.04.28.538731**

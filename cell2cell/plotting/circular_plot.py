@@ -267,10 +267,12 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
 
     # Draw legend
     if legend:
-        generate_circos_legend(cell_legend=cell_legend,
-                               meta_legend=meta_legend,
-                               signal_legend=signal_colors,
-                               fontsize=fontsize)
+        lgd = generate_circos_legend(cell_legend=cell_legend,
+                                     meta_legend=meta_legend,
+                                     signal_legend=signal_colors,
+                                     fontsize=fontsize,
+                                     ax=ax
+                                     )
 
     if filename is not None:
         plt.savefig(filename, dpi=300,
@@ -582,7 +584,7 @@ def get_node_colors(G, coloring_feature=None, cmap='viridis'):
     return node_colors, feature_colors
 
 
-def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fontsize=14):
+def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fontsize=14, ax=None):
     '''Adds legends to circos plot.
 
     Parameters
@@ -604,15 +606,16 @@ def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fo
     legend_fontsize = int(fontsize * 0.9)
 
     # Cell legend
-    generate_legend(color_dict=cell_legend,
-                    loc='center left',
-                    bbox_to_anchor=(1.01, 0.5),
-                    ncol=1,
-                    fancybox=True,
-                    shadow=True,
-                    title='Cells',
-                    fontsize=legend_fontsize
-                    )
+    lgd = generate_legend(color_dict=cell_legend,
+                          loc='center left',
+                          bbox_to_anchor=(1.01, 0.5),
+                          ncol=1,
+                          fancybox=True,
+                          shadow=True,
+                          title='Cells',
+                          fontsize=legend_fontsize,
+                          ax=ax
+                          )
 
 
     if signal_legend is not None:
@@ -629,13 +632,18 @@ def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fo
         pass
 
     if meta_legend is not None:
+        if ax is None:
+            ax = plt.gca()
+
+        ax.add_artist(lgd)
         # Meta legend
-        generate_legend(color_dict=meta_legend,
-                        loc='center right',
-                        bbox_to_anchor=(-0.01, 0.5),
-                        ncol=1,
-                        fancybox=True,
-                        shadow=True,
-                        title='Groups',
-                        fontsize=legend_fontsize
-                        )
+        lgd3 = generate_legend(color_dict=meta_legend,
+                               loc='center right',
+                               bbox_to_anchor=(-0.01, 0.5),
+                               ncol=1,
+                               fancybox=True,
+                               shadow=True,
+                               title='Groups',
+                               fontsize=legend_fontsize,
+                               ax=ax
+                               )
