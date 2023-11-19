@@ -105,7 +105,7 @@ def map_colors_to_metadata(metadata, ref_df=None, colors=None, sample_col='#Samp
 
 
 def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), ncol=1, fancybox=True, shadow=True,
-                    title='Legend', fontsize=14, sorted_labels=True, fig=None, ax=None):
+                    title='Legend', fontsize=14, sorted_labels=True, ax=None):
     '''Adds a legend to a previous plot or displays an independent legend
     given specific colors for labels.
 
@@ -165,18 +165,25 @@ def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), n
         color_patches.append(patches.Patch(color=v, label=str(k).replace('_', ' ')))
 
     if ax is None:
-        ax = plt.gca()
+        legend1 = plt.legend(handles=color_patches,
+                             loc=loc,
+                             bbox_to_anchor=bbox_to_anchor,
+                             ncol=ncol,
+                             fancybox=fancybox,
+                             shadow=shadow,
+                             title=title,
+                             title_fontsize=fontsize,
+                             fontsize=fontsize)
+    else:
+        legend1 = ax.legend(handles=color_patches,
+                            loc=loc,
+                            bbox_to_anchor=bbox_to_anchor,
+                            ncol=ncol,
+                            fancybox=fancybox,
+                            shadow=shadow,
+                            title=title,
+                            title_fontsize=fontsize,
+                            fontsize=fontsize)
 
-    legend1 = ax.legend(handles=color_patches,
-                        loc=loc,
-                        bbox_to_anchor=bbox_to_anchor,
-                        ncol=ncol,
-                        fancybox=fancybox,
-                        shadow=shadow,
-                        title=title,
-                        fontsize=fontsize)
-
-    #legend1.set_title(title, fontsize=fontsize)
-    plt.setp(legend1.get_title(), fontsize=fontsize)
-    ax.add_artist(legend1)
+        #ax.add_artist(legend1)
     return legend1

@@ -255,27 +255,30 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
     # Include legends of coloring the elements in each dimension.
     if plot_legend:
         # Set current axis:
-        plt.sca(axes[0, -1])
+        ax = axes[0, -1]
+        plt.sca(ax)
 
         # Legends
         fig.canvas.draw()
         renderer = fig.canvas.get_renderer()
-        count = 0
+        bbox_cords =  (1.05, 1.2)
+
+        N=len(order_labels) - 1
         for ind, order in enumerate(order_labels):
             if (metadata[ind] is not None) & (meta_colors[ind] is not None):
-                if count == 0:
-                    bbox_cords =  (1.05, 1.2)
                 lgd = generate_legend(color_dict=meta_colors[ind],
                                       bbox_to_anchor=bbox_cords,
                                       loc='upper left',
                                       title=order_labels[ind],
                                       fontsize=fontsize,
                                       sorted_labels=False,
+                                      ax=ax
                                       )
-                cords = lgd.get_window_extent(renderer).transformed(axes[0, -1].transAxes.inverted())
+                cords = lgd.get_window_extent(renderer).transformed(ax.transAxes.inverted())
                 xrange = abs(cords.p0[0] - cords.p1[0])
                 bbox_cords = (bbox_cords[0] + xrange + 0.05, bbox_cords[1])
-                count += 1
+                if ind != N:
+                    ax.add_artist(lgd)
 
     if filename is not None:
         plt.savefig(filename, dpi=300,
