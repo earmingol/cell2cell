@@ -184,6 +184,4 @@ def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), n
                             title=title,
                             title_fontsize=fontsize,
                             fontsize=fontsize)
-
-        #ax.add_artist(legend1)
     return legend1
