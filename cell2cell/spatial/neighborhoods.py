@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+import pandas as pd
 import tensorly as tl
 
 
@@ -83,7 +84,7 @@ def dist_filter_tensor(interaction_tensor, distances, max_dist, min_dist=0, sour
 
 
 def dist_filter_liana(liana_outputs, distances, max_dist, min_dist=0, source_col='source', target_col='target',
-                      make_zero=None, keep_dist=False):
+                      keep_dist=False):
     '''
     Filters a dataframe with outputs from LIANA based on a distance threshold
     defined applied to another dataframe containing distances between cell groups.
@@ -128,13 +129,64 @@ def dist_filter_liana(liana_outputs, distances, max_dist, min_dist=0, source_col
     merged_df = liana_outputs.merge(distances, on=[source_col, target_col], how='left')
 
     # Filter based on the distance threshold
-    if make_zero is None:
-        filtered_liana_outputs = merged_df[(min_dist <= merged_df['distance']) & (merged_df['distance'] <= max_dist)]
-    else:
-        merged_df[~((min_dist <= merged_df['distance']) & (merged_df['distance'] <= max_dist))][make_zero] = 0.0
-        filtered_liana_outputs = merged_df
+    filtered_liana_outputs = merged_df[(min_dist <= merged_df['distance']) & (merged_df['distance'] <= max_dist)]
 
     if keep_dist == False:
         filtered_liana_outputs = filtered_liana_outputs.drop(['distance'], axis=1)
 
     return filtered_liana_outputs
+
+
+def create_spatial_grid(adata, num_bins, copy=False):
+    """
+    Segments spatial transcriptomics data into a square grid based on spatial coordinates
+    and annotates each cell or spot with its corresponding grid position.
+
+    Parameters
+    ----------
+    adata : AnnData
+        The AnnData object containing spatial transcriptomics data. The spatial coordinates
+        must be stored in `adata.obsm['spatial']`. This object is either modified in place
+        or a copy is returned based on the `copy` parameter.
+
+    num_bins : int
+        The number of bins (squares) along each dimension of the grid. The grid is square,
+        so this number applies to both the horizontal and vertical divisions.
+
+    copy : bool, default=False
+        If True, the function operates on and returns a copy of the input AnnData object.
+        If False, the function modifies the input AnnData object in place.
+
+    Returns
+    -------
+    adata_ : AnnData or None
+        If `copy=True`, a new AnnData object with added grid annotations is returned.
+    """
+
+    if copy:
+        adata_ = adata.copy()
+    else:
+        adata_ = adata
+
+    # Get the spatial coordinates
+    coords = pd.DataFrame(adata.obsm['spatial'], index=adata.obs_names, columns=['X', 'Y'])
+
+    # Define the bins for each dimension
+    x_min, y_min = coords.min()
+    x_max, y_max = coords.max()
+    x_bins = np.linspace(x_min, x_max, num_bins + 1)
+    y_bins = np.linspace(y_min, y_max, num_bins + 1)
+
+    # Digitize the coordinates into bins
+    adata_.obs['grid_x'] = np.digitize(coords['X'], x_bins, right=False) - 1
+    adata_.obs['grid_y'] = np.digitize(coords['Y'], y_bins, right=False) - 1
+
+    # Adjust indices to start from 0 and end at num_bins - 1
+    adata_.obs['grid_x'] = np.clip(adata_.obs['grid_x'], 0, num_bins - 1)
+    adata_.obs['grid_y'] = np.clip(adata_.obs['grid_y'], 0, num_bins - 1)
+
+    # Combine grid indices to form a grid cell identifier
+    adata_.obs['grid_cell'] = adata_.obs['grid_x'].astype(str) + "_" + adata_.obs['grid_y'].astype(str)
+
+    if copy:
+        return adata_
