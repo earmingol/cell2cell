@@ -602,7 +602,7 @@ class BaseTensor():
         writer = pd.ExcelWriter(filename)
         for k, v in self.factors.items():
             v.to_excel(writer, sheet_name=k)
-        writer.save()
+        writer.close()
         print('Loadings of the tensor factorization were successfully saved into {}'.format(filename))
 
     def excluded_value_fraction(self):
