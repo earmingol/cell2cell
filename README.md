@@ -33,7 +33,7 @@ conda activate cell2cell
 </details> 
 
 <details> <summary><b>Step 3: Install cell2cell</b> :arrow_down:</summary>
-https://github.com/earmingol/cell2cell/blob/master/README.md
+
 ```
 pip install cell2cell
 ```
