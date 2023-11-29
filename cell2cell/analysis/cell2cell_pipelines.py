@@ -228,6 +228,7 @@ class BulkInteractions:
         self.analysis_setup['communication_score'] = communication_score
         self.analysis_setup['cci_score'] = cci_score
         self.analysis_setup['cci_type'] = cci_type
+        self.analysis_setup['ccc_type'] = cci_type
 
         # Initialize PPI
         genes = list(rnaseq_data.index)
@@ -351,8 +352,7 @@ class BulkInteractions:
             - 'undirected'
             - 'directed'
 
-            If None, the one stored in the attribute analysis_setup
-            will be used.
+            If None, 'directed' will be used.
 
         verbose : boolean, default=True
             Whether printing or not steps of the analysis.
@@ -365,6 +365,8 @@ class BulkInteractions:
 
         if cci_type is None:
             cci_type = 'directed'
+
+        self.analysis_setup['ccc_type'] = cci_type
 
         self.interaction_space.compute_pairwise_communication_scores(communication_score=communication_score,
                                                                      use_ppi_score=use_ppi_score,
@@ -653,6 +655,7 @@ class SingleCellInteractions:
         self.analysis_setup['communication_score'] = communication_score
         self.analysis_setup['cci_score'] = cci_score
         self.analysis_setup['cci_type'] = cci_type
+        self.analysis_setup['ccc_type'] = cci_type
 
         # Initialize PPI
         ppi_data_ = ppi.filter_ppi_by_proteins(ppi_data=ppi_data,
@@ -730,15 +733,26 @@ class SingleCellInteractions:
         if evaluation == 'communication':
             if 'communication_matrix' not in self.interaction_space.interaction_elements.keys():
                 raise ValueError('Run the method compute_pairwise_communication_scores() before permutation analysis.')
-            score = self.interaction_space.interaction_elements['communication_matrix']
+            score = self.interaction_space.interaction_elements['communication_matrix'].copy()
         elif evaluation == 'interactions':
             if not hasattr(self.interaction_space, 'distance_matrix'):
                 raise ValueError('Run the method compute_pairwise_interactions() before permutation analysis.')
-            score = self.interaction_space.interaction_elements['cci_matrix']
+            score = self.interaction_space.interaction_elements['cci_matrix'].copy()
         else:
             raise ValueError('Not a valid evaluation')
 
         randomized_scores = []
+
+        analysis_setup = self.analysis_setup.copy()
+        ppi_data = self.ppi_data
+        if (evaluation == 'communication') & (self.analysis_setup['cci_type'] != self.analysis_setup['ccc_type']):
+            analysis_setup['cci_type'] = analysis_setup['ccc_type']
+            if self.analysis_setup['cci_type'] == 'directed':
+                ppi_data = ppi.bidirectional_ppi_for_cci(ppi_data=self.ppi_data,
+                                                         interaction_columns=self.interaction_columns,
+                                                         verbose=verbose)
+            elif self.analysis_setup['cci_type'] == 'undirected':
+                ppi_data = self.ref_ppi
 
         for i in tqdm(range(permutations), disable=not verbose):
             if random_state is not None:
@@ -758,9 +772,9 @@ class SingleCellInteractions:
                                                                   transposed=self.__adata)
 
             interaction_space = initialize_interaction_space(rnaseq_data=aggregated_expression,
-                                                             ppi_data=self.ppi_data,
+                                                             ppi_data=ppi_data,
                                                              cutoff_setup=self.cutoff_setup,
-                                                             analysis_setup=self.analysis_setup,
+                                                             analysis_setup=analysis_setup,
                                                              complex_sep=self.complex_sep,
                                                              complex_agg_method=self.complex_agg_method,
                                                              interaction_columns=self.interaction_columns,
