@@ -49,6 +49,13 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../documentation/">API Documentation</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">cell2cell Tutorials</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../Toy-Example-BulkPipeline/">Cell-cell communication from bulk dataset</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../Toy-Example-SingleCellPipeline/">Cell-cell communication from single-cell dataset</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Tensor-cell2cell Tutorials</span></p>
               <ul class="current">
                   <li class="toctree-l1"><a class="reference internal" href="../ASD/01-Tensor-Factorization-ASD/">Obtaining patterns of cell-cell communication with Tensor-cell2cell</a>
@@ -57,6 +64,8 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../ASD/03-GSEA-ASD/">Downstream analysis 2: Gene Set Enrichment Analysis</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-Spatial/">Inspecting CCC patterns from spatial transcriptomics</a>
+                  </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="./">Running Tensor-cell2cell on your own GPU or on Google Colab's GPU</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#citations">Citations</a>
@@ -64,8 +73,6 @@
     <li class="toctree-l2"><a class="reference internal" href="#initial-setups">Initial setups</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#installing-necessary-libraries">Installing necessary libraries</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#loading-libraries">Loading libraries</a>
     </li>
         </ul>
     </li>
@@ -1163,10 +1170,9 @@ Licensed under the Apache License, Version 2.0.
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h1 id="running-tensor-cell2cell-on-your-own-gpu-or-on-google-colabs-gpu">Running Tensor-cell2cell on your own GPU or on Google Colab's GPU<a class="anchor-link" href="#running-tensor-cell2cell-on-your-own-gpu-or-on-google-colabs-gpu">&#182;</a></h1><p>You can run this notebook locally or on <a href="https://colab.research.google.com/drive/1xE6Pm1u-XoSWV8a3oYpixUFj64FIDtl0?usp=sharing">Google Colab directly here</a></p>
+<h1 id="running-tensor-cell2cell-on-your-own-gpu-or-on-google-colabs-gpu">Running Tensor-cell2cell on your own GPU or on Google Colab's GPU<a class="anchor-link" href="#running-tensor-cell2cell-on-your-own-gpu-or-on-google-colabs-gpu">&#182;</a></h1><p>You can run this notebook locally or on <a href="https://colab.research.google.com/drive/1T6MUoxafTHYhjvenDbEtQoveIlHT2U6_?usp=sharing">Google Colab directly here</a></p>
 <p><strong>Before running this notebook</strong>, make sure to have a proper NVIDIA GPU driver (<a href="https://www.nvidia.com/Download/index.aspx">https://www.nvidia.com/Download/index.aspx</a>) as well as the CUDA toolkit (<a href="https://developer.nvidia.com/cuda-toolkit">https://developer.nvidia.com/cuda-toolkit</a>) installed.</p>
-<p>Then, make sure to create an environment with Pytorch &gt; v1.8.1 following these instructions to enable CUDA.</p>
-<p><a href="https://pytorch.org/get-started/locally/">https://pytorch.org/get-started/locally/</a></p>
+<p>Then, make sure to create an environment with <a href="https://pytorch.org/get-started/locally/">Pytorch following these instructions to enable CUDA</a></p>
 
 </div>
 </div>
@@ -1203,7 +1209,7 @@ Licensed under the Apache License, Version 2.0.
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[1]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
         
         
         <div class="CodeMirror cm-s-jupyter">
@@ -1218,16 +1224,10 @@ Licensed under the Apache License, Version 2.0.
                 </div>
             </clipboard-copy>
         </div>
-            <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># This installs the developer version of cell2cell</span>
-<span class="c1">#!pip install git+http://github.com/earmingol/cell2cell@new_version # Run it once. Do not run after installing and clicking on RESTART RUNTIME</span>
-
-<span class="c1"># To install a stable version instead, run this:</span>
+            <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># To install a stable version of cell2cell run this:</span>
 <span class="c1">#!pip install cell2cell</span>
 </pre></div>
-<div id="cell-1" class="clipboard-copy-txt"># This installs the developer version of cell2cell
-#!pip install git+http://github.com/earmingol/cell2cell@new_version # Run it once. Do not run after installing and clicking on RESTART RUNTIME
-
-# To install a stable version instead, run this:
+<div id="cell-1" class="clipboard-copy-txt"># To install a stable version of cell2cell run this:
 #!pip install cell2cell</div>
     
         </div>
@@ -1243,51 +1243,12 @@ Licensed under the Apache License, Version 2.0.
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[2]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-        
-        
-        <div class="CodeMirror cm-s-jupyter">
-        <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-2">
-            <div>
-                <span class="notice" hidden>Copied!</span>
-                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
-                    <path fill="currentColor" fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
-                    <path fill="currentColor" fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
-                </svg>
-                </div>
-            </clipboard-copy>
-        </div>
-            <div class="highlight-ipynb hl-python"><pre><span></span><span class="ch">#!pip install matplotlib==3.2.0 # To properly display figures</span>
-</pre></div>
-<div id="cell-2" class="clipboard-copy-txt">#!pip install matplotlib==3.2.0 # To properly display figures</div>
-    
-        </div>
-    </div>
-
-</div>
-</div>
-
-</div>
-</div>
-<div class="jp-Cell-inputWrapper">
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h3 id="loading-libraries">Loading libraries<a class="anchor-link" href="#loading-libraries">&#182;</a></h3>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
-<div class="jp-Cell-inputWrapper">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
 <div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[3]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
         
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-3">
+            <clipboard-copy for="cell-2">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1307,7 +1268,7 @@ Licensed under the Apache License, Version 2.0.
 
 <span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
 </pre></div>
-<div id="cell-3" class="clipboard-copy-txt">import cell2cell as c2c
+<div id="cell-2" class="clipboard-copy-txt">import cell2cell as c2c
 import scanpy as sc
 
 import pandas as pd
@@ -1335,7 +1296,7 @@ from tqdm import tqdm
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-4">
+            <clipboard-copy for="cell-3">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1348,7 +1309,7 @@ from tqdm import tqdm
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span> <span class="nn">warnings</span>
 <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
 </pre></div>
-<div id="cell-4" class="clipboard-copy-txt">import warnings
+<div id="cell-3" class="clipboard-copy-txt">import warnings
 warnings.filterwarnings('ignore')</div>
     
         </div>
@@ -1369,7 +1330,7 @@ warnings.filterwarnings('ignore')</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-5">
+            <clipboard-copy for="cell-4">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1381,7 +1342,7 @@ warnings.filterwarnings('ignore')</div>
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">c2c</span><span class="o">.</span><span class="n">__version__</span>
 </pre></div>
-<div id="cell-5" class="clipboard-copy-txt">c2c.__version__</div>
+<div id="cell-4" class="clipboard-copy-txt">c2c.__version__</div>
     
         </div>
     </div>
@@ -1440,7 +1401,7 @@ warnings.filterwarnings('ignore')</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-6">
+            <clipboard-copy for="cell-5">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1453,7 +1414,7 @@ warnings.filterwarnings('ignore')</div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">output_folder</span> <span class="o">=</span> <span class="s1">&#39;./BALF-COVID19/&#39;</span>
 <span class="n">c2c</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">directories</span><span class="o">.</span><span class="n">create_directory</span><span class="p">(</span><span class="n">output_folder</span><span class="p">)</span>
 </pre></div>
-<div id="cell-6" class="clipboard-copy-txt">output_folder = './BALF-COVID19/'
+<div id="cell-5" class="clipboard-copy-txt">output_folder = './BALF-COVID19/'
 c2c.io.directories.create_directory(output_folder)</div>
     
         </div>
@@ -1509,7 +1470,7 @@ c2c.io.directories.create_directory(output_folder)</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-7">
+            <clipboard-copy for="cell-6">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1521,7 +1482,7 @@ c2c.io.directories.create_directory(output_folder)</div>
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">adata</span> <span class="o">=</span> <span class="n">c2c</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">balf_covid</span><span class="p">()</span>
 </pre></div>
-<div id="cell-7" class="clipboard-copy-txt">adata = c2c.datasets.balf_covid()</div>
+<div id="cell-6" class="clipboard-copy-txt">adata = c2c.datasets.balf_covid()</div>
     
         </div>
     </div>
@@ -1541,7 +1502,7 @@ c2c.io.directories.create_directory(output_folder)</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-8">
+            <clipboard-copy for="cell-7">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1553,7 +1514,7 @@ c2c.io.directories.create_directory(output_folder)</div>
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">adata</span>
 </pre></div>
-<div id="cell-8" class="clipboard-copy-txt">adata</div>
+<div id="cell-7" class="clipboard-copy-txt">adata</div>
     
         </div>
     </div>
@@ -1607,7 +1568,7 @@ c2c.io.directories.create_directory(output_folder)</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-9">
+            <clipboard-copy for="cell-8">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1620,7 +1581,7 @@ c2c.io.directories.create_directory(output_folder)</div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">lr_pairs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;https://raw.githubusercontent.com/LewisLabUCSD/Ligand-Receptor-Pairs/master/Human/Human-2020-Jin-LR-pairs.csv&#39;</span><span class="p">)</span>
 <span class="n">lr_pairs</span> <span class="o">=</span> <span class="n">lr_pairs</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
 </pre></div>
-<div id="cell-9" class="clipboard-copy-txt">lr_pairs = pd.read_csv('https://raw.githubusercontent.com/LewisLabUCSD/Ligand-Receptor-Pairs/master/Human/Human-2020-Jin-LR-pairs.csv')
+<div id="cell-8" class="clipboard-copy-txt">lr_pairs = pd.read_csv('https://raw.githubusercontent.com/LewisLabUCSD/Ligand-Receptor-Pairs/master/Human/Human-2020-Jin-LR-pairs.csv')
 lr_pairs = lr_pairs.astype(str)</div>
     
         </div>
@@ -1641,7 +1602,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-10">
+            <clipboard-copy for="cell-9">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1653,7 +1614,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">lr_pairs</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
 </pre></div>
-<div id="cell-10" class="clipboard-copy-txt">lr_pairs.head(2)</div>
+<div id="cell-9" class="clipboard-copy-txt">lr_pairs.head(2)</div>
     
         </div>
     </div>
@@ -1785,7 +1746,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-11">
+            <clipboard-copy for="cell-10">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1797,7 +1758,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">int_columns</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;ligand_symbol&#39;</span><span class="p">,</span> <span class="s1">&#39;receptor_symbol&#39;</span><span class="p">)</span>
 </pre></div>
-<div id="cell-11" class="clipboard-copy-txt">int_columns = ('ligand_symbol', 'receptor_symbol')</div>
+<div id="cell-10" class="clipboard-copy-txt">int_columns = ('ligand_symbol', 'receptor_symbol')</div>
     
         </div>
     </div>
@@ -1832,7 +1793,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-12">
+            <clipboard-copy for="cell-11">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1844,7 +1805,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">context_dict</span> <span class="o">=</span> <span class="n">adata</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;sample&#39;</span><span class="p">)[</span><span class="s1">&#39;condition&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
 </pre></div>
-<div id="cell-12" class="clipboard-copy-txt">context_dict = adata.obs.set_index('sample')['condition'].sort_values().to_dict()</div>
+<div id="cell-11" class="clipboard-copy-txt">context_dict = adata.obs.set_index('sample')['condition'].sort_values().to_dict()</div>
     
         </div>
     </div>
@@ -1864,7 +1825,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-13">
+            <clipboard-copy for="cell-12">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1876,7 +1837,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">context_dict</span>
 </pre></div>
-<div id="cell-13" class="clipboard-copy-txt">context_dict</div>
+<div id="cell-12" class="clipboard-copy-txt">context_dict</div>
     
         </div>
     </div>
@@ -1942,7 +1903,7 @@ lr_pairs = lr_pairs.astype(str)</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-14">
+            <clipboard-copy for="cell-13">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -1987,7 +1948,7 @@ lr_pairs = lr_pairs.astype(str)</div>
 
     <span class="n">rnaseq_matrices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">exp_df</span><span class="p">)</span>
 </pre></div>
-<div id="cell-14" class="clipboard-copy-txt">rnaseq_matrices = []
+<div id="cell-13" class="clipboard-copy-txt">rnaseq_matrices = []
 
 # Iteraty by sample/context
 for context in tqdm(context_dict.keys()):
@@ -2072,7 +2033,7 @@ for context in tqdm(context_dict.keys()):
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-15">
+            <clipboard-copy for="cell-14">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2088,7 +2049,7 @@ for context in tqdm(context_dict.keys()):
     <span class="n">ppi_label</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">int_columns</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="s1">&#39;^&#39;</span> <span class="o">+</span> <span class="n">row</span><span class="p">[</span><span class="n">int_columns</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
     <span class="n">ppi_functions</span><span class="p">[</span><span class="n">ppi_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;annotation&#39;</span><span class="p">]</span>
 </pre></div>
-<div id="cell-15" class="clipboard-copy-txt">ppi_functions = dict()
+<div id="cell-14" class="clipboard-copy-txt">ppi_functions = dict()
 
 for idx, row in lr_pairs.iterrows():
     ppi_label = row[int_columns[0]] + '^' + row[int_columns[1]]
@@ -2126,7 +2087,7 @@ Here we use as input the list of gene expression matrices that were aggregated i
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-16">
+            <clipboard-copy for="cell-15">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2146,7 +2107,7 @@ Here we use as input the list of gene expression matrices that were aggregated i
                                       <span class="n">communication_score</span><span class="o">=</span><span class="s1">&#39;expression_gmean&#39;</span><span class="p">,</span>
                                      <span class="p">)</span>
 </pre></div>
-<div id="cell-16" class="clipboard-copy-txt">tensor = c2c.tensor.InteractionTensor(rnaseq_matrices=rnaseq_matrices,
+<div id="cell-15" class="clipboard-copy-txt">tensor = c2c.tensor.InteractionTensor(rnaseq_matrices=rnaseq_matrices,
                                       ppi_data=lr_pairs,
                                       context_names=list(context_dict.keys()),
                                       how='outer',
@@ -2214,7 +2175,7 @@ Building tensor for the provided context
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-17">
+            <clipboard-copy for="cell-16">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2226,7 +2187,7 @@ Building tensor for the provided context
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">tensor</span><span class="o">.</span><span class="n">tensor</span><span class="o">.</span><span class="n">shape</span>
 </pre></div>
-<div id="cell-17" class="clipboard-copy-txt">tensor.tensor.shape</div>
+<div id="cell-16" class="clipboard-copy-txt">tensor.tensor.shape</div>
     
         </div>
     </div>
@@ -2280,7 +2241,7 @@ Building tensor for the provided context
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-18">
+            <clipboard-copy for="cell-17">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2292,7 +2253,7 @@ Building tensor for the provided context
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">tensor</span><span class="o">.</span><span class="n">excluded_value_fraction</span><span class="p">()</span>
 </pre></div>
-<div id="cell-18" class="clipboard-copy-txt">tensor.excluded_value_fraction()</div>
+<div id="cell-17" class="clipboard-copy-txt">tensor.excluded_value_fraction()</div>
     
         </div>
     </div>
@@ -2346,7 +2307,7 @@ Building tensor for the provided context
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-19">
+            <clipboard-copy for="cell-18">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2361,7 +2322,7 @@ Building tensor for the provided context
                                                   <span class="n">fill_with_order_elements</span><span class="o">=</span><span class="kc">True</span>
                                                   <span class="p">)</span>
 </pre></div>
-<div id="cell-19" class="clipboard-copy-txt">meta_tensor = c2c.tensor.generate_tensor_metadata(interaction_tensor=tensor,
+<div id="cell-18" class="clipboard-copy-txt">meta_tensor = c2c.tensor.generate_tensor_metadata(interaction_tensor=tensor,
                                                   metadata_dicts=[context_dict, ppi_functions, None, None],
                                                   fill_with_order_elements=True
                                                   )</div>
@@ -2392,7 +2353,7 @@ Building tensor for the provided context
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-20">
+            <clipboard-copy for="cell-19">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2424,7 +2385,7 @@ Building tensor for the provided context
                                                      <span class="n">fig_format</span><span class="o">=</span><span class="s1">&#39;pdf&#39;</span><span class="p">,</span> <span class="c1"># File format of the figures.</span>
                                                     <span class="p">)</span>
 </pre></div>
-<div id="cell-20" class="clipboard-copy-txt">tensor2 = c2c.analysis.run_tensor_cell2cell_pipeline(tensor,
+<div id="cell-19" class="clipboard-copy-txt">tensor2 = c2c.analysis.run_tensor_cell2cell_pipeline(tensor,
                                                      meta_tensor,
                                                      copy_tensor=True, # Whether to output a new tensor or modifying the original
                                                      rank=None, # Number of factors to perform the factorization. If None, it is automatically determined by an elbow analysis
@@ -2556,7 +2517,7 @@ Loadings of the tensor factorization were successfully saved into ./BALF-COVID19
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-21">
+            <clipboard-copy for="cell-20">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2570,7 +2531,7 @@ Loadings of the tensor factorization were successfully saved into ./BALF-COVID19
     <span class="nb">print</span><span class="p">(</span><span class="n">tensor2</span><span class="o">.</span><span class="n">get_top_factor_elements</span><span class="p">(</span><span class="s1">&#39;Ligand-Receptor Pairs&#39;</span><span class="p">,</span> <span class="s1">&#39;Factor </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span> <span class="mi">10</span><span class="p">))</span>
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
 </pre></div>
-<div id="cell-21" class="clipboard-copy-txt">for i in range(tensor2.rank):
+<div id="cell-20" class="clipboard-copy-txt">for i in range(tensor2.rank):
     print(tensor2.get_top_factor_elements('Ligand-Receptor Pairs', 'Factor {}'.format(i+1), 10))
     print('')</div>
     
@@ -2742,7 +2703,7 @@ Name: Factor 10, dtype: float32
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-22">
+            <clipboard-copy for="cell-21">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2756,7 +2717,7 @@ Name: Factor 10, dtype: float32
 
 <span class="n">c2c</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">export_variable_with_pickle</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">output_folder</span> <span class="o">+</span> <span class="s1">&#39;Tensor.pkl&#39;</span><span class="p">)</span>
 </pre></div>
-<div id="cell-22" class="clipboard-copy-txt"># Export Tensor after decomposition
+<div id="cell-21" class="clipboard-copy-txt"># Export Tensor after decomposition
 
 c2c.io.export_variable_with_pickle(tensor, output_folder + 'Tensor.pkl')</div>
     
@@ -2801,7 +2762,7 @@ c2c.io.export_variable_with_pickle(tensor, output_folder + 'Tensor.pkl')</div>
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-23">
+            <clipboard-copy for="cell-22">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2815,7 +2776,7 @@ c2c.io.export_variable_with_pickle(tensor, output_folder + 'Tensor.pkl')</div>
 
 <span class="n">c2c</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">export_variable_with_pickle</span><span class="p">(</span><span class="n">meta_tensor</span><span class="p">,</span> <span class="n">output_folder</span> <span class="o">+</span> <span class="s1">&#39;Tensor-Metadata.pkl&#39;</span><span class="p">)</span>
 </pre></div>
-<div id="cell-23" class="clipboard-copy-txt"># Export Tensor Metadata
+<div id="cell-22" class="clipboard-copy-txt"># Export Tensor Metadata
 
 c2c.io.export_variable_with_pickle(meta_tensor, output_folder + 'Tensor-Metadata.pkl')</div>
     
@@ -2860,7 +2821,7 @@ c2c.io.export_variable_with_pickle(meta_tensor, output_folder + 'Tensor-Metadata
         
         <div class="CodeMirror cm-s-jupyter">
         <div class="zeroclipboard-container">
-            <clipboard-copy for="cell-24">
+            <clipboard-copy for="cell-23">
             <div>
                 <span class="notice" hidden>Copied!</span>
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" version="1.1"  data-view-component="true" class="clipboard-copy-icon">
@@ -2872,7 +2833,7 @@ c2c.io.export_variable_with_pickle(meta_tensor, output_folder + 'Tensor-Metadata
         </div>
             <div class="highlight-ipynb hl-python"><pre><span></span>
 </pre></div>
-<div id="cell-24" class="clipboard-copy-txt"></div>
+<div id="cell-23" class="clipboard-copy-txt"></div>
     
         </div>
     </div>
@@ -2889,7 +2850,7 @@ c2c.io.export_variable_with_pickle(meta_tensor, output_folder + 'Tensor-Metadata
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../ASD/03-GSEA-ASD/" class="btn btn-neutral float-left" title="Downstream analysis 2: Gene Set Enrichment Analysis"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Tensor-cell2cell-Spatial/" class="btn btn-neutral float-left" title="Inspecting CCC patterns from spatial transcriptomics"><span class="icon icon-circle-arrow-left"></span> Previous</a>
     </div>
 
   <hr/>
@@ -2916,7 +2877,7 @@ c2c.io.export_variable_with_pickle(meta_tensor, output_folder + 'Tensor-Metadata
         </span>
     
     
-      <span><a href="../ASD/03-GSEA-ASD/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../Tensor-cell2cell-Spatial/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
   </span>

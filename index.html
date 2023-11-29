@@ -52,9 +52,9 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#liana-tensor-cell2cell">LIANA &amp; Tensor-cell2cell</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#common-issues">Common issues</a>
+    <li class="toctree-l2"><a class="reference internal" href="#common-issues">Common Issues</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#ligand-receptor-pairs">Ligand-Receptor pairs</a>
+    <li class="toctree-l2"><a class="reference internal" href="#ligand-receptor-pairs">Ligand-Receptor Pairs</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#citation">Citation</a>
     </li>
@@ -65,6 +65,13 @@
                 <li class="toctree-l1"><a class="reference internal" href="documentation/">API Documentation</a>
                 </li>
               </ul>
+              <p class="caption"><span class="caption-text">cell2cell Tutorials</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="tutorials/Toy-Example-BulkPipeline/">Cell-cell communication from bulk dataset</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="tutorials/Toy-Example-SingleCellPipeline/">Cell-cell communication from single-cell dataset</a>
+                  </li>
+              </ul>
               <p class="caption"><span class="caption-text">Tensor-cell2cell Tutorials</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="tutorials/ASD/01-Tensor-Factorization-ASD/">Obtaining patterns of cell-cell communication with Tensor-cell2cell</a>
@@ -72,6 +79,8 @@
                   <li class="toctree-l1"><a class="reference internal" href="tutorials/ASD/02-Factor-Specific-ASD/">Downstream analysis 1: Factor-specific analyses</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="tutorials/ASD/03-GSEA-ASD/">Downstream analysis 2: Gene Set Enrichment Analysis</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="tutorials/Tensor-cell2cell-Spatial/">Inspecting CCC patterns from spatial transcriptomics</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="tutorials/GPU-Example/">Running Tensor-cell2cell on your own GPU or on Google Colab's GPU</a>
                   </li>
@@ -103,104 +112,65 @@
               
                 <h1 id="inferring-cell-cell-interactions-from-transcriptomes-with-cell2cell">Inferring cell-cell interactions from transcriptomes with <em>cell2cell</em></h1>
 <p><a href="https://pypi.org/project/cell2cell/"><img alt="PyPI Version" src="https://badge.fury.io/py/cell2cell.svg" /></a>
+<a href="https://cell2cell.readthedocs.io/en/latest/?badge=latest"><img alt="Documentation Status" src="https://readthedocs.org/projects/cell2cell/badge/?version=latest" /></a>
 <a href="https://pepy.tech/project/cell2cell"><img alt="Downloads" src="https://pepy.tech/badge/cell2cell/month" /></a></p>
 <h2 id="getting-started">Getting started</h2>
-<p>Please refer to the <a href="https://cell2cell.readthedocs.org">cell2cell website</a>, 
-which includes tutorials and documentation</p>
+<p>For tutorials and documentation, visit <a href="https://cell2cell.readthedocs.org/"><strong>cell2cell ReadTheDocs</strong></a> or our <a href="https://earmingol.github.io/cell2cell"><strong>cell2cell website</strong></a>.</p>
 <h2 id="installation">Installation</h2>
-<p><strong>First, <a href="https://docs.anaconda.com/anaconda/install/">install Anaconda following this tutorial</a></strong></p>
-<p>Once installed, create a new conda environment:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>conda create -n cell2cell -y python=3.7 jupyter
-</code></pre></div></p>
-<p>Activate that environment:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>conda activate cell2cell
+<p><b>Step 1: Install Anaconda</b></p>
+<p>First, <a href="https://docs.anaconda.com/anaconda/install/">install Anaconda following this tutorial</a>.</p>
+<p><b>Step 2: Create and Activate a New Conda Environment</b></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># Create a new conda environment
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>conda create -n cell2cell -y python=3.7 jupyter
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a># Activate the environment
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>conda activate cell2cell
 </code></pre></div>
-<p>Then, install cell2cell:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip install cell2cell
-</code></pre></div></p>
+<p><b>Step 3: Install cell2cell</b></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip install cell2cell
+</code></pre></div>
 <h2 id="examples">Examples</h2>
-<hr />
-<p><img alt="plot" src="https://github.com/earmingol/cell2cell/blob/master/Logo.png?raw=true" /></p>
-<ul>
-<li>A toy example using the <strong>under-the-hood methods of cell2cell</strong> is
-  <a href="https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example.ipynb">available here</a>.
-  This case allows personalizing the analyses in a higher level, but it may result <strong>harder to use</strong>.</li>
-<li>A toy example using an Interaction Pipeline for <strong>bulk data</strong> is 
-  <a href="https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example-BulkPipeline.ipynb">available here</a>.
-  An Interaction Pipeline makes cell2cell <strong>easier to use</strong>.</li>
-<li>A toy example using an Interaction Pipeline for <strong>single-cell data</strong> is 
-  <a href="https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example-SingleCellPipeline.ipynb">available here</a>.
-  An Interaction Pipeline makes cell2cell <strong>easier to use</strong>.  </li>
-<li>An example of using <em>cell2cell</em> to infer cell-cell interactions across the <strong>whole
-body of <em>C. elegans</em></strong> is <a href="https://github.com/LewisLabUCSD/Celegans-cell2cell">available here</a></li>
-</ul>
-<hr />
-<p><img alt="plot" src="https://github.com/earmingol/cell2cell/blob/master/LogoTensor.png?raw=true" /></p>
-<ul>
-<li>Jupyter notebooks for reproducing the results in the manuscript of Tensor-cell2cell
-  <a href="https://doi.org/10.24433/CO.0051950.v2">are available and can be run online in codeocean.com</a>.
-  It specifically contains analyses on datasets of <strong>COVID-19, Autism Spectrum Disorders (ASD) and the embryonic development
-  of <em>C. elegans</em></strong>. These analyses evaluate changes in
-  cell-cell communication dependent on: <ul>
-<li><a href="https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/06-BALF-Tensor-Factorization.html">Different severities of COVID-19</a></li>
-<li><a href="https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/11-Brain-ASD-Tensor-Factorization.html">ASD condition of patients</a></li>
-<li><a href="https://files.codeocean.com/files/verified/bffc457e-caa6-4c39-b869-f52330804db0_v2.0/results.5afea95c-aec4-455d-b06e-b0c12ef10df1/08-Celegans-Tensor-Factorization.html">Multiple time points of the <em>C. elegans</em> development</a></li>
-</ul>
-</li>
-<li><strong>Detailed tutorials for running Tensor-cell2cell and downstream analyses:</strong><ul>
-<li><a href="https://earmingol.github.io/cell2cell/tutorials/ASD/01-Tensor-Factorization-ASD/">Obtaining patterns of cell-cell communication with Tensor-cell2cell</a></li>
-<li><a href="https://earmingol.github.io/cell2cell/tutorials/ASD/02-Factor-Specific-ASD/">Downstream analysis 1: Factor-specific analyses</a></li>
-<li><a href="https://earmingol.github.io/cell2cell/tutorials/ASD/03-GSEA-ASD/">Downstream analysis 2: Gene Set Enrichment Analysis</a></li>
-</ul>
-</li>
-<li><strong>Do you have precomputed communication scores?</strong> Re-use them as a prebuilt tensor as <a href="https://github.com/earmingol/cell2cell/blob/master/examples/tensor_cell2cell/Loading-PreBuiltTensor.ipynb">exemplified here</a>.
-  This allows reusing previous tensors you built or even plugging in communication scores from other tools.</li>
-<li><strong>Run Tensor-cell2cell MUCH FASTER and ON THE CLOUD!</strong> An example to perform the analysis on
- <strong>Google Colab while using a NVIDIA GPU</strong> is <a href="https://colab.research.google.com/drive/1xE6Pm1u-XoSWV8a3oYpixUFj64FIDtl0?usp=sharing">available here</a></li>
-</ul>
-<hr />
+<table>
+<thead>
+<tr>
+<th>cell2cell Examples</th>
+<th>Tensor-cell2cell Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="cell2cell Logo" src="https://github.com/earmingol/cell2cell/blob/master/Logo.png?raw=true" /></td>
+<td><img alt="Tensor-cell2cell Logo" src="https://github.com/earmingol/cell2cell/blob/master/LogoTensor.png?raw=true" /></td>
+</tr>
+<tr>
+<td>- <a href="https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example.ipynb">Step-by-step Pipeline</a><br>- <a href="https://earmingol.github.io/cell2cell/tutorials/Toy-Example-BulkPipeline">Interaction Pipeline for Bulk Data</a><br>- <a href="https://earmingol.github.io/cell2cell/tutorials/Toy-Example-SingleCellPipeline">Interaction Pipeline for Single-Cell Data</a><br>- <a href="https://github.com/LewisLabUCSD/Celegans-cell2cell">Whole Body of <em>C. elegans</em></a></td>
+<td>- <a href="https://earmingol.github.io/cell2cell/tutorials/ASD/01-Tensor-Factorization-ASD/">Obtaining patterns of cell-cell communication</a><br>- <a href="https://earmingol.github.io/cell2cell/tutorials/ASD/02-Factor-Specific-ASD/">Downstream 1: Factor-specific analyses</a><br>- <a href="https://earmingol.github.io/cell2cell/tutorials/ASD/03-GSEA-ASD/">Downstream 2: Patterns to functions (GSEA)</a><br>- <a href="https://colab.research.google.com/drive/1T6MUoxafTHYhjvenDbEtQoveIlHT2U6_?usp=sharing">Tensor-cell2cell in Google Colab (<strong>GPU</strong>)</a><br>- <a href="https://earmingol.github.io/cell2cell/tutorials/Tensor-cell2cell-Spatial/">Communication patterns in <strong>Spatial Transcriptomics</strong></a></td>
+</tr>
+</tbody>
+</table>
+<p>Reproducible runs of the analyses in the <a href="https://doi.org/10.1038/s41467-022-31369-2">Tensor-cell2cell paper</a> are available at <a href="https://doi.org/10.24433/CO.0051950.v2">CodeOcean.com</a></p>
 <h2 id="liana-tensor-cell2cell">LIANA &amp; Tensor-cell2cell</h2>
-<p>Quickstart and extended tutorials are available for <a href="https://ccc-protocols.readthedocs.io/">using Tensor-cell2cell in combination with LIANA</a></p>
-<p>These tutorials include the use of multiple LR-based tools running on LIANA, different databases of ligand-receptor interactions,
-downstream analyses, and the use of spatial transcriptomics.</p>
-<hr />
-<h2 id="common-issues">Common issues</h2>
+<p>Explore our tutorials for using Tensor-cell2cell with <a href="https://github.com/saezlab/liana-py">LIANA</a> at <a href="https://ccc-protocols.readthedocs.io/">ccc-protocols.readthedocs.io</a>.</p>
+<h2 id="common-issues">Common Issues</h2>
 <ul>
-<li>When running Tensor-cell2cell (<code>InteractionTensor.compute_tensor_factorization()</code> or <code>InteractionTensor.elbow_rank_selection()</code>), a common error is
-associated with Memory. This may happen when the tensor is big enough to make the computer run out of memory when the input of the functions in the parentheses is
-  <code>init='svd'</code>. To avoid this issue, just replace it by <code>init='random'</code>.</li>
+<li><strong>Memory Errors with Tensor-cell2cell:</strong> If you encounter memory errors when performing tensor factorizations, try replacing <code>init='svd'</code> with <code>init='random'</code>.</li>
 </ul>
-<h2 id="ligand-receptor-pairs">Ligand-Receptor pairs</h2>
-<ul>
-<li>A repository with previously published lists of ligand-receptor pairs <a href="https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs">is available here</a>.
-  You can use any of these lists as an input of cell2cell.</li>
-</ul>
+<h2 id="ligand-receptor-pairs">Ligand-Receptor Pairs</h2>
+<p>Find a curated list of ligand-receptor pairs for your analyses at our <a href="https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs">GitHub Repository</a>.</p>
 <h2 id="citation">Citation</h2>
+<p>Please cite our work using the following references:</p>
 <ul>
 <li>
-<p><strong>cell2cell</strong> should be cited using this research article:</p>
-<ul>
-<li>Armingol E., Ghaddar A., Joshi C.J., Baghdassarian H., Shamie I., Chan J.,
-  Her H.L., Berhanu S., Dar A., Rodriguez-Armstrong F., Yang O., O’Rourke E.J., Lewis N.E. 
-  <a href="https://doi.org/10.1371/journal.pcbi.1010715">Inferring a spatial code of cell-cell interactions across a whole animal body</a>.
-   <em>PLOS Computational Biology *</em>18(11)<strong>: e1010715<em>, (2022). *</em>DOI: 10.1371/journal.pcbi.1010715</strong></li>
-</ul>
+<p><strong>cell2cell</strong>: <a href="https://doi.org/10.1371/journal.pcbi.1010715">Inferring a spatial code of cell-cell interactions across a whole animal body</a>.
+  <em>PLOS Computational Biology, 2022</em></p>
 </li>
 <li>
-<p><strong>Tensor-cell2cell</strong> should be cited using this research article:</p>
-<ul>
-<li>Armingol E., Baghdassarian H., Martino C., Perez-Lopez A., Aamodt C., Knight R., Lewis N.E.
- <a href="https://doi.org/10.1038/s41467-022-31369-2">Context-aware deconvolution of cell-cell communication with Tensor-cell2cell</a>
- <em>Nat. Commun.</em> <strong>13</strong>, 3665 (2022). <strong>DOI: 10.1038/s41467-022-31369-2</strong></li>
-</ul>
+<p><strong>Tensor-cell2cell</strong>: <a href="https://doi.org/10.1038/s41467-022-31369-2">Context-aware deconvolution of cell-cell communication with Tensor-cell2cell</a>.
+  <em>Nature Communications, 2022.</em></p>
 </li>
 <li>
-<p><strong>LIANA &amp; Tensor-cell2cell tutorials</strong> should be cited unsing this pre-print article:</p>
-<ul>
-<li>Baghdassarian H., Dimitrov D., Armingol E., Saez-Rodriguez J., Lewis N.E.
-  <a href="https://doi.org/10.1101/2023.04.28.538731">Combining LIANA and Tensor-cell2cell to decipher cell-cell communication across multiple samples</a>
-  <em>bioRxiv</em> (2023) <strong>DOI: 10.1101/2023.04.28.538731</strong></li>
-</ul>
+<p><strong>LIANA &amp; Tensor-cell2cell tutorials</strong>: <a href="https://doi.org/10.1101/2023.04.28.538731">Combining LIANA and Tensor-cell2cell to decipher cell-cell communication across multiple samples</a>.
+  <em>bioRxiv, 2023</em></p>
 </li>
 </ul>
               
@@ -254,5 +224,5 @@ associated with Memory. This may happen when the tensor is big enough to make th
 
 <!--
 MkDocs version : 1.3.0
-Build Date UTC : 2023-11-27 00:32:41.498458+00:00
+Build Date UTC : 2023-11-29 23:08:22.166630+00:00
 -->
