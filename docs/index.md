@@ -60,6 +60,7 @@ Find a curated list of ligand-receptor pairs for your analyses at our [GitHub Re
 ## Citation
 
 Please cite our work using the following references:
+
 - **cell2cell**: [Inferring a spatial code of cell-cell interactions across a whole animal body](https://doi.org/10.1371/journal.pcbi.1010715).
   *PLOS Computational Biology, 2022*
 
@@ -67,4 +68,4 @@ Please cite our work using the following references:
   *Nature Communications, 2022.*
 
 - **LIANA & Tensor-cell2cell tutorials**: [Combining LIANA and Tensor-cell2cell to decipher cell-cell communication across multiple samples](https://doi.org/10.1101/2023.04.28.538731).
-   *bioRxiv, 2023*
+  *bioRxiv, 2023*
