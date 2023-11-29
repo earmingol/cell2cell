@@ -2,6 +2,8 @@ mkdocs
 mkdocstrings[python]
 markdown-include
 mkdocs-autorefs
+mkdocs-gen-files
 mkdocs-material
 mkdocs-material-extensions
 mkdocs-jupyter
+mkdocstrings-python-legacy
