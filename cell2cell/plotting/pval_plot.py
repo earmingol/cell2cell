@@ -196,7 +196,8 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     for i, idx in enumerate(pval_df.index):
         for j, col in enumerate(pval_df.columns):
             color = np.asarray(cmap(norm(score_df[[col]].loc[[idx]].values.item()))).reshape(1, -1)
-            size = (max_size(pval_df[[col]].loc[[idx]].values.item()) * tick_size * 2) ** 2
+            v = pval_df[[col]].loc[[idx]].values.item()
+            size = ((max_size(np.min([v, 3])) * tick_size * 2) ** 2)
             ax.scatter(j, i, s=size, c=color)
 
     # Change tick labels
@@ -251,7 +252,7 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
                     )
     cax.set_title(cbar_title, fontsize=title_size)
 
-    for i, v in enumerate([np.min(np.min(pval_df)), -1. * np.log10(significance + 1e-9), 3.0]):
+    for i, v in enumerate([np.min([np.min(np.min(pval_df)), -1. * np.log10(0.99)]), -1. * np.log10(significance + 1e-9), 3.0]): # old min np.min(np.min(pval_df))
         ax2.scatter(i, 0, s=(max_size(v) * tick_size * 2) ** 2, c='k')
         ax2.scatter(i, 1, s=0, c='k')
         if v == 3.0:

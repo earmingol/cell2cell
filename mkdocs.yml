@@ -1,7 +1,9 @@
 site_name: cell2cell
 site_description: "Python package to infer cell-cell interactions and communication from gene expression of interacting proteins."
 
-theme: readthedocs
+theme:
+    name: readthedocs
+    highlightjs: true
 repo_url: https://github.com/earmingol/cell2cell
 plugins:
   - search
@@ -16,14 +18,8 @@ plugins:
       default_handler: python
       handlers:
         python:
-          rendering:
-            show_source: true
-            show_category_heading: true
-            members_order: source
-            show_if_no_docstring: true
-          selection:
-            docstring_style: numpy
-            filters: [ "!^_" ]
+          options:
+            docstring_style: sphinx
 
 markdown_extensions:
   - def_list
@@ -49,8 +45,12 @@ markdown_extensions:
 nav:
   - "Home": index.md
   - "API Documentation": documentation.md
+  - "cell2cell Tutorials":
+      - tutorials/Toy-Example-BulkPipeline.ipynb
+      - tutorials/Toy-Example-SingleCellPipeline.ipynb
   - "Tensor-cell2cell Tutorials":
     - tutorials/ASD/01-Tensor-Factorization-ASD.ipynb
     - tutorials/ASD/02-Factor-Specific-ASD.ipynb
     - tutorials/ASD/03-GSEA-ASD.ipynb
+    - tutorials/Tensor-cell2cell-Spatial.ipynb
     - tutorials/GPU-Example.ipynb

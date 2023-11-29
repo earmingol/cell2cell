@@ -72,7 +72,8 @@ def compute_pvalue_from_dist(obs_value, dist, consider_size=False, comparison='u
 
     if (consider_size) & (pval == 0.):
         pval = 1./(len(dist_) + 1e-6)
-
+    elif pval < 0.:
+        pval = 1. / (len(dist_) + 1e-6)
     return pval
 
 

@@ -132,7 +132,7 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
 
         R = np.nanmin([x_range/2.0, y_range/2.0]) / 1.05
         center = (np.nanmean(xlim), np.nanmean(ylim))
-
+    current_ax = ax
     # Elements to build network
     # TODO: Add option to select sort_by: None (as input), cells, proteins or metadata
     sorted_nodes = sort_nodes(sender_cells=sender_cells,
@@ -267,6 +267,7 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
 
     # Draw legend
     if legend:
+        plt.gcf().canvas.draw()
         lgd = generate_circos_legend(cell_legend=cell_legend,
                                      meta_legend=meta_legend,
                                      signal_legend=signal_colors,
@@ -605,6 +606,9 @@ def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fo
     '''
     legend_fontsize = int(fontsize * 0.9)
 
+    if ax is None:
+        ax = plt.gca()
+
     # Cell legend
     lgd = generate_legend(color_dict=cell_legend,
                           loc='center left',
@@ -632,10 +636,10 @@ def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fo
         pass
 
     if meta_legend is not None:
-        if ax is None:
-            ax = plt.gca()
-
-        ax.add_artist(lgd)
+        #ax.add_artist(lgd)
+        fig = plt.gcf()
+        ax2 = fig.add_axes([0., 0., 1., 1.], aspect='equal')
+        ax2.set_axis_off()
         # Meta legend
         lgd3 = generate_legend(color_dict=meta_legend,
                                loc='center right',
@@ -645,5 +649,7 @@ def generate_circos_legend(cell_legend, signal_legend=None, meta_legend=None, fo
                                shadow=True,
                                title='Groups',
                                fontsize=legend_fontsize,
-                               ax=ax
+                               ax=ax2
                                )
+        return lgd3
+    return lgd
