@@ -48,12 +48,10 @@ pip install cell2cell
 
 Reproducible runs of the analyses in the [Tensor-cell2cell paper](https://doi.org/10.1038/s41467-022-31369-2) are available at [CodeOcean.com](https://doi.org/10.24433/CO.0051950.v2)
 
----
 ## :link: LIANA & Tensor-cell2cell
 
 Explore our tutorials for using Tensor-cell2cell with LIANA at [ccc-protocols.readthedocs.io](https://ccc-protocols.readthedocs.io/).
 
----
 ## :question: Common Issues
 
 - **Memory Errors with Tensor-cell2cell:** If you encounter memory errors when performing tensor factorizations, try replacing `init='svd'` with `init='random'`.
