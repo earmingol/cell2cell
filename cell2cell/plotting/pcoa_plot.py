@@ -166,8 +166,8 @@ def pcoa_3dplot(interaction_space, metadata=None, sample_col='#SampleID', group_
     ax.set_zticklabels([])
 
     ax.view_init(view_angles[0], view_angles[1])
-    ax.legend(loc='center left', bbox_to_anchor=(1.1, 0.5),
-              ncol=2, fancybox=True, shadow=True, fontsize=legend_fontsize)
+    plt.legend(loc='center left', bbox_to_anchor=(1.35, 0.5),
+               ncol=2, fancybox=True, shadow=True, fontsize=legend_fontsize)
     plt.title(title, fontsize=16)
 
     #distskbio = skbio.DistanceMatrix(df, ids=df.index) # Not using skbio for now
