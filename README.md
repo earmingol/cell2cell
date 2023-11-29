@@ -33,7 +33,7 @@ conda activate cell2cell
 </details> 
 
 <details> <summary><b>Step 3: Install cell2cell</b> :arrow_down:</summary>
-
+https://github.com/earmingol/cell2cell/blob/master/README.md
 ```
 pip install cell2cell
 ```
@@ -44,7 +44,7 @@ pip install cell2cell
 | cell2cell Examples | Tensor-cell2cell Examples |
 | --- | --- |
 | ![cell2cell Logo](https://github.com/earmingol/cell2cell/blob/master/Logo.png?raw=true) | ![Tensor-cell2cell Logo](https://github.com/earmingol/cell2cell/blob/master/LogoTensor.png?raw=true) |
-| - [Step-by-step Pipeline](https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example.ipynb)<br>- [Interaction Pipeline for Bulk Data](https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example-BulkPipeline.ipynb)<br>- [Interaction Pipeline for Single-Cell Data](https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example-SingleCellPipeline.ipynb)<br>- [Whole Body of *C. elegans*](https://github.com/LewisLabUCSD/Celegans-cell2cell) | - [Obtaining patterns of cell-cell communication](https://earmingol.github.io/cell2cell/tutorials/ASD/01-Tensor-Factorization-ASD/)<br>- [Downstream analysis 1: Factor-specific analyses](https://earmingol.github.io/cell2cell/tutorials/ASD/02-Factor-Specific-ASD/)<br>- [Downstream analysis 2: Patterns to functions (GSEA)](https://earmingol.github.io/cell2cell/tutorials/ASD/03-GSEA-ASD/)<br>- [Tensor-cell2cell in Google Colab (**GPU**)](https://colab.research.google.com/drive/1xE6Pm1u-XoSWV8a3oYpixUFj64FIDtl0?usp=sharing)<br>- [Communication patterns in **Spatial Transcriptomics**]() |
+| - [Step-by-step Pipeline](https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example.ipynb)<br>- [Interaction Pipeline for Bulk Data](https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example-BulkPipeline.ipynb)<br>- [Interaction Pipeline for Single-Cell Data](https://github.com/earmingol/cell2cell/blob/master/examples/cell2cell/Toy-Example-SingleCellPipeline.ipynb)<br>- [Whole Body of *C. elegans*](https://github.com/LewisLabUCSD/Celegans-cell2cell) | - [Obtaining patterns of cell-cell communication](https://earmingol.github.io/cell2cell/tutorials/ASD/01-Tensor-Factorization-ASD/)<br>- [Downstream 1: Factor-specific analyses](https://earmingol.github.io/cell2cell/tutorials/ASD/02-Factor-Specific-ASD/)<br>- [Downstream 2: Patterns to functions (GSEA)](https://earmingol.github.io/cell2cell/tutorials/ASD/03-GSEA-ASD/)<br>- [Tensor-cell2cell in Google Colab (**GPU**)](https://colab.research.google.com/drive/1xE6Pm1u-XoSWV8a3oYpixUFj64FIDtl0?usp=sharing)<br>- [Communication patterns in **Spatial Transcriptomics**]() |
 
 Reproducible runs of the analyses in the [Tensor-cell2cell paper](https://doi.org/10.1038/s41467-022-31369-2) are available at [CodeOcean.com](https://doi.org/10.24433/CO.0051950.v2)
 
