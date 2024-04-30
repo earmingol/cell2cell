@@ -110,11 +110,11 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
         sort_context = sort_elements
         context_order = list(context_df_dict.keys())
     else:
-        assert all([c in context_df_dict.keys() for c in context_order]), "The list 'context_order' must contain all context names contained in the keys of 'context_dict'"
+        assert all([c in context_df_dict.keys() for c in context_order]), "The list 'context_order' must contain all context names contained in the keys of 'context_df_dict'"
         assert len(context_order) == len(context_df_dict.keys()), "Each context name must be contained only once in the list 'context_order'"
         sort_context = False
     cols = [sender_col, receiver_col, ligand_col, receptor_col, score_col]
-    assert all([c in df.columns for c in cols for df in context_df_dict.values()]), "All input columns must be contained in all dataframes included in 'context_dict'"
+    assert all([c in df.columns for c in cols for df in context_df_dict.values()]), "One or more columns (among 'sender_col', 'receiver_col', 'ligand_col', 'receptor_col', and 'score_col') are missing in at least one dataframe included in 'context_df_dict'"
 
     # Copy context dict to make modifications
     cont_dict = {k : v.copy()[cols] for k, v in context_df_dict.items()}
