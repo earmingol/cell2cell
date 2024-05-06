@@ -13,4 +13,4 @@ from cell2cell import stats
 from cell2cell import tensor
 from cell2cell import utils
 
-__version__ = "0.7.3"
+__version__ = "0.7.4"
