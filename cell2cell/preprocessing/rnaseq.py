@@ -175,6 +175,12 @@ def add_complexes_to_expression(rnaseq_data, complexes, agg_method='min'):
     '''
     tmp_rna = rnaseq_data.copy()
     for k, v in complexes.items():
+        if isinstance(v, set):
+            v = list(v)
+        elif isinstance(v, list):
+            pass  # No need to convert, already a list
+        else:
+            raise ValueError("Values in the `complexes`dictionary must be sets or lists.")
         if all(g in tmp_rna.index for g in v):
             df = tmp_rna.loc[v, :]
             if agg_method == 'min':
