@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
+from typing import List
 
 import numpy as np
 import pandas as pd
 
 from itertools import combinations
 
+import tensorly as tl
+
 # Authors: Hratch Baghdassarian <hmbaghdassarian@gmail.com>, Erick Armingol <earmingol14@gmail.com>
 # similarity metrics for tensor decompositions
-
 
 def correlation_index(factors_1, factors_2, tol=5e-16, method='stacked'):
     """
@@ -177,3 +179,47 @@ def pairwise_correlation_index(factors, tol=5e-16, method='stacked'):
         scores.at[p1, p2] = corrindex
         scores.at[p2, p1] = corrindex
     return scores
+
+def pairwise_frobenius(tensor_list: List[np.array]):
+    """Calculate pairwise Frobenius norm between each tensor in the list"""
+    n = len(tensor_list)
+    frobenius_matrix = np.zeros((n, n))
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            frobenius_matrix[i, j] = tl.norm(tensor_list[i] - tensor_list[j])
+            frobenius_matrix[j, i] = frobenius_matrix[i, j]  # symmetry
+    
+    return frobenius_matrix
+
+def pairwise_rmse(tensor_list):
+    """Calculate pairwise RMSE between each tensor in the list"""
+    n = len(tensor_list)
+    rmse_matrix = np.zeros((n, n))
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            # Calculate the RMSE between tensor i and tensor j
+            diff = tensor_list[i] - tensor_list[j]
+            rmse_matrix[i, j] = np.sqrt(tl.mean(diff ** 2))
+            rmse_matrix[j, i] = rmse_matrix[i, j]  # symmetry
+    
+    return rmse_matrix
+
+def pairwise_mae(tensor_list):
+    """Calculate pairwise MAE between each tensor in the list"""
+    n = len(tensor_list)
+    mae_matrix = np.zeros((n, n))
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            # Calculate the MAE between tensor i and tensor j
+            diff = tensor_list[i] - tensor_list[j]
+            mae_matrix[i, j] = tl.mean(tl.abs(diff))
+            mae_matrix[j, i] = mae_matrix[i, j]  # symmetry
+    
+    return mae_matrix
+
+error_dict = {'frobenius': pairwise_frobenius, 
+             'rmse': pairwise_rmse, 
+             'mae': pairwise_mae}

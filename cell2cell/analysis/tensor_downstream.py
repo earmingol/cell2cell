@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+from typing import List, Literal, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from tensorly.tenalg import outer
 
 from cell2cell.stats import gini_coefficient
-
+from cell2cell.tensor.metrics import error_dict
 
 def get_joint_loadings(result, dim1, dim2, factor):
     """
@@ -313,3 +315,43 @@ def get_lr_by_cell_pairs(result, lr_label, sender_label, receiver_label, order_c
     cci_lr.columns.name = 'Sender-Receiver Pair'
     cci_lr.index.name = 'Ligand-Receptor Pair'
     return cci_lr
+
+def get_pairwise_factor_distance(tensor,#: cell2cell.tensor.tensor.InteractionTensor, 
+                                 factors: Optional[List[str]] = None,
+                                metric: Literal['frobenius', 'rmse', 'mae'] = 'frobenius') -> pd.DataFrame:
+    """Computes the pairwise distance between the rank-1 tensors of each factor
+
+    Example code: `pf = get_pairwise_factor_distance(tensor, factors = ['Factor 1', 'Factor 3'], metric = 'rmse')`
+
+    Parameters
+    ----------
+    tensor : cell2cell.tensor.tensor.InteractionTensor
+        input tensor with decomposition loadings stored in the `factors` attribute
+    factors : Optional[List[Tuple[str]]], optional
+        the subset of factors to compare, by default None
+    metric : Literal['frobenius', 'rmse', 'mae'], optional
+        the distance metric to use, by default 'frobenius'
+
+
+    Returns
+    -------
+    pd.DataFrame
+        pairwise distances between factors
+    """
+    # if not factors: # get all pairwise comparisons
+    #     all_factors = list(tensor.factors.values())[0].columns
+    #     factors = list(itertools.combinations(all_factors, 2))
+    # unique_factors = sorted(set([item for tup in factors for item in tup]))
+    if not factors:
+        factors = list(tensor.factors.values())[0].columns
+    
+    factor_tensors = {}
+    for factor in factors:
+        factor_tensor = []
+        for key in tensor.factors.keys():
+            factor_tensor.append(tensor.factors[key].loc[:, factor].values)
+        factor_tensors[factor] = outer(factor_tensor)
+    
+    pf = error_dict[metric](list(factor_tensors.values()))
+    pf = pd.DataFrame(pf, columns = factors, index = factors)
+    return pf
