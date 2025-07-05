@@ -671,7 +671,7 @@ class CoupledInteractionTensor(BaseTensor):
         top_elements = factors[order_name][factor_name].sort_values(ascending=False).head(top_number)
         return top_elements
 
-    def export_factor_loadings(self, filename, include_separate=True):
+    def export_factor_loadings(self, filename, save_separate=False):
         """
         Export factor loadings to Excel file
 
@@ -680,15 +680,11 @@ class CoupledInteractionTensor(BaseTensor):
         filename : str
             Path for the output Excel file
 
-        include_separate : bool, default=True
-            Whether to include separate tensor1 and tensor2 factors
+        save_separate : bool, default=True
+            Whether to save separately tensor1 and tensor2 factors
         """
         with pd.ExcelWriter(filename) as writer:
-            # Export unified factors
-            for k, v in self.factors.items():
-                v.to_excel(writer, sheet_name=f'Unified_{k}')
-
-            if include_separate:
+            if save_separate:
                 # Export tensor1 factors
                 for k, v in self.factors1.items():
                     v.to_excel(writer, sheet_name=f'T1_{k}')
@@ -696,6 +692,10 @@ class CoupledInteractionTensor(BaseTensor):
                 # Export tensor2 factors
                 for k, v in self.factors2.items():
                     v.to_excel(writer, sheet_name=f'T2_{k}')
+            else:
+                # Export unified factors
+                for k, v in self.factors.items():
+                    v.to_excel(writer, sheet_name=f'{k}')
 
         print(f'Coupled tensor factor loadings saved to {filename}')
 
