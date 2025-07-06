@@ -205,6 +205,8 @@ class CoupledInteractionTensor(BaseTensor):
                     tensor2=self.tensor2,
                     rank=rank,
                     non_shared_mode=self.non_shared_mode,
+                    mask1=self.mask1,
+                    mask2=self.mask2,
                     n_iter_max=n_iter_max,
                     init=init,
                     svd=svd,
@@ -233,6 +235,8 @@ class CoupledInteractionTensor(BaseTensor):
                     tensor2=self.tensor2,
                     rank=rank,
                     non_shared_mode=self.non_shared_mode,
+                    mask1=self.mask1,
+                    mask2=self.mask2,
                     n_iter_max=n_iter_max,
                     init=init,
                     svd=svd,
@@ -460,11 +464,11 @@ class CoupledInteractionTensor(BaseTensor):
 
         # Run elbow analysis
         if runs == 1:
-            loss = self._run_single_elbow_analysis(upper_rank, random_state, n_iter_max,
+            loss = self._run_single_elbow_analysis(upper_rank, random_state, init, svd, n_iter_max,
                                                    tol, verbose, **kwargs)
             all_loss = np.array([[l[1] for l in loss]])
         else:
-            all_loss = self._run_multiple_elbow_analysis(upper_rank, runs, metric, random_state,
+            all_loss = self._run_multiple_elbow_analysis(upper_rank, runs, metric, random_state, init, svd,
                                                          n_iter_max, tol, verbose, **kwargs)
             loss = np.nanmean(all_loss, axis=0).tolist()
             loss = [(i + 1, l) for i, l in enumerate(loss)]
@@ -503,7 +507,7 @@ class CoupledInteractionTensor(BaseTensor):
 
         return fig, loss
 
-    def _run_single_elbow_analysis(self, upper_rank, random_state, n_iter_max, tol, verbose, **kwargs):
+    def _run_single_elbow_analysis(self, upper_rank, random_state, init, svd, n_iter_max, tol, verbose, **kwargs):
         """Run elbow analysis with single factorization per rank"""
         loss = []
 
@@ -513,6 +517,10 @@ class CoupledInteractionTensor(BaseTensor):
                 tensor2=self.tensor2,
                 rank=r,
                 non_shared_mode=self.non_shared_mode,
+                mask1=self.mask1,
+                mask2=self.mask2,
+                init=init,
+                svd=svd,
                 n_iter_max=n_iter_max,
                 tol=tol,
                 random_state=random_state,
@@ -537,7 +545,7 @@ class CoupledInteractionTensor(BaseTensor):
 
         return loss
 
-    def _run_multiple_elbow_analysis(self, upper_rank, runs, metric, random_state,
+    def _run_multiple_elbow_analysis(self, upper_rank, runs, metric, random_state, init, svd,
                                      n_iter_max, tol, verbose, **kwargs):
         """Run elbow analysis with multiple factorizations per rank"""
         all_loss = []
@@ -557,6 +565,10 @@ class CoupledInteractionTensor(BaseTensor):
                         tensor2=self.tensor2,
                         rank=r,
                         non_shared_mode=self.non_shared_mode,
+                        mask1=self.mask1,
+                        mask2= self.mask2,
+                        init=init,
+                        svd=svd,
                         n_iter_max=n_iter_max,
                         tol=tol,
                         random_state=rs,

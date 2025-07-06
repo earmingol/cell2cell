@@ -15,6 +15,8 @@ def coupled_non_negative_parafac(
         tensor2,
         rank,
         non_shared_mode,
+        mask1=None,
+        mask2=None,
         n_iter_max=100,
         init="svd",
         svd="truncated_svd",
@@ -46,6 +48,10 @@ def coupled_non_negative_parafac(
         Number of components
     non_shared_mode : int
         The mode (dimension) that differs between the two tensors
+    mask1 : ndarray, optional
+        Mask for tensor1, if provided, will be used to compute the reconstruction error
+    mask2 : ndarray, optional
+        Mask for tensor2, if provided, will be used to compute the reconstruction error
     n_iter_max : int, default=100
         Maximum number of iterations
     init : {'svd', 'random'}, optional
@@ -120,12 +126,12 @@ def coupled_non_negative_parafac(
 
     # Initialize factors for both tensors
     weights1, factors1 = initialize_cp(
-        tensor1, rank, init=init, svd=svd, non_negative=True,
+        tensor1, rank, mask=mask1, init=init, svd=svd, non_negative=True,
         random_state=random_state, normalize_factors=normalize_factors
     )
 
     weights2, factors2 = initialize_cp(
-        tensor2, rank, init=init, svd=svd, non_negative=True,
+        tensor2, rank, mask=mask2, init=init, svd=svd, non_negative=True,
         random_state=random_state, normalize_factors=normalize_factors
     )
 
@@ -162,6 +168,10 @@ def coupled_non_negative_parafac(
                     if i != mode:
                         accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
                 accum1 = tl.reshape(weights, (-1, 1)) * accum1 * tl.reshape(weights, (1, -1))
+                if mask1 is not None:
+                    tensor1 = tensor1 * mask1 + tl.cp_to_tensor(
+                        (weights, factors1), mask=1 - mask1
+                    )
 
                 mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights, factors1), mode)
                 numerator1 = tl.clip(mttkrp1, a_min=epsilon, a_max=None)
@@ -174,6 +184,10 @@ def coupled_non_negative_parafac(
                     if i != mode:
                         accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
                 accum2 = tl.reshape(weights, (-1, 1)) * accum2 * tl.reshape(weights, (1, -1))
+                if mask2 is not None:
+                    tensor2 = tensor2 * mask2 + tl.cp_to_tensor(
+                        (weights, factors2), mask=1 - mask2
+                    )
 
                 mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights, factors2), mode)
                 numerator2 = tl.clip(mttkrp2, a_min=epsilon, a_max=None)
@@ -192,6 +206,10 @@ def coupled_non_negative_parafac(
                         else:
                             accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
                 accum1 = tl.reshape(weights, (-1, 1)) * accum1 * tl.reshape(weights, (1, -1))
+                if mask1 is not None:
+                    tensor1 = tensor1 * mask1 + tl.cp_to_tensor(
+                        (weights, factors1), mask=1 - mask1
+                    )
 
                 # Compute accumulation matrix for tensor2
                 accum2 = tl.ones((rank, rank), **tl.context(tensor2))
@@ -202,6 +220,10 @@ def coupled_non_negative_parafac(
                         else:
                             accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
                 accum2 = tl.reshape(weights, (-1, 1)) * accum2 * tl.reshape(weights, (1, -1))
+                if mask2 is not None:
+                    tensor2 = tensor2 * mask2 + tl.cp_to_tensor(
+                        (weights, factors2), mask=1 - mask2
+                    )
 
                 # Compute MTTKRP for both tensors
                 mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights, factors1), mode)
