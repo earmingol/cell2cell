@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # This code is an adaptation built upon the non_negative_parafac function in tensorly.
+import numpy as np
 import tensorly as tl
+from tqdm import tqdm
 from tensorly.decomposition._cp import initialize_cp, error_calc
 from tensorly.cp_tensor import (
     CPTensor,
@@ -312,3 +314,348 @@ def coupled_non_negative_parafac(
         return cp_tensor1, cp_tensor2, (rec_errors1, rec_errors2)
     else:
         return cp_tensor1, cp_tensor2
+
+
+def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, non_shared_mode, mask1=None, mask2=None,
+                                          tf_type='coupled_non_negative_cp', init='svd', svd='numpy_svd',
+                                          random_state=None, n_iter_max=100, tol=10e-7, verbose=False,
+                                          balance_errors=True, **kwargs):
+    '''Performs the Coupled Tensor Factorization
+
+    Parameters
+    ----------
+    tensor1 : ndarray list
+        First tensor to factorize.
+
+    tensor2 : ndarray list
+        Second tensor to factorize.
+
+    rank : int
+        Rank of the Tensor Factorization (number of factors).
+
+    non_shared_mode : int
+        The mode (dimension) that differs between the two tensors.
+
+    mask1 : ndarray list, default=None
+        Mask for the first tensor.
+
+    mask2 : ndarray list, default=None
+        Mask for the second tensor.
+
+    tf_type : str, default='coupled_non_negative_cp'
+        Type of Tensor Factorization. Currently only supports 'coupled_non_negative_cp'.
+
+    init : str, default='svd'
+        Initialization method. Options are {'svd', 'random'}.
+
+    svd : str, default='numpy_svd'
+        Function to use to compute the SVD.
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    n_iter_max : int, default=100
+        Maximum number of iterations.
+
+    tol : float, default=10e-7
+        Convergence tolerance.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    balance_errors : bool, default=True
+        Whether to balance errors based on tensor sizes.
+
+    **kwargs : dict
+        Extra arguments for the tensor factorization.
+
+    Returns
+    -------
+    cp_tf1 : CPTensor
+        CP decomposition result for tensor1.
+
+    cp_tf2 : CPTensor
+        CP decomposition result for tensor2.
+
+    errors : tuple, optional
+        Reconstruction errors for both tensors, if `return_errors` is True.
+    '''
+    # For returning errors
+    return_errors = False
+    if kwargs is not None:
+        if 'return_errors' in kwargs.keys():
+            return_errors = kwargs['return_errors']
+
+    if tf_type == 'coupled_non_negative_cp':
+        result = coupled_non_negative_parafac(
+            tensor1=tensor1,
+            tensor2=tensor2,
+            rank=rank,
+            non_shared_mode=non_shared_mode,
+            mask1=mask1,
+            mask2=mask2,
+            init='random' if (mask1 is not None or mask2 is not None) else init,
+            svd=svd,
+            random_state=random_state,
+            n_iter_max=n_iter_max,
+            tol=tol,
+            verbose=verbose,
+            return_errors=return_errors,
+            balance_errors=balance_errors,
+            **kwargs
+        )
+    else:
+        raise ValueError('Not a valid tf_type for coupled factorization.')
+
+    return result
+
+
+def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50, tf_type='coupled_non_negative_cp',
+                                init='svd', svd='numpy_svd', random_state=None, mask1=None, mask2=None,
+                                n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True,
+                                disable_pbar=False, **kwargs):
+    '''Performs a coupled elbow analysis with just one run of a tensor factorization for each rank
+
+    Parameters
+    ----------
+    tensor1 : ndarray list
+        First tensor to factorize.
+
+    tensor2 : ndarray list
+        Second tensor to factorize.
+
+    non_shared_mode : int
+        The mode (dimension) that differs between the two tensors.
+
+    upper_rank : int, default=50
+        Upper bound of ranks to explore with the elbow analysis.
+
+    tf_type : str, default='coupled_non_negative_cp'
+        Type of Tensor Factorization.
+
+    init : str, default='svd'
+        Initialization method. {'svd', 'random'}
+
+    svd : str, default='numpy_svd'
+        Function to use to compute the SVD.
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    mask1 : ndarray list, default=None
+        Mask for the first tensor.
+
+    mask2 : ndarray list, default=None
+        Mask for the second tensor.
+
+    n_iter_max : int, default=100
+        Maximum number of iterations.
+
+    tol : float, default=10e-7
+        Convergence tolerance.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    balance_errors : bool, default=True
+        Whether to balance errors based on tensor sizes.
+
+    disable_pbar : boolean, default=False
+        Whether displaying a tqdm progress bar or not.
+
+    **kwargs : dict
+        Extra arguments for the tensor factorization.
+
+    Returns
+    -------
+    loss : list
+        List of tuples with (rank, combined_error) coordinates for the elbow analysis.
+    '''
+    if kwargs is None:
+        kwargs = {'return_errors': True}
+    else:
+        kwargs['return_errors'] = True
+
+    loss = []
+    for r in tqdm(range(1, upper_rank + 1), disable=disable_pbar):
+        cp1, cp2, (errors1, errors2) = _compute_coupled_tensor_factorization(
+            tensor1=tensor1,
+            tensor2=tensor2,
+            rank=r,
+            non_shared_mode=non_shared_mode,
+            mask1=mask1,
+            mask2=mask2,
+            tf_type=tf_type,
+            init=init,
+            svd=svd,
+            random_state=random_state,
+            n_iter_max=n_iter_max,
+            tol=tol,
+            verbose=verbose,
+            balance_errors=balance_errors,
+            **kwargs
+        )
+
+        # Calculate combined error using _compute_norm_error when masks are present
+        if mask1 is None:
+            error1 = tl.to_numpy(errors1[-1])
+        else:
+            from cell2cell.tensor.factorization import _compute_norm_error
+            error1 = _compute_norm_error(tensor1, cp1, mask1)
+
+        if mask2 is None:
+            error2 = tl.to_numpy(errors2[-1])
+        else:
+            from cell2cell.tensor.factorization import _compute_norm_error
+            error2 = _compute_norm_error(tensor2, cp2, mask2)
+
+        # Calculate combined error with balancing
+        N1 = tensor1.shape[non_shared_mode]
+        N2 = tensor2.shape[non_shared_mode]
+
+        if balance_errors:
+            total_N = N1 + N2
+            weight1 = total_N / N1
+            weight2 = total_N / N2
+            combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+        else:
+            combined_error = (error1 + error2) / 2
+
+        loss.append((r, combined_error))
+
+    return loss
+
+
+def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50, runs=10,
+                                          tf_type='coupled_non_negative_cp', init='svd', svd='numpy_svd',
+                                          metric='error', random_state=None, mask1=None, mask2=None,
+                                          n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True, **kwargs):
+    '''Performs a coupled elbow analysis with multiple runs of tensor factorization for each rank
+
+    Parameters
+    ----------
+    tensor1 : ndarray list
+        First tensor to factorize.
+
+    tensor2 : ndarray list
+        Second tensor to factorize.
+
+    non_shared_mode : int
+        The mode (dimension) that differs between the two tensors.
+
+    upper_rank : int, default=50
+        Upper bound of ranks to explore with the elbow analysis.
+
+    runs : int, default=10
+        Number of tensor factorization performed for a given rank.
+
+    tf_type : str, default='coupled_non_negative_cp'
+        Type of Tensor Factorization.
+
+    init : str, default='svd'
+        Initialization method. {'svd', 'random'}
+
+    svd : str, default='numpy_svd'
+        Function to use to compute the SVD.
+
+    metric : str, default='error'
+        Metric to perform the elbow analysis. Currently only supports 'error'.
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    mask1 : ndarray list, default=None
+        Mask for the first tensor.
+
+    mask2 : ndarray list, default=None
+        Mask for the second tensor.
+
+    n_iter_max : int, default=100
+        Maximum number of iterations.
+
+    tol : float, default=10e-7
+        Convergence tolerance.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    balance_errors : bool, default=True
+        Whether to balance errors based on tensor sizes.
+
+    **kwargs : dict
+        Extra arguments for the tensor factorization.
+
+    Returns
+    -------
+    all_loss : ndarray
+        Array containing the errors associated with multiple runs for a given rank.
+        This array is of shape (runs, upper_rank).
+    '''
+    assert isinstance(runs, int), "runs must be an integer"
+    
+    if kwargs is None:
+        kwargs = {'return_errors': True}
+    else:
+        kwargs['return_errors'] = True
+
+    if metric == 'similarity':
+        raise NotImplementedError("Similarity metric for coupled tensors not yet implemented")
+
+    all_loss = []
+    for r in tqdm(range(1, upper_rank + 1)):
+        run_errors = []
+        for run in range(runs):
+            if random_state is not None:
+                rs = random_state + run
+            else:
+                rs = None
+
+            cp1, cp2, (errors1, errors2) = _compute_coupled_tensor_factorization(
+                tensor1=tensor1,
+                tensor2=tensor2,
+                rank=r,
+                non_shared_mode=non_shared_mode,
+                mask1=mask1,
+                mask2=mask2,
+                tf_type=tf_type,
+                init=init,
+                svd=svd,
+                random_state=rs,
+                n_iter_max=n_iter_max,
+                tol=tol,
+                verbose=verbose,
+                balance_errors=balance_errors,
+                **kwargs
+            )
+
+            # Calculate combined error using _compute_norm_error when masks are present
+            if mask1 is None:
+                error1 = tl.to_numpy(errors1[-1])
+            else:
+                from cell2cell.tensor.factorization import _compute_norm_error
+                error1 = _compute_norm_error(tensor1, cp1, mask1)
+
+            if mask2 is None:
+                error2 = tl.to_numpy(errors2[-1])
+            else:
+                from cell2cell.tensor.factorization import _compute_norm_error
+                error2 = _compute_norm_error(tensor2, cp2, mask2)
+
+            # Calculate combined error with balancing
+            N1 = tensor1.shape[non_shared_mode]
+            N2 = tensor2.shape[non_shared_mode]
+
+            if balance_errors:
+                total_N = N1 + N2
+                weight1 = total_N / N1
+                weight2 = total_N / N2
+                combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+            else:
+                combined_error = (error1 + error2) / 2
+
+            run_errors.append(combined_error)
+
+        all_loss.append(run_errors)
+
+    all_loss = np.array(all_loss).T
+    return all_loss
