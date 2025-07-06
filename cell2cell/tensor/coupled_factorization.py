@@ -317,7 +317,7 @@ def coupled_non_negative_parafac(
 
 
 def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, non_shared_mode, mask1=None, mask2=None,
-                                          tf_type='coupled_non_negative_cp', init='svd', svd='numpy_svd',
+                                          tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           random_state=None, n_iter_max=100, tol=10e-7, verbose=False,
                                           balance_errors=True, **kwargs):
     '''Performs the Coupled Tensor Factorization
@@ -348,7 +348,7 @@ def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, non_shared_mod
     init : str, default='svd'
         Initialization method. Options are {'svd', 'random'}.
 
-    svd : str, default='numpy_svd'
+    svd : str, default='truncated_svd'
         Function to use to compute the SVD.
 
     random_state : int, default=None
@@ -413,7 +413,7 @@ def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, non_shared_mod
 
 
 def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50, tf_type='coupled_non_negative_cp',
-                                init='svd', svd='numpy_svd', random_state=None, mask1=None, mask2=None,
+                                init='svd', svd='truncated_svd', random_state=None, mask1=None, mask2=None,
                                 n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True,
                                 disable_pbar=False, **kwargs):
     '''Performs a coupled elbow analysis with just one run of a tensor factorization for each rank
@@ -438,7 +438,7 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50
     init : str, default='svd'
         Initialization method. {'svd', 'random'}
 
-    svd : str, default='numpy_svd'
+    svd : str, default='truncated_svd'
         Function to use to compute the SVD.
 
     random_state : int, default=None
@@ -529,7 +529,7 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50
 
 
 def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50, runs=10,
-                                          tf_type='coupled_non_negative_cp', init='svd', svd='numpy_svd',
+                                          tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           metric='error', random_state=None, mask1=None, mask2=None,
                                           n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True, **kwargs):
     '''Performs a coupled elbow analysis with multiple runs of tensor factorization for each rank
@@ -557,7 +557,7 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upp
     init : str, default='svd'
         Initialization method. {'svd', 'random'}
 
-    svd : str, default='numpy_svd'
+    svd : str, default='truncated_svd'
         Function to use to compute the SVD.
 
     metric : str, default='error'
