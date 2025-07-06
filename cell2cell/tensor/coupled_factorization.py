@@ -28,61 +28,69 @@ def coupled_non_negative_parafac(
         cvg_criterion="abs_rec_error",
         balance_errors=True,
 ):
-    """
-    Coupled Non-negative CP decomposition for two tensors sharing all but one mode
-
-    Performs simultaneous non-negative CP decomposition on two tensors that share
-    all dimensions except one. The shared dimensions will have the same factor
-    matrices, while the non-shared dimension will have separate factor matrices.
-
-    The convergence can be balanced to ensure equal contribution from both tensors
-    regardless of their size differences in the non-shared dimension.
+    '''
+    Performs coupled non-negative CP decomposition on two tensors.
 
     Parameters
     ----------
-    tensor1 : ndarray
-        First input tensor
-    tensor2 : ndarray
-        Second input tensor
+    tensor1 : tensorly.tensor
+        First tensor to factorize.
+
+    tensor2 : tensorly.tensor
+        Second tensor to factorize.
+
     rank : int
-        Number of components
+        Number of components for the factorization.
+
     non_shared_mode : int
-        The mode (dimension) that differs between the two tensors
-    mask1 : ndarray, optional
-        Mask for tensor1, if provided, will be used to compute the reconstruction error
-    mask2 : ndarray, optional
-        Mask for tensor2, if provided, will be used to compute the reconstruction error
+        The mode (dimension) that differs between the two tensors.
+
+    mask1 : tensorly.tensor, default=None
+        Mask for the first tensor.
+
+    mask2 : tensorly.tensor, default=None
+        Mask for the second tensor.
+
     n_iter_max : int, default=100
-        Maximum number of iterations
-    init : {'svd', 'random'}, optional
-        Initialization method
+        Maximum number of iterations.
+
+    init : str, default='svd'
+        Initialization method. Options are {'svd', 'random'}.
+
     svd : str, default='truncated_svd'
-        SVD function to use
-    tol : float, optional, default=1e-7
-        Convergence tolerance
-    random_state : {None, int, np.random.RandomState}
-        Random state for reproducibility
-    verbose : int, optional
-        Verbosity level
-    normalize_factors : bool, default=False
-        Whether to normalize factors
+        SVD function to use.
+
+    tol : float, default=1e-7
+        Convergence tolerance.
+
+    random_state : int, default=None
+        Random state for reproducibility.
+
+    verbose : bool, default=False
+        Whether to print progress.
+
+    normalize_factors : bool, default=True
+        Whether to normalize factors.
+
     return_errors : bool, default=False
-        Whether to return reconstruction errors
-    cvg_criterion : {'abs_rec_error', 'rec_error'}, optional
-        Convergence criterion
+        Whether to return reconstruction errors.
+
+    cvg_criterion : str, default='abs_rec_error'
+        Convergence criterion. Options are {'abs_rec_error', 'rec_error'}.
+
     balance_errors : bool, default=True
-        Whether to balance the errors based on the size of non-shared dimensions.
-        If True, errors are weighted by (N1+N2)/N1 and (N1+N2)/N2 where N1, N2
-        are the sizes of the non-shared dimensions
+        Whether to balance errors based on tensor sizes.
 
     Returns
     -------
     cp_tensor1 : CPTensor
-        CP decomposition of tensor1
+        CP decomposition result for tensor1.
+
     cp_tensor2 : CPTensor
-        CP decomposition of tensor2
-    errors : list (optional)
-        Reconstruction errors if return_errors=True
+        CP decomposition result for tensor2.
+
+    errors : tuple, optional
+        Reconstruction errors for both tensors, if `return_errors` is True.
 
     Examples
     --------
@@ -90,7 +98,7 @@ def coupled_non_negative_parafac(
     >>> tensor1 = tl.random.random((10, 20, 30, 40))
     >>> tensor2 = tl.random.random((10, 20, 30, 50))
     >>> cp1, cp2 = coupled_non_negative_parafac(tensor1, tensor2, rank=5, non_shared_mode=3)
-    """
+    '''
 
     epsilon = tl.eps(tensor1.dtype)
 

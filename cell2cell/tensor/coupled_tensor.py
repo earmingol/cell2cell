@@ -25,63 +25,63 @@ class CoupledInteractionTensor(BaseTensor):
     Parameters
     ----------
     tensor1 : cell2cell.tensor.BaseTensor
-        First interaction tensor (e.g., InteractionTensor, PreBuiltTensor)
+        First interaction tensor (e.g., InteractionTensor, PreBuiltTensor).
 
     tensor2 : cell2cell.tensor.BaseTensor
-        Second interaction tensor (e.g., InteractionTensor, PreBuiltTensor)
+        Second interaction tensor (e.g., InteractionTensor, PreBuiltTensor).
 
     non_shared_mode : int
-        The mode (dimension) that differs between the two tensors
+        The mode (dimension) that differs between the two tensors.
 
     tensor1_name : str, default='Tensor1'
-        Name for the first tensor (used in factor labeling)
+        Name for the first tensor (used in factor labeling).
 
     tensor2_name : str, default='Tensor2'
-        Name for the second tensor (used in factor labeling)
+        Name for the second tensor (used in factor labeling).
 
     balance_errors : bool, default=True
-        Whether to balance the errors based on the size of non-shared dimensions
+        Whether to balance the errors based on the size of non-shared dimensions.
 
     device : str, default=None
-        Device to use when backend allows using multiple devices
+        Device to use when backend allows using multiple devices.
 
     Attributes
     ----------
     tensor1 : tensorly.tensor
-        First tensor object
+        First tensor object.
 
     tensor2 : tensorly.tensor
-        Second tensor object
+        Second tensor object.
 
     non_shared_mode : int
-        The dimension that differs between tensors
+        The dimension that differs between tensors.
 
     cp1 : CPTensor
-        CP decomposition result for tensor1
+        CP decomposition result for tensor1.
 
     cp2 : CPTensor
-        CP decomposition result for tensor2
+        CP decomposition result for tensor2.
 
     factors1 : dict
-        Factor loadings for tensor1
+        Factor loadings for tensor1.
 
     factors2 : dict
-        Factor loadings for tensor2
+        Factor loadings for tensor2.
 
     factors : dict
-        Combined factor loadings with shared and non-shared factors
+        Combined factor loadings with shared and non-shared factors.
 
     order_names1 : list
-        Element names for each dimension of tensor1
+        Element names for each dimension of tensor1.
 
     order_names2 : list
-        Element names for each dimension of tensor2
+        Element names for each dimension of tensor2.
 
     order_labels1 : list
-        Dimension labels for tensor1
+        Dimension labels for tensor1.
 
     order_labels2 : list
-        Dimension labels for tensor2
+        Dimension labels for tensor2.
     '''
 
     def __init__(self, tensor1, tensor2, non_shared_mode, tensor1_name='Tensor1',
@@ -148,45 +148,45 @@ class CoupledInteractionTensor(BaseTensor):
                                      cvg_criterion='abs_rec_error', verbose=False,
                                      runs=1, **kwargs):
         '''
-        Performs coupled tensor factorization on both tensors
+        Performs coupled tensor factorization on both tensors.
 
         Parameters
         ----------
         rank : int
-            Number of components for the factorization
+            Number of components for the factorization.
 
         n_iter_max : int, default=100
-            Maximum number of iterations
+            Maximum number of iterations.
 
         init : str, default='svd'
-            Initialization method {'svd', 'random'}
+            Initialization method. Options are {'svd', 'random'}.
 
         svd : str, default='truncated_svd'
-            SVD function to use
+            SVD function to use.
 
         tol : float, default=1e-7
-            Convergence tolerance
+            Convergence tolerance.
 
         random_state : int, default=None
-            Random state for reproducibility
+            Random state for reproducibility.
 
         normalize_loadings : bool, default=True
-            Whether to normalize factors
+            Whether to normalize factors.
 
         var_ordered_factors : bool, default=True
-            Whether to order factors by variance explained
+            Whether to order factors by variance explained.
 
         cvg_criterion : str, default='abs_rec_error'
-            Convergence criterion {'abs_rec_error', 'rec_error'}
+            Convergence criterion. Options are {'abs_rec_error', 'rec_error'}.
 
         verbose : bool, default=False
-            Whether to print progress
+            Whether to print progress.
 
         runs : int, default=1
-            Number of runs to find best solution
+            Number of runs to find the best solution.
 
         **kwargs : dict
-            Additional arguments for the factorization
+            Additional arguments for the factorization.
         '''
 
         best_error = np.inf
@@ -541,7 +541,7 @@ class CoupledInteractionTensor(BaseTensor):
             else:
                 combined_error = (errors1[-1] + errors2[-1]) / 2
 
-            loss.append((r, combined_error))
+            loss.append((r, tl.to_numpy(combined_error)))
 
         return loss
 
@@ -589,7 +589,7 @@ class CoupledInteractionTensor(BaseTensor):
                     else:
                         combined_error = (errors1[-1] + errors2[-1]) / 2
 
-                    run_errors.append(combined_error)
+                    run_errors.append(tl.to_numpy(combined_error))
 
                 elif metric == 'similarity':
                     # For similarity, we need to implement correlation index between runs
