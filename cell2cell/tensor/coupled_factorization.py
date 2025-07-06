@@ -383,8 +383,11 @@ def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, non_shared_mod
     # For returning errors
     return_errors = False
     if kwargs is not None:
-        if 'return_errors' in kwargs.keys():
-            return_errors = kwargs['return_errors']
+        if 'return_errors' not in kwargs.keys():
+            kwargs['return_errors'] = return_errors
+    else:
+        kwargs = {'return_errors': return_errors}
+
 
     if tf_type == 'coupled_non_negative_cp':
         result = coupled_non_negative_parafac(
@@ -400,7 +403,6 @@ def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, non_shared_mod
             n_iter_max=n_iter_max,
             tol=tol,
             verbose=verbose,
-            return_errors=return_errors,
             balance_errors=balance_errors,
             **kwargs
         )
