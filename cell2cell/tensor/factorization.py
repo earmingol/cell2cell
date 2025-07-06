@@ -108,7 +108,7 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
                                                   rank=rank,
                                                   init=init,
                                                   svd=svd,
-                                                  #random_state=random_state, # Not implemented in tensorly 0.7.0 commented for now
+                                                  random_state=random_state, # Not implemented in tensorly 0.7.0 commented for now
                                                   n_iter_max=n_iter_max,
                                                   tol=tol,
                                                   verbose=verbose,
