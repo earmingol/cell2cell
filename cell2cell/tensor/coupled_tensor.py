@@ -7,7 +7,6 @@ import tensorly as tl
 from collections import OrderedDict
 from tqdm import tqdm
 
-from cell2cell.tensor.tensor import BaseTensor
 from cell2cell.tensor.factorization import _compute_elbow, _compute_norm_error
 from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow
 from cell2cell.preprocessing.signal import smooth_curve
@@ -18,7 +17,7 @@ from cell2cell.tensor.coupled_factorization import (
 )
 
 
-class CoupledInteractionTensor(BaseTensor):
+class CoupledInteractionTensor():
     '''
     Coupled Tensor Factorization for two interaction tensors that share all but one dimension.
 
@@ -90,9 +89,6 @@ class CoupledInteractionTensor(BaseTensor):
 
     def __init__(self, tensor1, tensor2, non_shared_mode, tensor1_name='Tensor1',
                  tensor2_name='Tensor2', balance_errors=True, device=None):
-        # Initialize BaseTensor
-        BaseTensor.__init__(self)
-
         # Validate inputs
         self._validate_tensors(tensor1, tensor2, non_shared_mode)
 
@@ -126,6 +122,27 @@ class CoupledInteractionTensor(BaseTensor):
         # Move to device if specified
         if device is not None:
             self.to_device(device)
+
+        # Store location information for zeros and NaNs
+        if hasattr(tensor1, 'loc_nans') and tensor1.loc_nans is not None:
+            self.loc_nans1 = tensor1.loc_nans
+        else:
+            self.loc_nans1 = None
+
+        if hasattr(tensor2, 'loc_nans') and tensor2.loc_nans is not None:
+            self.loc_nans2 = tensor2.loc_nans
+        else:
+            self.loc_nans2 = None
+
+        if hasattr(tensor1, 'loc_zeros') and tensor1.loc_zeros is not None:
+            self.loc_zeros1 = tensor1.loc_zeros
+        else:
+            self.loc_zeros1 = None
+
+        if hasattr(tensor2, 'loc_zeros') and tensor2.loc_zeros is not None:
+            self.loc_zeros2 = tensor2.loc_zeros
+        else:
+            self.loc_zeros2 = None
 
     def _validate_tensors(self, tensor1, tensor2, non_shared_mode):
         """Validate that the two tensors are compatible for coupled factorization"""
@@ -356,10 +373,10 @@ class CoupledInteractionTensor(BaseTensor):
         # Store this for later use
         self._unshared_tensor2_key = unified_key
 
-    def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='coupled_non_negative_cp', 
+    def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='coupled_non_negative_cp',
                              init='random', svd='truncated_svd', metric='error', random_state=None,
-                             n_iter_max=100, tol=10e-7, automatic_elbow=True, manual_elbow=None, 
-                             smooth=False, mask1=None, mask2=None, ci='std', figsize=(4, 2.25), 
+                             n_iter_max=100, tol=10e-7, automatic_elbow=True, manual_elbow=None,
+                             smooth=False, mask1=None, mask2=None, ci='std', figsize=(4, 2.25),
                              fontsize=14, filename=None, output_fig=True, verbose=False, **kwargs):
         '''
         Elbow analysis on the error achieved by the Coupled Tensor Factorization for
@@ -406,7 +423,7 @@ class CoupledInteractionTensor(BaseTensor):
         mask1 : ndarray list, default=None
             Mask for the first tensor
 
-        mask2 : ndarray list, default=None  
+        mask2 : ndarray list, default=None
             Mask for the second tensor
 
         ci : str, default='std'
@@ -529,7 +546,7 @@ class CoupledInteractionTensor(BaseTensor):
         return fig, loss
 
     def explained_variance(self):
-        """Calculate explained variance for coupled factorization"""
+        '''Calculate explained variance for coupled factorization'''
         if self.tl_object1 is None or self.tl_object2 is None:
             raise ValueError("Must run compute_tensor_factorization first")
 
@@ -573,7 +590,7 @@ class CoupledInteractionTensor(BaseTensor):
         return weighted_ev
 
     def get_top_factor_elements(self, order_name, factor_name, top_number=10, tensor='unified'):
-        """
+        '''
         Get top elements for a given factor
 
         Parameters
@@ -594,7 +611,7 @@ class CoupledInteractionTensor(BaseTensor):
         -------
         top_elements : pandas.DataFrame
             Top elements for the specified factor
-        """
+        '''
         if tensor == 'unified':
             factors = self.factors
         elif tensor == 'tensor1':
@@ -611,7 +628,7 @@ class CoupledInteractionTensor(BaseTensor):
         return top_elements
 
     def export_factor_loadings(self, filename, save_separate=False):
-        """
+        '''
         Export factor loadings to Excel file
 
         Parameters
@@ -621,7 +638,7 @@ class CoupledInteractionTensor(BaseTensor):
 
         save_separate : bool, default=False
             Whether to save tensor1 and tensor2 factors separately
-        """
+        '''
         writer = pd.ExcelWriter(filename)
         if save_separate:
             # Export tensor1 factors
@@ -641,11 +658,11 @@ class CoupledInteractionTensor(BaseTensor):
 
     @property
     def shape(self):
-        """Return shapes of both tensors"""
+        '''Return shapes of both tensors'''
         return (self.tensor1.shape, self.tensor2.shape)
 
     def to_device(self, device):
-        """Move tensors to specified device"""
+        '''Move tensors to specified device'''
         try:
             self.tensor1 = tl.tensor(self.tensor1, device=device)
             self.tensor2 = tl.tensor(self.tensor2, device=device)
@@ -661,3 +678,159 @@ class CoupledInteractionTensor(BaseTensor):
                 self.mask1 = tl.tensor(self.mask1)
             if self.mask2 is not None:
                 self.mask2 = tl.tensor(self.mask2)
+
+    def copy(self):
+        '''Performs a deep copy of this object'''
+        import copy
+        return copy.deepcopy(self)
+
+    def write_file(self, filename):
+        '''
+        Exports this object into a pickle file
+
+        Parameters
+        ----------
+        filename : str
+            Complete path to the file wherein the variable will be stored
+        '''
+        from cell2cell.io.save_data import export_variable_with_pickle
+        export_variable_with_pickle(self, filename=filename)
+
+    def excluded_value_fraction(self, tensor='both'):
+        '''
+        Returns the fraction of excluded values in the tensor(s),
+        given the values that are masked
+
+        Parameters
+        ----------
+        tensor : str, default='both'
+            Which tensor to analyze {'tensor1', 'tensor2', 'both', 'combined'}
+
+        Returns
+        -------
+        excluded_fraction : float or dict
+            Fraction of missing/excluded values. If tensor='both', returns dict
+            with separate values. If tensor='combined', returns weighted average.
+        '''
+        if tensor == 'tensor1':
+            if self.mask1 is None:
+                return 0.0
+            else:
+                fraction = tl.sum(self.mask1) / tl.prod(tl.tensor(self.tensor1.shape))
+                return 1.0 - fraction.item()
+
+        elif tensor == 'tensor2':
+            if self.mask2 is None:
+                return 0.0
+            else:
+                fraction = tl.sum(self.mask2) / tl.prod(tl.tensor(self.tensor2.shape))
+                return 1.0 - fraction.item()
+
+        elif tensor == 'both':
+            return {
+                'tensor1': self.excluded_value_fraction('tensor1'),
+                'tensor2': self.excluded_value_fraction('tensor2')
+            }
+
+        elif tensor == 'combined':
+            # Weighted average based on tensor sizes
+            exc1 = self.excluded_value_fraction('tensor1')
+            exc2 = self.excluded_value_fraction('tensor2')
+            size1 = np.prod(self.tensor1.shape)
+            size2 = np.prod(self.tensor2.shape)
+            total_size = size1 + size2
+            return (exc1 * size1 + exc2 * size2) / total_size
+        else:
+            raise ValueError("tensor must be 'tensor1', 'tensor2', 'both', or 'combined'")
+
+    def sparsity_fraction(self, tensor='both'):
+        '''
+        Returns the fraction of values that are zeros in the tensor(s),
+        given the values that are in loc_zeros
+
+        Parameters
+        ----------
+        tensor : str, default='both'
+            Which tensor to analyze {'tensor1', 'tensor2', 'both', 'combined'}
+
+        Returns
+        -------
+        sparsity_fraction : float or dict
+            Fraction of values that are real zeros
+        '''
+        if tensor == 'tensor1':
+            if self.loc_zeros1 is None:
+                return 0.0
+            else:
+                sparsity = tl.sum(self.loc_zeros1) / tl.prod(tl.tensor(self.tensor1.shape))
+                return sparsity.item()
+
+        elif tensor == 'tensor2':
+            if self.loc_zeros2 is None:
+                return 0.0
+            else:
+                sparsity = tl.sum(self.loc_zeros2) / tl.prod(tl.tensor(self.tensor2.shape))
+                return sparsity.item()
+
+        elif tensor == 'both':
+            return {
+                'tensor1': self.sparsity_fraction('tensor1'),
+                'tensor2': self.sparsity_fraction('tensor2')
+            }
+
+        elif tensor == 'combined':
+            # Weighted average based on tensor sizes
+            spar1 = self.sparsity_fraction('tensor1')
+            spar2 = self.sparsity_fraction('tensor2')
+            size1 = np.prod(self.tensor1.shape)
+            size2 = np.prod(self.tensor2.shape)
+            total_size = size1 + size2
+            return (spar1 * size1 + spar2 * size2) / total_size
+        else:
+            raise ValueError("tensor must be 'tensor1', 'tensor2', 'both', or 'combined'")
+
+    def missing_fraction(self, tensor='both'):
+        '''
+        Returns the fraction of values that are missing (NaNs) in the tensor(s),
+        given the values that are in loc_nans
+
+        Parameters
+        ----------
+        tensor : str, default='both'
+            Which tensor to analyze {'tensor1', 'tensor2', 'both', 'combined'}
+
+        Returns
+        -------
+        missing_fraction : float or dict
+            Fraction of values that are missing (NaNs)
+        '''
+        if tensor == 'tensor1':
+            if self.loc_nans1 is None:
+                return 0.0
+            else:
+                missing = tl.sum(self.loc_nans1) / tl.prod(tl.tensor(self.tensor1.shape))
+                return missing.item()
+
+        elif tensor == 'tensor2':
+            if self.loc_nans2 is None:
+                return 0.0
+            else:
+                missing = tl.sum(self.loc_nans2) / tl.prod(tl.tensor(self.tensor2.shape))
+                return missing.item()
+
+        elif tensor == 'both':
+            return {
+                'tensor1': self.missing_fraction('tensor1'),
+                'tensor2': self.missing_fraction('tensor2')
+            }
+
+        elif tensor == 'combined':
+            # Weighted average based on tensor sizes
+            miss1 = self.missing_fraction('tensor1')
+            miss2 = self.missing_fraction('tensor2')
+            size1 = np.prod(self.tensor1.shape)
+            size2 = np.prod(self.tensor2.shape)
+            total_size = size1 + size2
+            return (miss1 * size1 + miss2 * size2) / total_size
+        else:
+            raise ValueError("tensor must be 'tensor1', 'tensor2', 'both', or 'combined'")
