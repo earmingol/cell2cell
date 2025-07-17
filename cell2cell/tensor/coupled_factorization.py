@@ -29,6 +29,7 @@ def coupled_non_negative_parafac(
         return_errors=False,
         cvg_criterion="abs_rec_error",
         balance_errors=True,
+        separate_weights=True,
 ):
     '''
     Performs coupled non-negative CP decomposition on two tensors.
@@ -83,6 +84,11 @@ def coupled_non_negative_parafac(
     balance_errors : bool, default=True
         Whether to balance errors based on tensor sizes.
 
+    separate_weights : bool, default=True
+        Whether to use separate weights for each tensor during optimization.
+        If True, each tensor maintains its own weights vector.
+        If False, uses shared weights (averaged from both tensors).
+
     Returns
     -------
     cp_tensor1 : CPTensor
@@ -99,7 +105,8 @@ def coupled_non_negative_parafac(
     >>> # Two tensors sharing dimensions 0,1,2 but different in dimension 3
     >>> tensor1 = tl.random.random((10, 20, 30, 40))
     >>> tensor2 = tl.random.random((10, 20, 30, 50))
-    >>> cp1, cp2 = coupled_non_negative_parafac(tensor1, tensor2, rank=5, non_shared_mode=3)
+    >>> cp1, cp2 = coupled_non_negative_parafac(tensor1, tensor2, rank=5,
+    ...                                        non_shared_mode=3, separate_weights=True)
     '''
 
     epsilon = tl.eps(tensor1.dtype)
@@ -145,10 +152,19 @@ def coupled_non_negative_parafac(
         random_state=random_state, normalize_factors=normalize_factors
     )
 
-    # Use shared weights (average of both initializations)
-    weights = (weights1 + weights2) / 2
+    if separate_weights:
+        # Keep separate weights for each tensor
+        if verbose > 1:
+            print("Using separate weights for each tensor")
+    else:
+        # Use shared weights (original behavior)
+        if verbose > 1:
+            print("Using shared weights (averaged from both tensors)")
+        weights_shared = (weights1 + weights2) / 2
+        weights1 = weights_shared
+        weights2 = tl.copy(weights_shared)
 
-    # Copy shared factors from tensor1 initialization (could also average)
+    # Copy shared factors from tensor1 initialization for non-shared modes
     for mode in range(n_modes):
         if mode != non_shared_mode:
             factors2[mode] = tl.copy(factors1[mode])
@@ -177,13 +193,13 @@ def coupled_non_negative_parafac(
                 for i in range(n_modes):
                     if i != mode:
                         accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
-                accum1 = tl.reshape(weights, (-1, 1)) * accum1 * tl.reshape(weights, (1, -1))
+                accum1 = tl.reshape(weights1, (-1, 1)) * accum1 * tl.reshape(weights1, (1, -1))
                 if mask1 is not None:
                     tensor1 = tensor1 * mask1 + tl.cp_to_tensor(
-                        (weights, factors1), mask=1 - mask1
+                        (weights1, factors1), mask=1 - mask1
                     )
 
-                mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights, factors1), mode)
+                mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights1, factors1), mode)
                 numerator1 = tl.clip(mttkrp1, a_min=epsilon, a_max=None)
                 denominator1 = tl.clip(tl.dot(factors1[mode], accum1), a_min=epsilon, a_max=None)
                 factors1[mode] = factors1[mode] * numerator1 / denominator1
@@ -193,13 +209,13 @@ def coupled_non_negative_parafac(
                 for i in range(n_modes):
                     if i != mode:
                         accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
-                accum2 = tl.reshape(weights, (-1, 1)) * accum2 * tl.reshape(weights, (1, -1))
+                accum2 = tl.reshape(weights2, (-1, 1)) * accum2 * tl.reshape(weights2, (1, -1))
                 if mask2 is not None:
                     tensor2 = tensor2 * mask2 + tl.cp_to_tensor(
-                        (weights, factors2), mask=1 - mask2
+                        (weights2, factors2), mask=1 - mask2
                     )
 
-                mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights, factors2), mode)
+                mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights2, factors2), mode)
                 numerator2 = tl.clip(mttkrp2, a_min=epsilon, a_max=None)
                 denominator2 = tl.clip(tl.dot(factors2[mode], accum2), a_min=epsilon, a_max=None)
                 factors2[mode] = factors2[mode] * numerator2 / denominator2
@@ -215,10 +231,10 @@ def coupled_non_negative_parafac(
                             accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
                         else:
                             accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
-                accum1 = tl.reshape(weights, (-1, 1)) * accum1 * tl.reshape(weights, (1, -1))
+                accum1 = tl.reshape(weights1, (-1, 1)) * accum1 * tl.reshape(weights1, (1, -1))
                 if mask1 is not None:
                     tensor1 = tensor1 * mask1 + tl.cp_to_tensor(
-                        (weights, factors1), mask=1 - mask1
+                        (weights1, factors1), mask=1 - mask1
                     )
 
                 # Compute accumulation matrix for tensor2
@@ -229,15 +245,15 @@ def coupled_non_negative_parafac(
                             accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
                         else:
                             accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
-                accum2 = tl.reshape(weights, (-1, 1)) * accum2 * tl.reshape(weights, (1, -1))
+                accum2 = tl.reshape(weights2, (-1, 1)) * accum2 * tl.reshape(weights2, (1, -1))
                 if mask2 is not None:
                     tensor2 = tensor2 * mask2 + tl.cp_to_tensor(
-                        (weights, factors2), mask=1 - mask2
+                        (weights2, factors2), mask=1 - mask2
                     )
 
                 # Compute MTTKRP for both tensors
-                mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights, factors1), mode)
-                mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights, factors2), mode)
+                mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights1, factors1), mode)
+                mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights2, factors2), mode)
 
                 # Combine updates from both tensors
                 numerator = tl.clip(mttkrp1 + mttkrp2, a_min=epsilon, a_max=None)
@@ -251,22 +267,31 @@ def coupled_non_negative_parafac(
                 factors1[mode] = new_factor
                 factors2[mode] = tl.copy(new_factor)
 
+            # Normalize factors and weights separately for each tensor if requested
             if normalize_factors and mode != n_modes - 1:
-                weights, factors1 = cp_normalize((weights, factors1))
-                weights, factors2 = cp_normalize((weights, factors2))
+                if separate_weights:
+                    weights1, factors1 = cp_normalize((weights1, factors1))
+                    weights2, factors2 = cp_normalize((weights2, factors2))
+                else:
+                    # For shared weights, normalize both and then average weights again
+                    weights1, factors1 = cp_normalize((weights1, factors1))
+                    weights2, factors2 = cp_normalize((weights2, factors2))
+                    weights_shared = (weights1 + weights2) / 2
+                    weights1 = weights_shared
+                    weights2 = tl.copy(weights_shared)
 
         # Check convergence
         if tol:
             # Calculate reconstruction errors for both tensors
             unnorml_rec_error1, _, _ = error_calc(
-                tensor1, norm_tensor1, weights, factors1,
+                tensor1, norm_tensor1, weights1, factors1,
                 sparsity=None, mask=None, mttkrp=mttkrp1 if mode == n_modes - 1 else None
             )
             rec_error1 = unnorml_rec_error1 / norm_tensor1
             rec_errors1.append(rec_error1)
 
             unnorml_rec_error2, _, _ = error_calc(
-                tensor2, norm_tensor2, weights, factors2,
+                tensor2, norm_tensor2, weights2, factors2,
                 sparsity=None, mask=None, mttkrp=mttkrp2 if mode == n_modes - 1 else None
             )
             rec_error2 = unnorml_rec_error2 / norm_tensor2
@@ -281,9 +306,14 @@ def coupled_non_negative_parafac(
                 error_decrease = prev_combined - combined_error
 
                 if verbose:
-                    print(f"Iteration {iteration}: rec_error1={rec_error1:.6f}, "
-                          f"rec_error2={rec_error2:.6f}, combined={combined_error:.6f}, "
-                          f"decrease={error_decrease:.6e}")
+                    if separate_weights:
+                        print(f"Iteration {iteration}: rec_error1={rec_error1:.6f}, "
+                              f"rec_error2={rec_error2:.6f}, combined={combined_error:.6f}, "
+                              f"decrease={error_decrease:.6e} [separate weights]")
+                    else:
+                        print(f"Iteration {iteration}: rec_error1={rec_error1:.6f}, "
+                              f"rec_error2={rec_error2:.6f}, combined={combined_error:.6f}, "
+                              f"decrease={error_decrease:.6e} [shared weights]")
                     if balance_errors and verbose > 1:
                         print(f"  Balance weights: w1={weight1:.3f}, w2={weight2:.3f}")
 
@@ -303,12 +333,20 @@ def coupled_non_negative_parafac(
                     print(f"Initial errors: tensor1={rec_errors1[-1]:.6f}, "
                           f"tensor2={rec_errors2[-1]:.6f}")
 
+    # Final normalization
     if normalize_factors:
-        weights, factors1 = cp_normalize((weights, factors1))
-        weights, factors2 = cp_normalize((weights, factors2))
+        if separate_weights:
+            weights1, factors1 = cp_normalize((weights1, factors1))
+            weights2, factors2 = cp_normalize((weights2, factors2))
+        else:
+            weights1, factors1 = cp_normalize((weights1, factors1))
+            weights2, factors2 = cp_normalize((weights2, factors2))
+            weights_shared = (weights1 + weights2) / 2
+            weights1 = weights_shared
+            weights2 = tl.copy(weights_shared)
 
-    cp_tensor1 = CPTensor((weights, factors1))
-    cp_tensor2 = CPTensor((weights, factors2))
+    cp_tensor1 = CPTensor((weights1, factors1))
+    cp_tensor2 = CPTensor((weights2, factors2))
 
     if return_errors:
         return cp_tensor1, cp_tensor2, (rec_errors1, rec_errors2)
