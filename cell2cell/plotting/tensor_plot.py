@@ -8,9 +8,10 @@ from matplotlib import pyplot as plt
 
 from cell2cell.plotting.aesthetics import generate_legend, get_colors_from_labels, map_colors_to_metadata
 from cell2cell.preprocessing.signal import smooth_curve
+from collections import OrderedDict
 
 
-def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=None, metadata=None,
+def tensor_factors_plot(interaction_tensor, order_labels=None, order_sorting=None, reorder_elements=None, metadata=None,
                         sample_col='Element', group_col='Category', meta_cmaps=None, fontsize=20, plot_legend=True,
                         filename=None):
     '''Plots the loadings for each element in each dimension of the tensor, generate by
@@ -25,6 +26,12 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
     order_labels : list, default=None
         List with the labels of each dimension to use in the plot. If none, the
         default names given when factorizing the tensor will be used.
+
+    order_sorting : list, default=None
+        List specifying the order of dimensions to plot. Can be either:
+        - List of indices: [0, 2, 1, 3] to reorder dimensions by position
+        - List of dimension names: ['Contexts', 'Sender Cells', 'Receiver Cells', 'Ligand-Receptor Pairs']
+        If None, uses the original order.
 
     reorder_elements : dict, default=None
         Dictionary for reordering elements in each of the tensor dimension.
@@ -85,6 +92,7 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
     fig, axes = tensor_factors_plot_from_loadings(factors=interaction_tensor.factors,
                                                   rank=rank,
                                                   order_labels=order_labels,
+                                                  order_sorting=order_sorting,
                                                   reorder_elements=reorder_elements,
                                                   metadata=metadata,
                                                   sample_col=sample_col,
@@ -96,9 +104,9 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, reorder_elements=
     return fig, axes
 
 
-def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reorder_elements=None, metadata=None,
-                                      sample_col='Element', group_col='Category', meta_cmaps=None, fontsize=20, plot_legend=True,
-                                      filename=None):
+def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, order_sorting=None, reorder_elements=None,
+                                      metadata=None, sample_col='Element', group_col='Category', meta_cmaps=None, fontsize=20,
+                                      plot_legend=True, filename=None):
     '''Plots the loadings for each element in each dimension of the tensor, generate by
     a tensor factorization.
 
@@ -116,7 +124,17 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
 
     order_labels : list, default=None
         List with the labels of each dimension to use in the plot. If none, the
-        default names given when factorizing the tensor will be used.
+        default names given when factorizing the tensor will be used. This labels
+        should be provided in the original order of the tensor dimensions.
+        If `order_sorting` is provided, labels will be automatically reordered to fit
+        the new order. If `order_sorting` is not provided, the labels will be used
+        in the original order of the tensor dimensions.
+
+    order_sorting : list, default=None
+        List specifying the order of dimensions to plot. Can be either:
+        - List of indices: [0, 2, 1, 3] to reorder dimensions by position
+        - List of dimension names: ['Contexts', 'Sender Cells', 'Receiver Cells', 'Ligand-Receptor Pairs']
+        If None, uses the original order.
 
     reorder_elements : dict, default=None
         Dictionary for reordering elements in each of the tensor dimension.
@@ -170,6 +188,10 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
     else:
         rank = list(factors.values())[0].shape[1]
 
+    # Apply order_sorting if provided
+    if order_sorting is not None:
+        factors, order_labels = _apply_order_sorting(factors, order_sorting, order_labels)
+
     dim = len(factors)
 
     if order_labels is not None:
@@ -190,7 +212,7 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
         element_colors = [None] * dim
     else:
         if meta_cmaps is None:
-            meta_cmaps = ['gist_rainbow']*len(metadata)
+            meta_cmaps = ['gist_rainbow'] * len(metadata)
         assert len(metadata) == len(meta_cmaps), "Provide a cmap for each order"
         assert len(metadata) == len(factors), "Provide a metadata for each order. If there is no metadata for any, replace with None"
         meta_colors = [get_colors_from_labels(m[group_col], cmap=cmap) if ((m is not None) & (cmap is not None)) else None for m, cmap in zip(meta_og, meta_cmaps)]
@@ -205,7 +227,7 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
                              ncols=dim,
                              figsize=(10, int(rank * 1.2 + 1)),
                              sharex='col',
-                             #sharey='col'
+                             # sharey='col'
                              )
 
     axes = axes.reshape((rank, dim))
@@ -226,18 +248,18 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
                     ax.bar(range(len(factor)), factor.values.tolist(), color=plot_colors)
                 else:
                     ax.bar(range(len(factor)), factor.values.tolist())
-                axes[i, 0].set_ylabel(factor_name, fontsize=int(1.2*fontsize))
+                axes[i, 0].set_ylabel(factor_name, fontsize=int(1.2 * fontsize))
                 if i < len(axs):
                     ax.tick_params(axis='x', which='both', length=0)
                     ax.tick_params(axis='both', labelsize=fontsize)
                     plt.setp(ax.get_xticklabels(), visible=False)
-            axs[-1].set_xlabel(order_labels[ind], fontsize=int(1.2*fontsize), labelpad=fontsize)
+            axs[-1].set_xlabel(order_labels[ind], fontsize=int(1.2 * fontsize), labelpad=fontsize)
     else:
         for ind, order_factors in enumerate(factors.values()):
             if isinstance(order_factors, pd.Series):
                 order_factors = order_factors.to_frame().T
             ax = axes[ind]
-            ax.set_xlabel(order_labels[ind], fontsize=int(1.2*fontsize), labelpad=fontsize)
+            ax.set_xlabel(order_labels[ind], fontsize=int(1.2 * fontsize), labelpad=fontsize)
             for i, df_row in enumerate(order_factors.T.iterrows()):
                 factor_name = df_row[0]
                 factor = df_row[1]
@@ -247,9 +269,9 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
                     ax.bar(range(len(factor)), factor.values.tolist(), color=plot_colors)
                 else:
                     ax.bar(range(len(factor)), factor.values.tolist())
-                ax.set_ylabel(factor_name, fontsize=int(1.2*fontsize))
+                ax.set_ylabel(factor_name, fontsize=int(1.2 * fontsize))
 
-    fig.align_ylabels(axes[:,0])
+    fig.align_ylabels(axes[:, 0])
     plt.tight_layout()
 
     # Include legends of coloring the elements in each dimension.
@@ -261,9 +283,9 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
         # Legends
         fig.canvas.draw()
         renderer = fig.canvas.get_renderer()
-        bbox_cords =  (1.05, 1.2)
+        bbox_cords = (1.05, 1.2)
 
-        N=len(order_labels) - 1
+        N = len(order_labels) - 1
         for ind, order in enumerate(order_labels):
             if (metadata[ind] is not None) & (meta_colors[ind] is not None):
                 lgd = generate_legend(color_dict=meta_colors[ind],
@@ -284,6 +306,73 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, reo
         plt.savefig(filename, dpi=300,
                     bbox_inches='tight')
     return fig, axes
+
+
+def _apply_order_sorting(factors, order_sorting, order_labels):
+    """
+    Apply order_sorting to reorder factors and labels
+
+    Parameters
+    ----------
+    factors : OrderedDict
+        Original factors dictionary
+    order_sorting : list
+        List of indices or dimension names
+    order_labels : list or None
+        Original order labels
+
+    Returns
+    -------
+    reordered_factors : OrderedDict
+        Reordered factors
+    reordered_labels : list
+        Reordered labels
+    """
+    factor_keys = list(factors.keys())
+
+    # Determine if order_sorting contains indices or names
+    if all(isinstance(x, int) for x in order_sorting):
+        # order_sorting contains indices
+        if len(order_sorting) != len(factors):
+            raise ValueError(
+                f"order_sorting length ({len(order_sorting)}) must match number of dimensions ({len(factors)})")
+        if max(order_sorting) >= len(factors) or min(order_sorting) < 0:
+            raise ValueError(f"order_sorting indices must be between 0 and {len(factors) - 1}")
+
+        reordered_keys = [factor_keys[i] for i in order_sorting]
+
+    elif all(isinstance(x, str) for x in order_sorting):
+        # order_sorting contains dimension names
+        if len(order_sorting) != len(factors):
+            raise ValueError(
+                f"order_sorting length ({len(order_sorting)}) must match number of dimensions ({len(factors)})")
+        if not all(key in factor_keys for key in order_sorting):
+            missing = [key for key in order_sorting if key not in factor_keys]
+            raise ValueError(f"order_sorting contains unknown dimension names: {missing}")
+
+        reordered_keys = order_sorting
+
+    else:
+        raise ValueError("order_sorting must contain all integers (indices) or all strings (dimension names)")
+
+    # Create reordered factors
+    reordered_factors = OrderedDict()
+    for key in reordered_keys:
+        reordered_factors[key] = factors[key]
+
+    # Reorder labels if provided
+    if order_labels is not None:
+        if all(isinstance(x, int) for x in order_sorting):
+            reordered_labels = [order_labels[i] for i in order_sorting]
+        else:  # dimension names
+            # Map dimension names to original indices, then use those to reorder labels
+            key_to_idx = {key: i for i, key in enumerate(factor_keys)}
+            indices = [key_to_idx[key] for key in order_sorting]
+            reordered_labels = [order_labels[i] for i in indices]
+    else:
+        reordered_labels = list(reordered_factors.keys())
+
+    return reordered_factors, reordered_labels
 
 
 def reorder_dimension_elements(factors, reorder_elements, metadata=None):
@@ -382,7 +471,7 @@ def plot_elbow(loss, elbow=None, figsize=(4, 2.25), ylabel='Normalized Error', f
 
     plt.plot(*zip(*loss))
     plt.tick_params(axis='both', labelsize=fontsize)
-    plt.xlabel('Rank', fontsize=int(1.2*fontsize))
+    plt.xlabel('Rank', fontsize=int(1.2 * fontsize))
     plt.ylabel(ylabel, fontsize=int(1.2 * fontsize))
 
     if elbow is not None:
@@ -436,7 +525,7 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), y
     '''
     fig = plt.figure(figsize=figsize)
 
-    x = list(range(1, all_loss.shape[1]+1))
+    x = list(range(1, all_loss.shape[1] + 1))
     mean = np.nanmean(all_loss, axis=0)
     std = np.nanstd(all_loss, axis=0)
 
@@ -454,12 +543,11 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), y
     else:
         raise ValueError("Specify a correct ci. Either '95%' or 'std'")
 
-    plt.fill_between(x, mean-coeff*std, mean+coeff*std, color='steelblue', alpha=.2,
+    plt.fill_between(x, mean - coeff * std, mean + coeff * std, color='steelblue', alpha=.2,
                      label='$\pm$ 1 std')
 
-
     plt.tick_params(axis='both', labelsize=fontsize)
-    plt.xlabel('Rank', fontsize=int(1.2*fontsize))
+    plt.xlabel('Rank', fontsize=int(1.2 * fontsize))
     plt.ylabel(ylabel, fontsize=int(1.2 * fontsize))
 
     if elbow is not None:
