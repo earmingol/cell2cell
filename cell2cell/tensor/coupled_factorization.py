@@ -9,7 +9,6 @@ from tensorly.cp_tensor import (
     unfolding_dot_khatri_rao,
     cp_normalize,
     validate_cp_rank,
-    khatri_rao,
 )
 
 
@@ -181,22 +180,8 @@ def coupled_non_negative_parafac(
         if verbose > 1:
             print(f"Starting iteration {iteration + 1}")
 
-        # Create update order: non-shared mode first, then shared modes in reverse order
-        update_order = []
-
-        # First add the non-shared mode
-        update_order.append(non_shared_mode)
-
-        # Then add all shared modes in reverse order (from highest to lowest)
-        for mode in reversed(range(n_modes)):
-            if mode != non_shared_mode:
-                update_order.append(mode)
-
-        if verbose > 1:
-            print(f"Update order: {update_order} (non-shared: {non_shared_mode})")
-
-        # Update each mode in the strategic order
-        for mode in update_order:
+        # Update each mode
+        for mode in range(n_modes):
             if verbose > 1:
                 print(f"Mode {mode} of {n_modes}")
 
@@ -236,66 +221,51 @@ def coupled_non_negative_parafac(
                 factors2[mode] = factors2[mode] * numerator2 / denominator2
 
             else:
-                # Update shared modes using concatenation approach
-                # Apply masks if needed
+                # Update shared modes using combined information from both tensors
+
+                # Compute accumulation matrix for tensor1
+                accum1 = tl.ones((rank, rank), **tl.context(tensor1))
+                for i in range(n_modes):
+                    if i != mode:
+                        if i == non_shared_mode:
+                            accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
+                        else:
+                            accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
+                accum1 = tl.reshape(weights1, (-1, 1)) * accum1 * tl.reshape(weights1, (1, -1))
                 if mask1 is not None:
                     tensor1 = tensor1 * mask1 + tl.cp_to_tensor(
                         (weights1, factors1), mask=1 - mask1
                     )
+
+                # Compute accumulation matrix for tensor2
+                accum2 = tl.ones((rank, rank), **tl.context(tensor2))
+                for i in range(n_modes):
+                    if i != mode:
+                        if i == non_shared_mode:
+                            accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
+                        else:
+                            accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
+                accum2 = tl.reshape(weights2, (-1, 1)) * accum2 * tl.reshape(weights2, (1, -1))
                 if mask2 is not None:
                     tensor2 = tensor2 * mask2 + tl.cp_to_tensor(
                         (weights2, factors2), mask=1 - mask2
                     )
 
-                # Get unfolded tensors
-                unfolded1 = tl.unfold(tensor1, mode)
-                unfolded2 = tl.unfold(tensor2, mode)
+                # Compute MTTKRP for both tensors
+                mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights1, factors1), mode)
+                mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights2, factors2), mode)
 
-                # Build Khatri-Rao products for both tensors
-                # Skip the current mode and compute KR of all other factors
-                kr_factors1 = []
-                kr_factors2 = []
+                # Combine updates from both tensors
+                numerator = tl.clip(mttkrp1 + mttkrp2, a_min=epsilon, a_max=None)
+                denominator = tl.clip(
+                    tl.dot(factors1[mode], accum1) + tl.dot(factors2[mode], accum2),
+                    a_min=epsilon, a_max=None
+                )
 
-                for i in range(n_modes):
-                    if i != mode:
-                        kr_factors1.append(factors1[i])
-                        kr_factors2.append(factors2[i])
-
-                # Compute Khatri-Rao products
-                kr1 = khatri_rao(kr_factors1)
-                kr2 = khatri_rao(kr_factors2)
-
-                # Apply weights to KR products
-                kr1 = kr1 * tl.reshape(weights1, (1, -1))
-                kr2 = kr2 * tl.reshape(weights2, (1, -1))
-
-                # Concatenate the unfolded tensors and KR products
-                # The concatenation axis depends on which mode is non-shared
-                if non_shared_mode < mode:
-                    # Non-shared mode comes before current mode in KR product
-                    # Concatenate along the columns (axis 1)
-                    combined_unfolded = tl.concatenate([unfolded1, unfolded2], axis=1)
-                    combined_kr = tl.concatenate([kr1, kr2], axis=0)
-                elif non_shared_mode > mode:
-                    # Non-shared mode comes after current mode in KR product
-                    # Still concatenate along columns, but KR ordering is different
-                    combined_unfolded = tl.concatenate([unfolded1, unfolded2], axis=1)
-                    combined_kr = tl.concatenate([kr1, kr2], axis=0)
-
-                # Solve least squares problem for the concatenated system
-                try:
-                    # Standard least squares solution
-                    shared_factor = tl.transpose(tl.lstsq(combined_kr, tl.transpose(combined_unfolded))[0])
-                except:
-                    # If least squares fails, fall back to pseudo-inverse
-                    shared_factor = tl.dot(combined_unfolded, tl.pinv(tl.transpose(combined_kr)))
-
-                # Apply non-negativity constraint
-                shared_factor = tl.clip(shared_factor, a_min=0, a_max=None)
-
-                # Update both factor matrices with the shared factor
-                factors1[mode] = shared_factor
-                factors2[mode] = tl.copy(shared_factor)
+                # Update shared factor
+                new_factor = factors1[mode] * numerator / denominator
+                factors1[mode] = new_factor
+                factors2[mode] = tl.copy(new_factor)
 
             # Normalize factors and weights separately for each tensor if requested
             if normalize_factors and mode != n_modes - 1:
@@ -315,14 +285,14 @@ def coupled_non_negative_parafac(
             # Calculate reconstruction errors for both tensors
             unnorml_rec_error1, _, _ = error_calc(
                 tensor1, norm_tensor1, weights1, factors1,
-                sparsity=None, mask=None, mttkrp=None
+                sparsity=None, mask=None, mttkrp=mttkrp1 if mode == n_modes - 1 else None
             )
             rec_error1 = unnorml_rec_error1 / norm_tensor1
             rec_errors1.append(rec_error1)
 
             unnorml_rec_error2, _, _ = error_calc(
                 tensor2, norm_tensor2, weights2, factors2,
-                sparsity=None, mask=None, mttkrp=None
+                sparsity=None, mask=None, mttkrp=mttkrp2 if mode == n_modes - 1 else None
             )
             rec_error2 = unnorml_rec_error2 / norm_tensor2
             rec_errors2.append(rec_error2)
