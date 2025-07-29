@@ -105,7 +105,8 @@ def tensor_factors_plot(interaction_tensor, order_labels=None, order_sorting=Non
 
 
 def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, order_sorting=None, reorder_elements=None,
-                                      metadata=None, sample_col='Element', group_col='Category', meta_cmaps=None, fontsize=20,
+                                      metadata=None, sample_col='Element', group_col='Category', meta_cmaps=None,
+                                      fontsize=20,
                                       plot_legend=True, filename=None):
     '''Plots the loadings for each element in each dimension of the tensor, generate by
     a tensor factorization.
@@ -184,7 +185,8 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, ord
     '''
     # Prepare inputs for matplotlib
     if rank is not None:
-        assert list(factors.values())[0].shape[1] == rank, "Rank must match the number of columns in dataframes in `factors`"
+        assert list(factors.values())[0].shape[
+                   1] == rank, "Rank must match the number of columns in dataframes in `factors`"
     else:
         rank = list(factors.values())[0].shape[1]
 
@@ -192,10 +194,15 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, ord
     if order_sorting is not None:
         factors, order_labels = _apply_order_sorting(factors, order_sorting, order_labels)
 
+        # Also reorder metadata to match the new dimension order
+        if metadata is not None:
+            metadata = _reorder_metadata(metadata, order_sorting, list(factors.keys()))
+
     dim = len(factors)
 
     if order_labels is not None:
-        assert dim == len(order_labels), "The length of factor_labels must match the order of the tensor (order {})".format(dim)
+        assert dim == len(
+            order_labels), "The length of factor_labels must match the order of the tensor (order {})".format(dim)
     else:
         order_labels = list(factors.keys())
 
@@ -214,13 +221,18 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, ord
         if meta_cmaps is None:
             meta_cmaps = ['gist_rainbow'] * len(metadata)
         assert len(metadata) == len(meta_cmaps), "Provide a cmap for each order"
-        assert len(metadata) == len(factors), "Provide a metadata for each order. If there is no metadata for any, replace with None"
-        meta_colors = [get_colors_from_labels(m[group_col], cmap=cmap) if ((m is not None) & (cmap is not None)) else None for m, cmap in zip(meta_og, meta_cmaps)]
+        assert len(metadata) == len(
+            factors), "Provide a metadata for each order. If there is no metadata for any, replace with None"
+        meta_colors = [
+            get_colors_from_labels(m[group_col], cmap=cmap) if ((m is not None) & (cmap is not None)) else None for
+            m, cmap in zip(meta_og, meta_cmaps)]
         element_colors = [map_colors_to_metadata(metadata=m,
                                                  colors=mc,
                                                  sample_col=sample_col,
                                                  group_col=group_col,
-                                                 cmap=cmap).to_dict() if ((m is not None) & (cmap is not None)) else None for m, cmap, mc in zip(metadata, meta_cmaps, meta_colors)]
+                                                 cmap=cmap).to_dict() if (
+                    (m is not None) & (cmap is not None)) else None for m, cmap, mc in
+                          zip(metadata, meta_cmaps, meta_colors)]
 
     # Make the plot
     fig, axes = plt.subplots(nrows=rank,
@@ -373,6 +385,43 @@ def _apply_order_sorting(factors, order_sorting, order_labels):
         reordered_labels = list(reordered_factors.keys())
 
     return reordered_factors, reordered_labels
+
+
+def _reorder_metadata(metadata, order_sorting, original_factor_keys):
+    """
+    Reorder metadata list to match the new dimension order
+
+    Parameters
+    ----------
+    metadata : list
+        Original metadata list
+    order_sorting : list
+        List of indices or dimension names used for reordering
+    original_factor_keys : list
+        Original factor keys (dimension names) before reordering
+
+    Returns
+    -------
+    reordered_metadata : list
+        Reordered metadata list
+    """
+    if metadata is None:
+        return None
+
+    # Determine if order_sorting contains indices or names
+    if all(isinstance(x, int) for x in order_sorting):
+        # order_sorting contains indices
+        reordered_metadata = [metadata[i] for i in order_sorting]
+    elif all(isinstance(x, str) for x in order_sorting):
+        # order_sorting contains dimension names
+        # Map dimension names to original indices
+        key_to_idx = {key: i for i, key in enumerate(original_factor_keys)}
+        indices = [key_to_idx[key] for key in order_sorting]
+        reordered_metadata = [metadata[i] for i in indices]
+    else:
+        raise ValueError("order_sorting must contain all integers (indices) or all strings (dimension names)")
+
+    return reordered_metadata
 
 
 def reorder_dimension_elements(factors, reorder_elements, metadata=None):
