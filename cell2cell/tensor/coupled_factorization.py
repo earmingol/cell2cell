@@ -180,8 +180,22 @@ def coupled_non_negative_parafac(
         if verbose > 1:
             print(f"Starting iteration {iteration + 1}")
 
-        # Update each mode
-        for mode in range(n_modes):
+        # Create update order: non-shared mode first, then shared modes in reverse order
+        update_order = []
+
+        # First add the non-shared mode
+        update_order.append(non_shared_mode)
+
+        # Then add all shared modes in reverse order (from highest to lowest)
+        for mode in reversed(range(n_modes)):
+            if mode != non_shared_mode:
+                update_order.append(mode)
+
+        if verbose > 1:
+            print(f"Update order: {update_order} (non-shared: {non_shared_mode})")
+
+        # Update each mode in the strategic order
+        for mode in update_order:
             if verbose > 1:
                 print(f"Mode {mode} of {n_modes}")
 
@@ -222,7 +236,6 @@ def coupled_non_negative_parafac(
 
             else:
                 # Update shared modes using combined information from both tensors
-
                 # Compute accumulation matrix for tensor1
                 accum1 = tl.ones((rank, rank), **tl.context(tensor1))
                 for i in range(n_modes):
@@ -256,9 +269,9 @@ def coupled_non_negative_parafac(
                 mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights2, factors2), mode)
 
                 # Combine updates from both tensors
-                numerator = tl.clip(mttkrp1 + mttkrp2, a_min=epsilon, a_max=None)
+                numerator = tl.clip((mttkrp1 + mttkrp2)/2., a_min=epsilon, a_max=None)
                 denominator = tl.clip(
-                    tl.dot(factors1[mode], accum1) + tl.dot(factors2[mode], accum2),
+                    (tl.dot(factors1[mode], accum1) + tl.dot(factors2[mode], accum2))/2.,
                     a_min=epsilon, a_max=None
                 )
 
