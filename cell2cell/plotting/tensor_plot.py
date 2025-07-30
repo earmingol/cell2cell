@@ -192,11 +192,14 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, ord
 
     # Apply order_sorting if provided
     if order_sorting is not None:
+        # Store original factor keys before reordering
+        original_factor_keys = list(factors.keys())
+
         factors, order_labels = _apply_order_sorting(factors, order_sorting, order_labels)
 
         # Also reorder metadata to match the new dimension order
         if metadata is not None:
-            metadata = _reorder_metadata(metadata, order_sorting, list(factors.keys()))
+            metadata = _reorder_metadata(metadata, order_sorting, original_factor_keys)
 
     dim = len(factors)
 
@@ -231,7 +234,7 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, ord
                                                  sample_col=sample_col,
                                                  group_col=group_col,
                                                  cmap=cmap).to_dict() if (
-                    (m is not None) & (cmap is not None)) else None for m, cmap, mc in
+                (m is not None) & (cmap is not None)) else None for m, cmap, mc in
                           zip(metadata, meta_cmaps, meta_colors)]
 
     # Make the plot
