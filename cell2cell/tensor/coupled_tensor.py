@@ -37,7 +37,7 @@ class CoupledInteractionTensor():
 
     mode_mapping : dict or int/list (for backward compatibility)
         Mode mapping specification. Can be:
-        - dict: {'shared': [(t1_mode, t2_mode), ...], 'tensor1_only': [...], 'tensor2_only': [...]}
+        - dict: {'shared': [(t1_mode, t2_mode), ...]}     # Pairs of shared modes
         - int/list: non_shared_modes (for backward compatibility with same-dimension tensors)
 
     tensor1_name : str, default='Tensor1'

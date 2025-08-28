@@ -216,16 +216,16 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
         a boolean array of the same shape as the original tensor and should be 0
         where the values are missing and 1 everywhere else.
 
+    n_iter_max : int, default=100
+        Maximum number of iteration to reach an optimal solution with the
+        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
+        obtained from the decomposition, but it takes longer to run.
+
     tol : float, default=10e-7
         Tolerance for the decomposition algorithm to stop when the variation in
         the reconstruction error is less than the tolerance. Lower `tol` helps
         to improve the solution obtained from the decomposition, but it takes
         longer to run.
-
-    n_iter_max : int, default=100
-        Maximum number of iteration to reach an optimal solution with the
-        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
-        obtained from the decomposition, but it takes longer to run.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -284,7 +284,7 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
     upper_rank : int, default=50
         Upper bound of ranks to explore with the elbow analysis.
 
-    runs : int, default=100
+    runs : int, default=10
         Number of tensor factorization performed for a given rank. Each factorization
         varies in the seed of initialization.
 

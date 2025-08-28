@@ -13,7 +13,24 @@ from tensorly.cp_tensor import (
 
 
 def _process_mode_mapping(tensor1, tensor2, mode_mapping):
-    """Process mode mapping input, handling backward compatibility"""
+    '''
+    Processes mode mapping input, handling backward compatibility
+
+    Parameters
+    ----------
+    tensor1, tensor2 : tensor objects or raw tensors
+        Can be either tensorly tensors or objects with .tensor attribute
+
+    mode_mapping : dict or int/list
+        Mode mapping specification. Can be:
+        - dict: {'shared': [(t1_mode, t2_mode), ...]}     # Pairs of shared modes
+        - int/list: non_shared_modes (for backward compatibility with same-dimension tensors)
+
+    Returns
+    -------
+    mode_mapping : dict
+        Processed mode mapping in dict format
+    '''
 
     if isinstance(mode_mapping, dict):
         return mode_mapping
@@ -49,13 +66,23 @@ def _process_mode_mapping(tensor1, tensor2, mode_mapping):
 
 
 def _validate_tensors(tensor1, tensor2, mode_mapping):
-    """Validate that the two tensors are compatible for coupled factorization
+    '''
+    Validates that the two tensors are compatible for coupled factorization
 
     Parameters
     ----------
     tensor1, tensor2 : tensor objects or raw tensors
         Can be either tensorly tensors or objects with .tensor attribute
-    """
+
+    mode_mapping : dict
+        Mode mapping specification in dict format: {'shared': [(t1_mode, t2_mode), ...]}
+
+    Raises
+    ------
+    ValueError
+        If tensors are incompatible based on mode mapping
+
+    '''
     # Handle both raw tensors and tensor objects
     t1 = tensor1.tensor if hasattr(tensor1, 'tensor') else tensor1
     t2 = tensor2.tensor if hasattr(tensor2, 'tensor') else tensor2
@@ -126,12 +153,10 @@ def coupled_non_negative_parafac(
     rank : int
         Number of components for the factorization.
 
-    mode_mapping : dict
-        Dictionary specifying shared mode relationships:
-        {
-            'shared': [(t1_mode, t2_mode), ...]     # Pairs of shared modes
-        }
-        Tensor-specific modes are automatically derived.
+    mode_mapping : dict or int/list (for backward compatibility)
+        Mode mapping specification. Can be:
+        - dict: {'shared': [(t1_mode, t2_mode), ...]}     # Pairs of shared modes
+        - int/list: non_shared_modes (for backward compatibility with same-dimension tensors)
 
     mask1 : tensorly.tensor, default=None
         Mask for the first tensor.
@@ -495,7 +520,75 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
                                 init='svd', svd='truncated_svd', random_state=None, mask1=None, mask2=None,
                                 n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True,
                                 disable_pbar=False, **kwargs):
-    '''Performs a coupled elbow analysis with mode mapping'''
+    '''
+    Performs a coupled elbow analysis with mode mapping
+
+    Parameters
+    ----------
+    tensor1 : tensorly.tensor
+        First tensor to factorize.
+
+    tensor2 : tensorly.tensor
+        Second tensor to factorize.
+
+    mode_mapping : dict or int/list (for backward compatibility)
+        Mode mapping specification. Can be:
+        - dict: {'shared': [(t1_mode, t2_mode), ...]}     # Pairs of shared modes
+        - int/list: non_shared_modes (for backward compatibility with same-dimension tensors)
+
+    upper_rank : int, default=50
+        Maximum rank to evaluate.
+
+    init : str, default='svd'
+        Initialization method for computing the Tensor Factorization.
+        {‘svd’, ‘random’}
+
+    svd : str, default='truncated_svd'
+        Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    mask1 : tensorly.tensor, default=None
+        Mask for the first tensor. Helps avoiding missing values during a
+        tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor and should be 0 where the values are missing and 1 everywhere else.
+
+    mask2 : tensorly.tensor, default=None
+        Mask for the second tensor. Helps avoiding missing values during a
+        tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor and should be 0 where the values are missing and 1 everywhere else.
+
+    n_iter_max : int, default=100
+        Maximum number of iteration to reach an optimal solution with the
+        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
+        obtained from the decomposition, but it takes longer to run.
+
+    tol : float, default=10e-7
+        Tolerance for the decomposition algorithm to stop when the variation in
+        the reconstruction error is less than the tolerance. Lower `tol` helps
+        to improve the solution obtained from the decomposition, but it takes
+        longer to run.
+
+    balance_errors : boolean, default=True
+        Whether to balance the errors from each tensor based on their sizes
+        during the elbow analysis. This helps to avoid bias towards larger tensors.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    disable_pbar : boolean, default=False
+        Whether displaying a tqdm progress bar or not.
+
+    **kwargs : dict
+        Extra arguments for the tensor factorization according to inputs in tensorly.
+
+    Returns
+    -------
+    loss : list
+        List of  tuples with (x, y) coordinates for the elbow analysis. X values are
+        the different ranks and Y values are the errors of each decomposition.
+    '''
 
     if kwargs is None:
         kwargs = {'return_errors': True}
@@ -564,7 +657,81 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
                                           tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           metric='error', random_state=None, mask1=None, mask2=None,
                                           n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True, **kwargs):
-    '''Performs a coupled elbow analysis with multiple runs and mode mapping'''
+    '''
+    Performs a coupled elbow analysis with multiple runs and mode mapping
+
+    Performs a coupled elbow analysis with mode mapping
+
+    Parameters
+    ----------
+    tensor1 : tensorly.tensor
+        First tensor to factorize.
+
+    tensor2 : tensorly.tensor
+        Second tensor to factorize.
+
+    mode_mapping : dict or int/list (for backward compatibility)
+        Mode mapping specification. Can be:
+        - dict: {'shared': [(t1_mode, t2_mode), ...]}     # Pairs of shared modes
+        - int/list: non_shared_modes (for backward compatibility with same-dimension tensors)
+
+    upper_rank : int, default=50
+        Maximum rank to evaluate.
+
+    runs : int, default=10
+        Number of tensor factorization performed for a given rank. Each factorization
+        varies in the seed of initialization.
+
+    init : str, default='svd'
+        Initialization method for computing the Tensor Factorization.
+        {‘svd’, ‘random’}
+
+    svd : str, default='truncated_svd'
+        Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
+
+    random_state : int, default=None
+        Seed for randomization.
+
+    mask1 : tensorly.tensor, default=None
+        Mask for the first tensor. Helps avoiding missing values during a
+        tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor and should be 0 where the values are missing and 1 everywhere else.
+
+    mask2 : tensorly.tensor, default=None
+        Mask for the second tensor. Helps avoiding missing values during a
+        tensor factorization. A mask should be a boolean array of the same
+        shape as the original tensor and should be 0 where the values are missing and 1 everywhere else.
+
+    n_iter_max : int, default=100
+        Maximum number of iteration to reach an optimal solution with the
+        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
+        obtained from the decomposition, but it takes longer to run.
+
+    tol : float, default=10e-7
+        Tolerance for the decomposition algorithm to stop when the variation in
+        the reconstruction error is less than the tolerance. Lower `tol` helps
+        to improve the solution obtained from the decomposition, but it takes
+        longer to run.
+
+    balance_errors : boolean, default=True
+        Whether to balance the errors from each tensor based on their sizes
+        during the elbow analysis. This helps to avoid bias towards larger tensors.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    disable_pbar : boolean, default=False
+        Whether displaying a tqdm progress bar or not.
+
+    **kwargs : dict
+        Extra arguments for the tensor factorization according to inputs in tensorly.
+
+    Returns
+    -------
+    loss : list
+        List of  tuples with (x, y) coordinates for the elbow analysis. X values are
+        the different ranks and Y values are the errors of each decomposition.
+    '''
 
     assert isinstance(runs, int), "runs must be an integer"
 
