@@ -12,11 +12,92 @@ from tensorly.cp_tensor import (
 )
 
 
+def _process_mode_mapping(tensor1, tensor2, mode_mapping):
+    """Process mode mapping input, handling backward compatibility"""
+
+    if isinstance(mode_mapping, dict):
+        return mode_mapping
+
+    # Handle backward compatibility with non_shared_modes
+    ndim1 = tl.ndim(tensor1)
+    ndim2 = tl.ndim(tensor2)
+
+    if ndim1 != ndim2:
+        raise ValueError(
+            "When tensors have different dimensions, mode_mapping must be a dict. "
+            "For backward compatibility with non_shared_modes, both tensors must have same dimensions."
+        )
+
+    # Convert non_shared_modes format to mode_mapping format
+    if isinstance(mode_mapping, int):
+        non_shared_modes = [mode_mapping]
+    elif isinstance(mode_mapping, (list, tuple)):
+        non_shared_modes = list(mode_mapping)
+    else:
+        raise ValueError("mode_mapping must be dict, int, list, or tuple")
+
+    # Remove duplicates with warning
+    if len(set(non_shared_modes)) != len(non_shared_modes):
+        original = non_shared_modes.copy()
+        non_shared_modes = list(set(non_shared_modes))
+        print(
+            f"Warning: Duplicate modes found in non_shared_modes {original}. Using deduplicated version: {non_shared_modes}")
+
+    # Create mode_mapping dict - only specify shared pairs
+    shared_pairs = [(i, i) for i in range(ndim1) if i not in non_shared_modes]
+    return {'shared': shared_pairs}
+
+
+def _validate_tensors(tensor1, tensor2, mode_mapping):
+    """Validate that the two tensors are compatible for coupled factorization
+
+    Parameters
+    ----------
+    tensor1, tensor2 : tensor objects or raw tensors
+        Can be either tensorly tensors or objects with .tensor attribute
+    """
+    # Handle both raw tensors and tensor objects
+    t1 = tensor1.tensor if hasattr(tensor1, 'tensor') else tensor1
+    t2 = tensor2.tensor if hasattr(tensor2, 'tensor') else tensor2
+
+    ndim1 = tl.ndim(t1)
+    ndim2 = tl.ndim(t2)
+
+    # Parse mode mapping
+    shared_pairs = mode_mapping.get('shared', [])
+
+    # Automatically derive tensor-specific modes
+    shared_t1_modes = set([pair[0] for pair in shared_pairs])
+    shared_t2_modes = set([pair[1] for pair in shared_pairs])
+
+    # Validate mode coverage
+    if not shared_t1_modes.issubset(set(range(ndim1))):
+        raise ValueError(f"Shared modes contain invalid tensor1 modes: {sorted(shared_t1_modes - set(range(ndim1)))}")
+    if not shared_t2_modes.issubset(set(range(ndim2))):
+        raise ValueError(f"Shared modes contain invalid tensor2 modes: {sorted(shared_t2_modes - set(range(ndim2)))}")
+
+    if len(shared_pairs) == 0:
+        raise ValueError("At least one mode must be shared between tensors")
+
+    # Check shared dimensions match in size
+    for t1_mode, t2_mode in shared_pairs:
+        if t1.shape[t1_mode] != t2.shape[t2_mode]:
+            raise ValueError(f"Shared modes must have same size: tensor1 mode {t1_mode} "
+                             f"({t1.shape[t1_mode]}) vs tensor2 mode {t2_mode} ({t2.shape[t2_mode]})")
+
+    # Check element names match for shared dimensions (only for tensor objects)
+    if hasattr(tensor1, 'order_names') and hasattr(tensor2, 'order_names'):
+        for t1_mode, t2_mode in shared_pairs:
+            if tensor1.order_names[t1_mode] != tensor2.order_names[t2_mode]:
+                raise ValueError(
+                    f"Element names must match for shared dimensions: tensor1 mode {t1_mode} vs tensor2 mode {t2_mode}")
+
+
 def coupled_non_negative_parafac(
         tensor1,
         tensor2,
         rank,
-        non_shared_mode,
+        mode_mapping,
         mask1=None,
         mask2=None,
         n_iter_max=100,
@@ -32,7 +113,7 @@ def coupled_non_negative_parafac(
         separate_weights=True,
 ):
     '''
-    Performs coupled non-negative CP decomposition on two tensors.
+    Performs coupled non-negative CP decomposition on two tensors with flexible mode mapping.
 
     Parameters
     ----------
@@ -45,8 +126,12 @@ def coupled_non_negative_parafac(
     rank : int
         Number of components for the factorization.
 
-    non_shared_mode : int
-        The mode (dimension) that differs between the two tensors.
+    mode_mapping : dict
+        Dictionary specifying shared mode relationships:
+        {
+            'shared': [(t1_mode, t2_mode), ...]     # Pairs of shared modes
+        }
+        Tensor-specific modes are automatically derived.
 
     mask1 : tensorly.tensor, default=None
         Mask for the first tensor.
@@ -86,8 +171,6 @@ def coupled_non_negative_parafac(
 
     separate_weights : bool, default=True
         Whether to use separate weights for each tensor during optimization.
-        If True, each tensor maintains its own weights vector.
-        If False, uses shared weights (averaged from both tensors).
 
     Returns
     -------
@@ -102,44 +185,63 @@ def coupled_non_negative_parafac(
 
     Examples
     --------
-    >>> # Two tensors sharing dimensions 0,1,2 but different in dimension 3
+    >>> # Two tensors with different dimensions but shared modes 0,1
     >>> tensor1 = tl.random.random((10, 20, 30, 40))
-    >>> tensor2 = tl.random.random((10, 20, 30, 50))
+    >>> tensor2 = tl.random.random((10, 20, 50))
+    >>> mode_mapping = {'shared': [(0, 0), (1, 1)]}
     >>> cp1, cp2 = coupled_non_negative_parafac(tensor1, tensor2, rank=5,
-    ...                                        non_shared_mode=3, separate_weights=True)
+    ...                                         mode_mapping=mode_mapping)
     '''
 
     epsilon = tl.eps(tensor1.dtype)
 
     # Validate inputs
-    if tl.ndim(tensor1) != tl.ndim(tensor2):
-        raise ValueError("Both tensors must have the same number of dimensions")
+    ndim1 = tl.ndim(tensor1)
+    ndim2 = tl.ndim(tensor2)
 
-    n_modes = tl.ndim(tensor1)
-    if non_shared_mode >= n_modes or non_shared_mode < 0:
-        raise ValueError(f"non_shared_mode must be between 0 and {n_modes - 1}")
+    # Parse and validate mode mapping
+    shared_pairs = mode_mapping.get('shared', [])
 
-    # Check that all other dimensions match
-    for mode in range(n_modes):
-        if mode != non_shared_mode and tensor1.shape[mode] != tensor2.shape[mode]:
-            raise ValueError(f"Tensors must have the same size in mode {mode}")
+    # Automatically derive tensor-specific modes
+    shared_t1_modes = set([pair[0] for pair in shared_pairs])
+    shared_t2_modes = set([pair[1] for pair in shared_pairs])
+
+    tensor1_only = [i for i in range(ndim1) if i not in shared_t1_modes]
+    tensor2_only = [i for i in range(ndim2) if i not in shared_t2_modes]
+
+    # Validate mode mapping completeness
+    all_t1_modes = shared_t1_modes | set(tensor1_only)
+    all_t2_modes = shared_t2_modes | set(tensor2_only)
+
+    if all_t1_modes != set(range(ndim1)):
+        raise ValueError(f"Shared modes must be valid tensor1 modes, got tensor1 modes {sorted(shared_t1_modes)}")
+    if all_t2_modes != set(range(ndim2)):
+        raise ValueError(f"Shared modes must be valid tensor2 modes, got tensor2 modes {sorted(shared_t2_modes)}")
+
+    if len(shared_pairs) == 0:
+        raise ValueError("At least one mode must be shared between tensors")
+
+    # Check shared dimensions match
+    for t1_mode, t2_mode in shared_pairs:
+        if tensor1.shape[t1_mode] != tensor2.shape[t2_mode]:
+            raise ValueError(f"Shared modes must have same size: tensor1 mode {t1_mode} "
+                             f"({tensor1.shape[t1_mode]}) vs tensor2 mode {t2_mode} ({tensor2.shape[t2_mode]})")
 
     # Validate rank
     rank = validate_cp_rank(tl.shape(tensor1), rank=rank)
 
-    # Calculate sizes of non-shared dimensions for error balancing
-    N1 = tensor1.shape[non_shared_mode]
-    N2 = tensor2.shape[non_shared_mode]
-
+    # Calculate balancing weights based on tensor-specific dimensions
     if balance_errors:
-        # Calculate weights to balance the contribution of each tensor
-        total_N = N1 + N2
-        weight1 = total_N / N1
-        weight2 = total_N / N2
+        nonshared_size1 = np.prod([tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
+        nonshared_size2 = np.prod([tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
+        total_nonshared = nonshared_size1 + nonshared_size2
+        if total_nonshared > 0:
+            weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
+            weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
+        else:
+            weight1 = weight2 = 1.0
     else:
-        # Equal weights if not balancing
-        weight1 = 1.0
-        weight2 = 1.0
+        weight1 = weight2 = 1.0
 
     # Initialize factors for both tensors
     weights1, factors1 = initialize_cp(
@@ -153,21 +255,18 @@ def coupled_non_negative_parafac(
     )
 
     if separate_weights:
-        # Keep separate weights for each tensor
         if verbose > 1:
             print("Using separate weights for each tensor")
     else:
-        # Use shared weights (original behavior)
         if verbose > 1:
             print("Using shared weights (averaged from both tensors)")
         weights_shared = (weights1 + weights2) / 2
         weights1 = weights_shared
         weights2 = tl.copy(weights_shared)
 
-    # Copy shared factors from tensor1 initialization for non-shared modes
-    for mode in range(n_modes):
-        if mode != non_shared_mode:
-            factors2[mode] = tl.copy(factors1[mode])
+    # Initialize shared factors from tensor1
+    for t1_mode, t2_mode in shared_pairs:
+        factors2[t2_mode] = tl.copy(factors1[t1_mode])
 
     # Store norms for convergence checking
     norm_tensor1 = tl.norm(tensor1, 2)
@@ -180,138 +279,134 @@ def coupled_non_negative_parafac(
         if verbose > 1:
             print(f"Starting iteration {iteration + 1}")
 
-        # Create update order: non-shared mode first, then shared modes in reverse order
+        # Create strategic update order: tensor-specific modes first, then shared modes
         update_order = []
 
-        # First add the non-shared mode
-        update_order.append(non_shared_mode)
+        # First update tensor-specific modes
+        for mode in tensor1_only:
+            update_order.append(('tensor1_only', mode, None))
+        for mode in tensor2_only:
+            update_order.append(('tensor2_only', None, mode))
 
-        # Then add all shared modes in reverse order (from highest to lowest)
-        for mode in reversed(range(n_modes)):
-            if mode != non_shared_mode:
-                update_order.append(mode)
+        # Then update shared modes (in reverse order for stability)
+        for t1_mode, t2_mode in reversed(shared_pairs):
+            update_order.append(('shared', t1_mode, t2_mode))
 
         if verbose > 1:
-            print(f"Update order: {update_order} (non-shared: {non_shared_mode})")
+            print(f"Update order: {[(item[0], item[1] if item[1] is not None else item[2]) for item in update_order]}")
 
-        # Update each mode in the strategic order
-        for mode in update_order:
+        # Update each mode according to the strategy
+        for mode_type, t1_mode, t2_mode in update_order:
             if verbose > 1:
-                print(f"Mode {mode} of {n_modes}")
+                if mode_type == 'shared':
+                    print(f"Shared modes: tensor1[{t1_mode}] <-> tensor2[{t2_mode}]")
+                elif mode_type == 'tensor1_only':
+                    print(f"Tensor1-only mode: {t1_mode}")
+                else:
+                    print(f"Tensor2-only mode: {t2_mode}")
 
-            if mode == non_shared_mode:
-                # Update non-shared mode separately for each tensor
-
-                # Update for tensor1
+            if mode_type == 'tensor1_only':
+                # Update tensor1-specific mode
+                mode = t1_mode
                 accum1 = tl.ones((rank, rank), **tl.context(tensor1))
-                for i in range(n_modes):
+                for i in range(ndim1):
                     if i != mode:
                         accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
                 accum1 = tl.reshape(weights1, (-1, 1)) * accum1 * tl.reshape(weights1, (1, -1))
+
                 if mask1 is not None:
-                    tensor1 = tensor1 * mask1 + tl.cp_to_tensor(
-                        (weights1, factors1), mask=1 - mask1
-                    )
+                    tensor1 = tensor1 * mask1 + tl.cp_to_tensor((weights1, factors1), mask=1 - mask1)
 
                 mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights1, factors1), mode)
                 numerator1 = tl.clip(mttkrp1, a_min=epsilon, a_max=None)
                 denominator1 = tl.clip(tl.dot(factors1[mode], accum1), a_min=epsilon, a_max=None)
                 factors1[mode] = factors1[mode] * numerator1 / denominator1
 
-                # Update for tensor2
+            elif mode_type == 'tensor2_only':
+                # Update tensor2-specific mode
+                mode = t2_mode
                 accum2 = tl.ones((rank, rank), **tl.context(tensor2))
-                for i in range(n_modes):
+                for i in range(ndim2):
                     if i != mode:
                         accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
                 accum2 = tl.reshape(weights2, (-1, 1)) * accum2 * tl.reshape(weights2, (1, -1))
+
                 if mask2 is not None:
-                    tensor2 = tensor2 * mask2 + tl.cp_to_tensor(
-                        (weights2, factors2), mask=1 - mask2
-                    )
+                    tensor2 = tensor2 * mask2 + tl.cp_to_tensor((weights2, factors2), mask=1 - mask2)
 
                 mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights2, factors2), mode)
                 numerator2 = tl.clip(mttkrp2, a_min=epsilon, a_max=None)
                 denominator2 = tl.clip(tl.dot(factors2[mode], accum2), a_min=epsilon, a_max=None)
                 factors2[mode] = factors2[mode] * numerator2 / denominator2
 
-            else:
+            else:  # shared mode
                 # Update shared modes using combined information from both tensors
-                # Compute accumulation matrix for tensor1
-                accum1 = tl.ones((rank, rank), **tl.context(tensor1))
-                for i in range(n_modes):
-                    if i != mode:
-                        if i == non_shared_mode:
-                            accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
-                        else:
-                            accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
-                accum1 = tl.reshape(weights1, (-1, 1)) * accum1 * tl.reshape(weights1, (1, -1))
-                if mask1 is not None:
-                    tensor1 = tensor1 * mask1 + tl.cp_to_tensor(
-                        (weights1, factors1), mask=1 - mask1
-                    )
 
-                # Compute accumulation matrix for tensor2
+                # Compute accumulation for tensor1
+                accum1 = tl.ones((rank, rank), **tl.context(tensor1))
+                for i in range(ndim1):
+                    if i != t1_mode:
+                        accum1 *= tl.dot(tl.transpose(factors1[i]), factors1[i])
+                accum1 = tl.reshape(weights1, (-1, 1)) * accum1 * tl.reshape(weights1, (1, -1))
+
+                if mask1 is not None:
+                    tensor1 = tensor1 * mask1 + tl.cp_to_tensor((weights1, factors1), mask=1 - mask1)
+
+                # Compute accumulation for tensor2
                 accum2 = tl.ones((rank, rank), **tl.context(tensor2))
-                for i in range(n_modes):
-                    if i != mode:
-                        if i == non_shared_mode:
-                            accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
-                        else:
-                            accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
+                for i in range(ndim2):
+                    if i != t2_mode:
+                        accum2 *= tl.dot(tl.transpose(factors2[i]), factors2[i])
                 accum2 = tl.reshape(weights2, (-1, 1)) * accum2 * tl.reshape(weights2, (1, -1))
+
                 if mask2 is not None:
-                    tensor2 = tensor2 * mask2 + tl.cp_to_tensor(
-                        (weights2, factors2), mask=1 - mask2
-                    )
+                    tensor2 = tensor2 * mask2 + tl.cp_to_tensor((weights2, factors2), mask=1 - mask2)
 
                 # Compute MTTKRP for both tensors
-                mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights1, factors1), mode)
-                mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights2, factors2), mode)
+                mttkrp1 = unfolding_dot_khatri_rao(tensor1, (weights1, factors1), t1_mode)
+                mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights2, factors2), t2_mode)
 
                 # Combine updates from both tensors
-                numerator = tl.clip((mttkrp1 + mttkrp2)/2., a_min=epsilon, a_max=None)
+                numerator = tl.clip((mttkrp1 + mttkrp2) / 2., a_min=epsilon, a_max=None)
                 denominator = tl.clip(
-                    (tl.dot(factors1[mode], accum1) + tl.dot(factors2[mode], accum2))/2.,
+                    (tl.dot(factors1[t1_mode], accum1) + tl.dot(factors2[t2_mode], accum2)) / 2.,
                     a_min=epsilon, a_max=None
                 )
 
                 # Update shared factor
-                new_factor = factors1[mode] * numerator / denominator
-                factors1[mode] = new_factor
-                factors2[mode] = tl.copy(new_factor)
+                new_factor = factors1[t1_mode] * numerator / denominator
+                factors1[t1_mode] = new_factor
+                factors2[t2_mode] = tl.copy(new_factor)
 
-            # Normalize factors and weights separately for each tensor if requested
-            if normalize_factors and mode != n_modes - 1:
-                if separate_weights:
-                    weights1, factors1 = cp_normalize((weights1, factors1))
-                    weights2, factors2 = cp_normalize((weights2, factors2))
-                else:
-                    # For shared weights, normalize both and then average weights again
-                    weights1, factors1 = cp_normalize((weights1, factors1))
-                    weights2, factors2 = cp_normalize((weights2, factors2))
-                    weights_shared = (weights1 + weights2) / 2
-                    weights1 = weights_shared
-                    weights2 = tl.copy(weights_shared)
+        # Normalize factors if requested
+        if normalize_factors:
+            if separate_weights:
+                weights1, factors1 = cp_normalize((weights1, factors1))
+                weights2, factors2 = cp_normalize((weights2, factors2))
+            else:
+                weights1, factors1 = cp_normalize((weights1, factors1))
+                weights2, factors2 = cp_normalize((weights2, factors2))
+                weights_shared = (weights1 + weights2) / 2
+                weights1 = weights_shared
+                weights2 = tl.copy(weights_shared)
 
         # Check convergence
         if tol:
-            # Calculate reconstruction errors for both tensors
             unnorml_rec_error1, _, _ = error_calc(
                 tensor1, norm_tensor1, weights1, factors1,
-                sparsity=None, mask=None, mttkrp=mttkrp1 if mode == n_modes - 1 else None
+                sparsity=None, mask=None
             )
             rec_error1 = unnorml_rec_error1 / norm_tensor1
             rec_errors1.append(rec_error1)
 
             unnorml_rec_error2, _, _ = error_calc(
                 tensor2, norm_tensor2, weights2, factors2,
-                sparsity=None, mask=None, mttkrp=mttkrp2 if mode == n_modes - 1 else None
+                sparsity=None, mask=None
             )
             rec_error2 = unnorml_rec_error2 / norm_tensor2
             rec_errors2.append(rec_error2)
 
             # Use combined error for convergence check
-            # Apply balancing weights if requested
             combined_error = (weight1 * rec_error1 + weight2 * rec_error2) / (weight1 + weight2)
 
             if iteration >= 1:
@@ -319,14 +414,9 @@ def coupled_non_negative_parafac(
                 error_decrease = prev_combined - combined_error
 
                 if verbose:
-                    if separate_weights:
-                        print(f"Iteration {iteration}: rec_error1={rec_error1:.6f}, "
-                              f"rec_error2={rec_error2:.6f}, combined={combined_error:.6f}, "
-                              f"decrease={error_decrease:.6e} [separate weights]")
-                    else:
-                        print(f"Iteration {iteration}: rec_error1={rec_error1:.6f}, "
-                              f"rec_error2={rec_error2:.6f}, combined={combined_error:.6f}, "
-                              f"decrease={error_decrease:.6e} [shared weights]")
+                    print(f"Iteration {iteration}: rec_error1={rec_error1:.6f}, "
+                          f"rec_error2={rec_error2:.6f}, combined={combined_error:.6f}, "
+                          f"decrease={error_decrease:.6e}")
                     if balance_errors and verbose > 1:
                         print(f"  Balance weights: w1={weight1:.3f}, w2={weight2:.3f}")
 
@@ -367,85 +457,23 @@ def coupled_non_negative_parafac(
         return cp_tensor1, cp_tensor2
 
 
-def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, non_shared_mode, mask1=None, mask2=None,
+def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, mode_mapping, mask1=None, mask2=None,
                                           tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           random_state=None, n_iter_max=100, tol=10e-7, verbose=False,
                                           balance_errors=True, **kwargs):
-    '''Performs the Coupled Tensor Factorization
+    '''Performs the Coupled Tensor Factorization with flexible mode mapping'''
 
-    Parameters
-    ----------
-    tensor1 : ndarray list
-        First tensor to factorize.
-
-    tensor2 : ndarray list
-        Second tensor to factorize.
-
-    rank : int
-        Rank of the Tensor Factorization (number of factors).
-
-    non_shared_mode : int
-        The mode (dimension) that differs between the two tensors.
-
-    mask1 : ndarray list, default=None
-        Mask for the first tensor.
-
-    mask2 : ndarray list, default=None
-        Mask for the second tensor.
-
-    tf_type : str, default='coupled_non_negative_cp'
-        Type of Tensor Factorization. Currently only supports 'coupled_non_negative_cp'.
-
-    init : str, default='svd'
-        Initialization method. Options are {'svd', 'random'}.
-
-    svd : str, default='truncated_svd'
-        Function to use to compute the SVD.
-
-    random_state : int, default=None
-        Seed for randomization.
-
-    n_iter_max : int, default=100
-        Maximum number of iterations.
-
-    tol : float, default=10e-7
-        Convergence tolerance.
-
-    verbose : boolean, default=False
-        Whether printing or not steps of the analysis.
-
-    balance_errors : bool, default=True
-        Whether to balance errors based on tensor sizes.
-
-    **kwargs : dict
-        Extra arguments for the tensor factorization.
-
-    Returns
-    -------
-    cp_tf1 : CPTensor
-        CP decomposition result for tensor1.
-
-    cp_tf2 : CPTensor
-        CP decomposition result for tensor2.
-
-    errors : tuple, optional
-        Reconstruction errors for both tensors, if `return_errors` is True.
-    '''
-    # For returning errors
-    return_errors = False
-    if kwargs is not None:
-        if 'return_errors' not in kwargs.keys():
-            kwargs['return_errors'] = return_errors
-    else:
-        kwargs = {'return_errors': return_errors}
-
+    if kwargs is None:
+        kwargs = {'return_errors': False}
+    if 'return_errors' not in kwargs.keys():
+        kwargs['return_errors'] = False
 
     if tf_type == 'coupled_non_negative_cp':
         result = coupled_non_negative_parafac(
             tensor1=tensor1,
             tensor2=tensor2,
             rank=rank,
-            non_shared_mode=non_shared_mode,
+            mode_mapping=mode_mapping,
             mask1=mask1,
             mask2=mask2,
             init='random' if (mask1 is not None or mask2 is not None) else init,
@@ -463,67 +491,12 @@ def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, non_shared_mod
     return result
 
 
-def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50, tf_type='coupled_non_negative_cp',
+def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, tf_type='coupled_non_negative_cp',
                                 init='svd', svd='truncated_svd', random_state=None, mask1=None, mask2=None,
                                 n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True,
                                 disable_pbar=False, **kwargs):
-    '''Performs a coupled elbow analysis with just one run of a tensor factorization for each rank
+    '''Performs a coupled elbow analysis with mode mapping'''
 
-    Parameters
-    ----------
-    tensor1 : ndarray list
-        First tensor to factorize.
-
-    tensor2 : ndarray list
-        Second tensor to factorize.
-
-    non_shared_mode : int
-        The mode (dimension) that differs between the two tensors.
-
-    upper_rank : int, default=50
-        Upper bound of ranks to explore with the elbow analysis.
-
-    tf_type : str, default='coupled_non_negative_cp'
-        Type of Tensor Factorization.
-
-    init : str, default='svd'
-        Initialization method. {'svd', 'random'}
-
-    svd : str, default='truncated_svd'
-        Function to use to compute the SVD.
-
-    random_state : int, default=None
-        Seed for randomization.
-
-    mask1 : ndarray list, default=None
-        Mask for the first tensor.
-
-    mask2 : ndarray list, default=None
-        Mask for the second tensor.
-
-    n_iter_max : int, default=100
-        Maximum number of iterations.
-
-    tol : float, default=10e-7
-        Convergence tolerance.
-
-    verbose : boolean, default=False
-        Whether printing or not steps of the analysis.
-
-    balance_errors : bool, default=True
-        Whether to balance errors based on tensor sizes.
-
-    disable_pbar : boolean, default=False
-        Whether displaying a tqdm progress bar or not.
-
-    **kwargs : dict
-        Extra arguments for the tensor factorization.
-
-    Returns
-    -------
-    loss : list
-        List of tuples with (rank, combined_error) coordinates for the elbow analysis.
-    '''
     if kwargs is None:
         kwargs = {'return_errors': True}
     else:
@@ -535,7 +508,7 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50
             tensor1=tensor1,
             tensor2=tensor2,
             rank=r,
-            non_shared_mode=non_shared_mode,
+            mode_mapping=mode_mapping,
             mask1=mask1,
             mask2=mask2,
             tf_type=tf_type,
@@ -549,7 +522,7 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50
             **kwargs
         )
 
-        # Calculate combined error using _compute_norm_error when masks are present
+        # Calculate combined error
         if mask1 is None:
             error1 = tl.to_numpy(errors1[-1])
         else:
@@ -562,15 +535,23 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50
             from cell2cell.tensor.factorization import _compute_norm_error
             error2 = _compute_norm_error(tensor2, cp2, mask2)
 
-        # Calculate combined error with balancing
-        N1 = tensor1.shape[non_shared_mode]
-        N2 = tensor2.shape[non_shared_mode]
-
+        # Calculate combined error with balancing based on non-shared dimensions
         if balance_errors:
-            total_N = N1 + N2
-            weight1 = total_N / N1
-            weight2 = total_N / N2
-            combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+            # Automatically derive tensor-specific modes
+            shared_t1_modes = set([pair[0] for pair in mode_mapping.get('shared', [])])
+            shared_t2_modes = set([pair[1] for pair in mode_mapping.get('shared', [])])
+            tensor1_only = [i for i in range(tl.ndim(tensor1)) if i not in shared_t1_modes]
+            tensor2_only = [i for i in range(tl.ndim(tensor2)) if i not in shared_t2_modes]
+
+            nonshared_size1 = np.prod([tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
+            nonshared_size2 = np.prod([tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
+            total_nonshared = nonshared_size1 + nonshared_size2
+            if total_nonshared > 0:
+                weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
+                weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
+                combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+            else:
+                combined_error = (error1 + error2) / 2
         else:
             combined_error = (error1 + error2) / 2
 
@@ -579,73 +560,14 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50
     return loss
 
 
-def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upper_rank=50, runs=10,
+def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, runs=10,
                                           tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           metric='error', random_state=None, mask1=None, mask2=None,
                                           n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True, **kwargs):
-    '''Performs a coupled elbow analysis with multiple runs of tensor factorization for each rank
+    '''Performs a coupled elbow analysis with multiple runs and mode mapping'''
 
-    Parameters
-    ----------
-    tensor1 : ndarray list
-        First tensor to factorize.
-
-    tensor2 : ndarray list
-        Second tensor to factorize.
-
-    non_shared_mode : int
-        The mode (dimension) that differs between the two tensors.
-
-    upper_rank : int, default=50
-        Upper bound of ranks to explore with the elbow analysis.
-
-    runs : int, default=10
-        Number of tensor factorization performed for a given rank.
-
-    tf_type : str, default='coupled_non_negative_cp'
-        Type of Tensor Factorization.
-
-    init : str, default='svd'
-        Initialization method. {'svd', 'random'}
-
-    svd : str, default='truncated_svd'
-        Function to use to compute the SVD.
-
-    metric : str, default='error'
-        Metric to perform the elbow analysis. Currently only supports 'error'.
-
-    random_state : int, default=None
-        Seed for randomization.
-
-    mask1 : ndarray list, default=None
-        Mask for the first tensor.
-
-    mask2 : ndarray list, default=None
-        Mask for the second tensor.
-
-    n_iter_max : int, default=100
-        Maximum number of iterations.
-
-    tol : float, default=10e-7
-        Convergence tolerance.
-
-    verbose : boolean, default=False
-        Whether printing or not steps of the analysis.
-
-    balance_errors : bool, default=True
-        Whether to balance errors based on tensor sizes.
-
-    **kwargs : dict
-        Extra arguments for the tensor factorization.
-
-    Returns
-    -------
-    all_loss : ndarray
-        Array containing the errors associated with multiple runs for a given rank.
-        This array is of shape (runs, upper_rank).
-    '''
     assert isinstance(runs, int), "runs must be an integer"
-    
+
     if kwargs is None:
         kwargs = {'return_errors': True}
     else:
@@ -667,7 +589,7 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upp
                 tensor1=tensor1,
                 tensor2=tensor2,
                 rank=r,
-                non_shared_mode=non_shared_mode,
+                mode_mapping=mode_mapping,
                 mask1=mask1,
                 mask2=mask2,
                 tf_type=tf_type,
@@ -681,7 +603,7 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upp
                 **kwargs
             )
 
-            # Calculate combined error using _compute_norm_error when masks are present
+            # Calculate combined error
             if mask1 is None:
                 error1 = tl.to_numpy(errors1[-1])
             else:
@@ -695,14 +617,22 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, non_shared_mode, upp
                 error2 = _compute_norm_error(tensor2, cp2, mask2)
 
             # Calculate combined error with balancing
-            N1 = tensor1.shape[non_shared_mode]
-            N2 = tensor2.shape[non_shared_mode]
-
             if balance_errors:
-                total_N = N1 + N2
-                weight1 = total_N / N1
-                weight2 = total_N / N2
-                combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+                # Automatically derive tensor-specific modes
+                shared_t1_modes = set([pair[0] for pair in mode_mapping.get('shared', [])])
+                shared_t2_modes = set([pair[1] for pair in mode_mapping.get('shared', [])])
+                tensor1_only = [i for i in range(tl.ndim(tensor1)) if i not in shared_t1_modes]
+                tensor2_only = [i for i in range(tl.ndim(tensor2)) if i not in shared_t2_modes]
+
+                nonshared_size1 = np.prod([tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
+                nonshared_size2 = np.prod([tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
+                total_nonshared = nonshared_size1 + nonshared_size2
+                if total_nonshared > 0:
+                    weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
+                    weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
+                    combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+                else:
+                    combined_error = (error1 + error2) / 2
             else:
                 combined_error = (error1 + error2) / 2
 

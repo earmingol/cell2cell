@@ -11,19 +11,21 @@ from cell2cell.tensor.factorization import _compute_elbow, _compute_norm_error
 from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow
 from cell2cell.preprocessing.signal import smooth_curve
 from cell2cell.tensor.coupled_factorization import (
-    _compute_coupled_tensor_factorization,
-    _run_coupled_elbow_analysis,
-    _multiple_runs_coupled_elbow_analysis
+   _compute_coupled_tensor_factorization,
+   _run_coupled_elbow_analysis,
+   _multiple_runs_coupled_elbow_analysis,
+   _process_mode_mapping,
+   _validate_tensors
 )
 
 
 class CoupledInteractionTensor():
     '''
-    Coupled Tensor Factorization for two interaction tensors that share all but one dimension.
+    Coupled Tensor Factorization for two interaction tensors with flexible mode mapping.
 
-    This class performs simultaneous non-negative CP decomposition on two tensors that share
-    all dimensions except one. The shared dimensions will have the same factor matrices,
-    while the non-shared dimension will have separate factor matrices.
+    This class performs simultaneous non-negative CP decomposition on two tensors that can
+    have different numbers of dimensions but share some modes. The mode mapping explicitly
+    specifies which dimensions are shared and which are tensor-specific.
 
     Parameters
     ----------
@@ -33,8 +35,10 @@ class CoupledInteractionTensor():
     tensor2 : cell2cell.tensor.BaseTensor
         Second interaction tensor (e.g., InteractionTensor, PreBuiltTensor).
 
-    non_shared_mode : int
-        The mode (dimension) that differs between the two tensors.
+    mode_mapping : dict or int/list (for backward compatibility)
+        Mode mapping specification. Can be:
+        - dict: {'shared': [(t1_mode, t2_mode), ...], 'tensor1_only': [...], 'tensor2_only': [...]}
+        - int/list: non_shared_modes (for backward compatibility with same-dimension tensors)
 
     tensor1_name : str, default='Tensor1'
         Name for the first tensor (used in factor labeling).
@@ -43,7 +47,7 @@ class CoupledInteractionTensor():
         Name for the second tensor (used in factor labeling).
 
     balance_errors : bool, default=True
-        Whether to balance the errors based on the size of non-shared dimensions.
+        Whether to balance the errors based on tensor-specific dimensions.
 
     device : str, default=None
         Device to use when backend allows using multiple devices.
@@ -56,8 +60,8 @@ class CoupledInteractionTensor():
     tensor2 : tensorly.tensor
         Second tensor object.
 
-    non_shared_mode : int
-        The dimension that differs between tensors.
+    mode_mapping : dict
+        The mode mapping specification.
 
     cp1 : CPTensor
         CP decomposition result for tensor1.
@@ -72,30 +76,19 @@ class CoupledInteractionTensor():
         Factor loadings for tensor2.
 
     factors : dict
-        Combined factor loadings with shared and non-shared factors.
-
-    order_names1 : list
-        Element names for each dimension of tensor1.
-
-    order_names2 : list
-        Element names for each dimension of tensor2.
-
-    order_labels1 : list
-        Dimension labels for tensor1.
-
-    order_labels2 : list
-        Dimension labels for tensor2.
+        Combined factor loadings with shared and tensor-specific factors.
     '''
 
-    def __init__(self, tensor1, tensor2, non_shared_mode, tensor1_name='Tensor1',
+    def __init__(self, tensor1, tensor2, mode_mapping, tensor1_name='Tensor1',
                  tensor2_name='Tensor2', balance_errors=True, device=None):
-        # Validate inputs
-        self._validate_tensors(tensor1, tensor2, non_shared_mode)
+
+        # Handle backward compatibility and validate inputs
+        self.mode_mapping = _process_mode_mapping(tensor1.tensor, tensor2.tensor, mode_mapping)
+        _validate_tensors(tensor1, tensor2, self.mode_mapping)
 
         # Store tensor objects and metadata
         self.tensor1 = tensor1.tensor
         self.tensor2 = tensor2.tensor
-        self.non_shared_mode = non_shared_mode
         self.tensor1_name = tensor1_name
         self.tensor2_name = tensor2_name
         self.balance_errors = balance_errors
@@ -144,33 +137,12 @@ class CoupledInteractionTensor():
         else:
             self.loc_zeros2 = None
 
-    def _validate_tensors(self, tensor1, tensor2, non_shared_mode):
-        """Validate that the two tensors are compatible for coupled factorization"""
-        if tl.ndim(tensor1.tensor) != tl.ndim(tensor2.tensor):
-            raise ValueError("Both tensors must have the same number of dimensions")
-
-        n_modes = tl.ndim(tensor1.tensor)
-        if non_shared_mode >= n_modes or non_shared_mode < 0:
-            raise ValueError(f"non_shared_mode must be between 0 and {n_modes - 1}")
-
-        # Check that all other dimensions match
-        for mode in range(n_modes):
-            if mode != non_shared_mode:
-                if tensor1.tensor.shape[mode] != tensor2.tensor.shape[mode]:
-                    raise ValueError(f"Tensors must have the same size in mode {mode}")
-
-                # Check that element names match for shared dimensions
-                if tensor1.order_names[mode] != tensor2.order_names[mode]:
-                    raise ValueError(f"Element names must match for shared dimension {mode}")
-
     def compute_tensor_factorization(self, rank, tf_type='coupled_non_negative_cp', init='svd',
                                      svd='truncated_svd', random_state=None, runs=1,
                                      normalize_loadings=True, var_ordered_factors=True,
                                      n_iter_max=100, tol=10e-7, verbose=False, **kwargs):
         '''
         Performs coupled tensor factorization on both tensors.
-        There are no returns, instead the attributes factors and rank
-        of the Tensor class are updated.
 
         Parameters
         ----------
@@ -178,7 +150,7 @@ class CoupledInteractionTensor():
             Number of components for the factorization.
 
         tf_type : str, default='coupled_non_negative_cp'
-            Type of Tensor Factorization. Currently only supports 'coupled_non_negative_cp'.
+            Type of Tensor Factorization.
 
         init : str, default='svd'
             Initialization method. Options are {'svd', 'random'}.
@@ -191,16 +163,12 @@ class CoupledInteractionTensor():
 
         runs : int, default=1
             Number of models to choose among and find the lowest error.
-            This helps to avoid local minima when using runs > 1.
 
         normalize_loadings : boolean, default=True
-            Whether normalizing the loadings in each factor to unit
-            Euclidean length.
+            Whether normalizing the loadings in each factor.
 
         var_ordered_factors : boolean, default=True
-            Whether ordering factors by the variance they explain. The order is from
-            highest to lowest variance. `normalize_loadings` must be True. Otherwise,
-            this parameter is ignored.
+            Whether ordering factors by variance explained.
 
         n_iter_max : int, default=100
             Maximum number of iterations.
@@ -233,7 +201,7 @@ class CoupledInteractionTensor():
                 tensor1=self.tensor1,
                 tensor2=self.tensor2,
                 rank=rank,
-                non_shared_mode=self.non_shared_mode,
+                mode_mapping=self.mode_mapping,
                 mask1=self.mask1,
                 mask2=self.mask2,
                 tf_type=tf_type,
@@ -259,13 +227,22 @@ class CoupledInteractionTensor():
                 error2 = _compute_norm_error(self.tensor2, cp2, self.mask2)
 
             # Apply balanced weighting if requested
-            N1 = self.tensor1.shape[self.non_shared_mode]
-            N2 = self.tensor2.shape[self.non_shared_mode]
             if self.balance_errors:
-                total_N = N1 + N2
-                weight1 = total_N / N1
-                weight2 = total_N / N2
-                combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+                # Automatically derive tensor-specific modes
+                shared_t1_modes = set([pair[0] for pair in self.mode_mapping.get('shared', [])])
+                shared_t2_modes = set([pair[1] for pair in self.mode_mapping.get('shared', [])])
+                tensor1_only = [i for i in range(tl.ndim(self.tensor1)) if i not in shared_t1_modes]
+                tensor2_only = [i for i in range(tl.ndim(self.tensor2)) if i not in shared_t2_modes]
+
+                nonshared_size1 = np.prod([self.tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
+                nonshared_size2 = np.prod([self.tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
+                total_nonshared = nonshared_size1 + nonshared_size2
+                if total_nonshared > 0:
+                    weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
+                    weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
+                    combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+                else:
+                    combined_error = (error1 + error2) / 2
             else:
                 combined_error = (error1 + error2) / 2
 
@@ -292,28 +269,33 @@ class CoupledInteractionTensor():
 
         factor_names = ['Factor {}'.format(i) for i in range(1, self.rank + 1)]
 
-        # Get order labels
+        # Get order labels with defaults
         if self.order_labels1 is None:
-            tensor_dim = len(self.tensor1.shape)
-            if tensor_dim == 4:
+            ndim1 = len(self.tensor1.shape)
+            if ndim1 == 4:
                 self.order_labels1 = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
-            elif tensor_dim > 4:
-                self.order_labels1 = ['Contexts-{}'.format(i + 1) for i in range(tensor_dim - 3)] + [
+            elif ndim1 > 4:
+                self.order_labels1 = ['Contexts-{}'.format(i + 1) for i in range(ndim1 - 3)] + [
                     'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
-            elif tensor_dim == 3:
+            elif ndim1 == 3:
                 self.order_labels1 = ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
 
         if self.order_labels2 is None:
-            self.order_labels2 = self.order_labels1.copy()
+            ndim2 = len(self.tensor2.shape)
+            if ndim2 == 4:
+                self.order_labels2 = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
+            elif ndim2 > 4:
+                self.order_labels2 = ['Contexts-{}'.format(i + 1) for i in range(ndim2 - 3)] + [
+                    'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
+            elif ndim2 == 3:
+                self.order_labels2 = ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
 
         if normalize_loadings:
             self.norm_tl_object1 = tl.cp_tensor.cp_normalize(self.tl_object1)
             self.norm_tl_object2 = tl.cp_tensor.cp_normalize(self.tl_object2)
-            # Extract factors
             (weights1, factors1) = self.norm_tl_object1
             (weights2, factors2) = self.norm_tl_object2
         else:
-            # Extract factors
             (weights1, factors1) = self.tl_object1
             (weights2, factors2) = self.tl_object2
 
@@ -339,7 +321,7 @@ class CoupledInteractionTensor():
             factors2 = [tl.to_numpy(f) for f in factors2]
             self.explained_variance_ratio_ = None
 
-        # Create factor DataFrames
+        # Create factor DataFrames for each tensor
         self.factors1 = OrderedDict(zip(self.order_labels1,
                                         [pd.DataFrame(f, index=idx, columns=factor_names)
                                          for f, idx in zip(factors1, self.order_names1)]))
@@ -348,30 +330,35 @@ class CoupledInteractionTensor():
                                         [pd.DataFrame(f, index=idx, columns=factor_names)
                                          for f, idx in zip(factors2, self.order_names2)]))
 
-        # Create unified factors with proper ordering
-        unshared_tensor1_name = self.order_labels1[self.non_shared_mode]
-        unshared_tensor2_name = self.order_labels2[self.non_shared_mode]
-
-        # Only add suffix if the names match, otherwise keep original name
-        if unshared_tensor1_name == unshared_tensor2_name:
-            unified_key = f"{unshared_tensor2_name}_{self.tensor2_name}"
-        else:
-            unified_key = unshared_tensor2_name
-
-        # Create ordered dictionary with tensor2 non-shared factor inserted
-        # right after tensor1 non-shared factor
+        # Create unified factors based on mode mapping
         self.factors = OrderedDict()
+        shared_pairs = self.mode_mapping.get('shared', [])
 
-        for i, (key, value) in enumerate(self.factors1.items()):
-            # Add the current factor from tensor1
-            self.factors[key] = value
+        # Automatically derive tensor-specific modes
+        shared_t1_modes = set([pair[0] for pair in shared_pairs])
+        shared_t2_modes = set([pair[1] for pair in shared_pairs])
+        tensor1_only = [i for i in range(len(self.tensor1.shape)) if i not in shared_t1_modes]
+        tensor2_only = [i for i in range(len(self.tensor2.shape)) if i not in shared_t2_modes]
 
-            # If this is the non-shared dimension, add tensor2's version right after
-            if i == self.non_shared_mode:
-                self.factors[unified_key] = self.factors2[unshared_tensor2_name].copy()
+        # Add shared factors (using tensor1's version)
+        for t1_mode, t2_mode in shared_pairs:
+            label = self.order_labels1[t1_mode]
+            self.factors[label] = self.factors1[label]
 
-        # Store this for later use
-        self._unshared_tensor2_key = unified_key
+        # Add tensor1-specific factors
+        for mode in tensor1_only:
+            label = self.order_labels1[mode]
+            self.factors[label] = self.factors1[label]
+
+        # Add tensor2-specific factors
+        for mode in tensor2_only:
+            label = self.order_labels2[mode]
+            # Add suffix to distinguish if there's a name conflict
+            if label in self.factors.keys():
+                unified_label = f"{label}_{self.tensor2_name}"
+            else:
+                unified_label = label
+            self.factors[unified_label] = self.factors2[label]
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='coupled_non_negative_cp',
                              init='random', svd='truncated_svd', metric='error', random_state=None,
@@ -379,81 +366,7 @@ class CoupledInteractionTensor():
                              smooth=False, mask1=None, mask2=None, ci='std', figsize=(4, 2.25),
                              fontsize=14, filename=None, output_fig=True, verbose=False, **kwargs):
         '''
-        Elbow analysis on the error achieved by the Coupled Tensor Factorization for
-        selecting the number of factors to use. A plot is made with the results.
-
-        Parameters
-        ----------
-        upper_rank : int, default=50
-            Upper bound of ranks to explore with the elbow analysis.
-
-        runs : int, default=20
-            Number of tensor factorization performed for a given rank.
-
-        tf_type : str, default='coupled_non_negative_cp'
-            Type of Tensor Factorization (currently only supports 'coupled_non_negative_cp')
-
-        init : str, default='random'
-            Initialization method {'svd', 'random'}
-
-        svd : str, default='truncated_svd'
-            Function to compute the SVD, acceptable values in tensorly.SVD_FUNS
-
-        metric : str, default='error'
-            Metric for elbow analysis. Currently only supports 'error'.
-
-        random_state : int, default=None
-            Random seed
-
-        n_iter_max : int, default=100
-            Maximum iterations per factorization
-
-        tol : float, default=10e-7
-            Convergence tolerance
-
-        automatic_elbow : boolean, default=True
-            Whether using an automatic strategy to find the elbow.
-
-        manual_elbow : int, default=None
-            Manual elbow selection
-
-        smooth : boolean, default=False
-            Whether to smooth the curve
-
-        mask1 : ndarray list, default=None
-            Mask for the first tensor
-
-        mask2 : ndarray list, default=None
-            Mask for the second tensor
-
-        ci : str, default='std'
-            Confidence interval type
-
-        figsize : tuple, default=(4, 2.25)
-            Figure size
-
-        fontsize : int, default=14
-            Font size for labels
-
-        filename : str, default=None
-            Path to save figure
-
-        output_fig : boolean, default=True
-            Whether to generate figure
-
-        verbose : boolean, default=False
-            Verbosity
-
-        **kwargs : dict
-            Additional arguments
-
-        Returns
-        -------
-        fig : matplotlib.figure.Figure
-            Elbow analysis figure
-
-        loss : list
-            List of (rank, error) tuples
+        Elbow analysis on the error achieved by the Coupled Tensor Factorization.
         '''
         assert metric in ['error'], "`metric` must be 'error' for coupled factorization"
         ylabel = 'Normalized Error'
@@ -472,7 +385,7 @@ class CoupledInteractionTensor():
             loss = _run_coupled_elbow_analysis(
                 tensor1=self.tensor1,
                 tensor2=self.tensor2,
-                non_shared_mode=self.non_shared_mode,
+                mode_mapping=self.mode_mapping,
                 upper_rank=upper_rank,
                 tf_type=tf_type,
                 init=init,
@@ -492,7 +405,7 @@ class CoupledInteractionTensor():
             all_loss = _multiple_runs_coupled_elbow_analysis(
                 tensor1=self.tensor1,
                 tensor2=self.tensor2,
-                non_shared_mode=self.non_shared_mode,
+                mode_mapping=self.mode_mapping,
                 upper_rank=upper_rank,
                 runs=runs,
                 tf_type=tf_type,
@@ -590,28 +503,7 @@ class CoupledInteractionTensor():
         return weighted_ev
 
     def get_top_factor_elements(self, order_name, factor_name, top_number=10, tensor='unified'):
-        '''
-        Get top elements for a given factor
-
-        Parameters
-        ----------
-        order_name : str
-            Name of the tensor dimension
-
-        factor_name : str
-            Name of the factor (e.g., 'Factor 1')
-
-        top_number : int, default=10
-            Number of top elements to return
-
-        tensor : str, default='unified'
-            Which factor set to use {'unified', 'tensor1', 'tensor2'}
-
-        Returns
-        -------
-        top_elements : pandas.DataFrame
-            Top elements for the specified factor
-        '''
+        '''Get top elements for a given factor'''
         if tensor == 'unified':
             factors = self.factors
         elif tensor == 'tensor1':
@@ -628,17 +520,7 @@ class CoupledInteractionTensor():
         return top_elements
 
     def export_factor_loadings(self, filename, save_separate=False):
-        '''
-        Export factor loadings to Excel file
-
-        Parameters
-        ----------
-        filename : str
-            Path for the output Excel file
-
-        save_separate : bool, default=False
-            Whether to save tensor1 and tensor2 factors separately
-        '''
+        '''Export factor loadings to Excel file'''
         writer = pd.ExcelWriter(filename)
         if save_separate:
             # Export tensor1 factors
@@ -685,33 +567,12 @@ class CoupledInteractionTensor():
         return copy.deepcopy(self)
 
     def write_file(self, filename):
-        '''
-        Exports this object into a pickle file
-
-        Parameters
-        ----------
-        filename : str
-            Complete path to the file wherein the variable will be stored
-        '''
+        '''Exports this object into a pickle file'''
         from cell2cell.io.save_data import export_variable_with_pickle
         export_variable_with_pickle(self, filename=filename)
 
     def excluded_value_fraction(self, tensor='both'):
-        '''
-        Returns the fraction of excluded values in the tensor(s),
-        given the values that are masked
-
-        Parameters
-        ----------
-        tensor : str, default='both'
-            Which tensor to analyze {'tensor1', 'tensor2', 'both', 'combined'}
-
-        Returns
-        -------
-        excluded_fraction : float or dict
-            Fraction of missing/excluded values. If tensor='both', returns dict
-            with separate values. If tensor='combined', returns weighted average.
-        '''
+        '''Returns the fraction of excluded values in the tensor(s)'''
         if tensor == 'tensor1':
             if self.mask1 is None:
                 return 0.0
@@ -744,20 +605,7 @@ class CoupledInteractionTensor():
             raise ValueError("tensor must be 'tensor1', 'tensor2', 'both', or 'combined'")
 
     def sparsity_fraction(self, tensor='both'):
-        '''
-        Returns the fraction of values that are zeros in the tensor(s),
-        given the values that are in loc_zeros
-
-        Parameters
-        ----------
-        tensor : str, default='both'
-            Which tensor to analyze {'tensor1', 'tensor2', 'both', 'combined'}
-
-        Returns
-        -------
-        sparsity_fraction : float or dict
-            Fraction of values that are real zeros
-        '''
+        '''Returns the fraction of values that are zeros in the tensor(s)'''
         if tensor == 'tensor1':
             if self.loc_zeros1 is None:
                 return 0.0
@@ -790,20 +638,7 @@ class CoupledInteractionTensor():
             raise ValueError("tensor must be 'tensor1', 'tensor2', 'both', or 'combined'")
 
     def missing_fraction(self, tensor='both'):
-        '''
-        Returns the fraction of values that are missing (NaNs) in the tensor(s),
-        given the values that are in loc_nans
-
-        Parameters
-        ----------
-        tensor : str, default='both'
-            Which tensor to analyze {'tensor1', 'tensor2', 'both', 'combined'}
-
-        Returns
-        -------
-        missing_fraction : float or dict
-            Fraction of values that are missing (NaNs)
-        '''
+        '''Returns the fraction of values that are missing (NaNs) in the tensor(s)'''
         if tensor == 'tensor1':
             if self.loc_nans1 is None:
                 return 0.0
@@ -834,3 +669,53 @@ class CoupledInteractionTensor():
             return (miss1 * size1 + miss2 * size2) / total_size
         else:
             raise ValueError("tensor must be 'tensor1', 'tensor2', 'both', or 'combined'")
+
+    def reorder_metadata(self, metadata1, metadata2):
+        '''
+        Reorder metadata to match the factor ordering used by the coupled tensor.
+
+        Parameters
+        ----------
+        metadata1 : list
+            List of DataFrames/metadata for tensor1 factors, in original tensor1 mode order
+
+        metadata2 : list
+            List of DataFrames/metadata for tensor2 factors, in original tensor2 mode order
+
+        Returns
+        -------
+        reordered_metadata : list
+            Metadata reordered to match self.factors ordering:
+            [shared_modes, tensor1_specific_modes, tensor2_specific_modes]
+        '''
+        if self.factors is None:
+            raise ValueError("Must run compute_tensor_factorization first to determine factor ordering")
+
+        # Get mode mappings
+        shared_pairs = self.mode_mapping.get('shared', [])
+        shared_t1_modes = set([pair[0] for pair in shared_pairs])
+        shared_t2_modes = set([pair[1] for pair in shared_pairs])
+        tensor1_only = [i for i in range(len(self.tensor1.shape)) if i not in shared_t1_modes]
+        tensor2_only = [i for i in range(len(self.tensor2.shape)) if i not in shared_t2_modes]
+
+        # Validate metadata lengths
+        if len(metadata1) != len(self.tensor1.shape):
+            raise ValueError(f"metadata1 must have {len(self.tensor1.shape)} elements, got {len(metadata1)}")
+        if len(metadata2) != len(self.tensor2.shape):
+            raise ValueError(f"metadata2 must have {len(self.tensor2.shape)} elements, got {len(metadata2)}")
+
+        reordered_metadata = []
+
+        # Add shared mode metadata (use tensor1's version)
+        for t1_mode, t2_mode in shared_pairs:
+            reordered_metadata.append(metadata1[t1_mode])
+
+        # Add tensor1-specific mode metadata
+        for mode in tensor1_only:
+            reordered_metadata.append(metadata1[mode])
+
+        # Add tensor2-specific mode metadata
+        for mode in tensor2_only:
+            reordered_metadata.append(metadata2[mode])
+
+        return reordered_metadata
