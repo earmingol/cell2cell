@@ -7,6 +7,7 @@ theme:
 repo_url: https://github.com/earmingol/cell2cell
 plugins:
   - search
+  - mkapi
   - mkdocs-jupyter:
       execute: false
       include: ["*.ipynb"]
@@ -54,3 +55,6 @@ nav:
     - tutorials/ASD/03-GSEA-ASD.ipynb
     - tutorials/Tensor-cell2cell-Spatial.ipynb
     - tutorials/GPU-Example.ipynb
+  - "Tensor-cell2cell v2 Tutorials":
+    - tutorials/Version2/Building-Tensors.ipynb
+    - tutorials/Version2/Tensor-cell2cell-CTCA.ipynb

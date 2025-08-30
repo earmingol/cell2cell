@@ -7,3 +7,4 @@ mkdocs-material
 mkdocs-material-extensions
 mkdocs-jupyter
 mkdocstrings-python-legacy
+mkapi
