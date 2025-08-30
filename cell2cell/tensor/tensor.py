@@ -213,7 +213,7 @@ class BaseTensor():
             if self.mask is not None:
                 self.mask = tl.tensor(self.mask)
 
-    def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', svd='numpy_svd', random_state=None,
+    def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', svd='truncated_svd', random_state=None,
                                      runs=1, normalize_loadings=True, var_ordered_factors=True, n_iter_max=100, tol=10e-7,
                                      verbose=False, **kwargs):
         '''Performs a Tensor Factorization.
@@ -246,7 +246,7 @@ class BaseTensor():
             Initialization method for computing the Tensor Factorization.
             {‘svd’, ‘random’}
 
-        svd : str, default='numpy_svd'
+        svd : str, default='truncated_svd'
             Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
         random_state : int, default=None
@@ -361,7 +361,7 @@ class BaseTensor():
                                        [pd.DataFrame(tl.to_numpy(f), index=idx, columns=factor_names) for f, idx in zip(factors, self.order_names)]))
         self.rank = rank
 
-    def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', svd='numpy_svd',
+    def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', svd='truncated_svd',
                              metric='error', random_state=None, n_iter_max=100, tol=10e-7, automatic_elbow=True,
                              manual_elbow=None, smooth=False, mask=None, ci='std', figsize=(4, 2.25), fontsize=14,
                              filename=None, output_fig=True, verbose=False, **kwargs):
@@ -396,7 +396,7 @@ class BaseTensor():
             Initialization method for computing the Tensor Factorization.
             {‘svd’, ‘random’}
 
-        svd : str, default='numpy_svd'
+        svd : str, default='truncated_svd'
             Function to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
         metric : str, default='error'

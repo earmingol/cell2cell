@@ -11,7 +11,7 @@ import tensorly as tl
 from cell2cell.tensor.metrics import pairwise_correlation_index
 
 
-def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init='svd', svd='numpy_svd', random_state=None,
+def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init='svd', svd='truncated_svd', random_state=None,
                                   mask=None, n_iter_max=100, tol=10e-7, verbose=False, **kwargs):
     '''Performs the Tensor Factorization
 
@@ -44,7 +44,7 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
         Initialization method for computing the Tensor Factorization.
         {‘svd’, ‘random’}
 
-    svd : str, default='numpy_svd'
+    svd : str, default='truncated_svd'
         Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
     random_state : int, default=None
@@ -108,7 +108,7 @@ def _compute_tensor_factorization(tensor, rank, tf_type='non_negative_cp', init=
                                                   rank=rank,
                                                   init=init,
                                                   svd=svd,
-                                                  #random_state=random_state, # Not implemented in tensorly 0.7.0 commented for now
+                                                  random_state=random_state, # Not implemented in tensorly 0.7.0 commented for now
                                                   n_iter_max=n_iter_max,
                                                   tol=tol,
                                                   verbose=verbose,
@@ -183,7 +183,7 @@ def _compute_elbow(loss, S=1.0, curve='convex', direction='decreasing', interp_m
     return rank
 
 
-def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='svd', svd='numpy_svd', random_state=None,
+def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='svd', svd='truncated_svd', random_state=None,
                         mask=None, n_iter_max=100, tol=10e-7, verbose=False, disable_pbar=False, **kwargs):
     '''Performs an elbow analysis with just one run of a tensor factorization for each
     rank
@@ -205,7 +205,7 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
         Initialization method for computing the Tensor Factorization.
         {‘svd’, ‘random’}
 
-    svd : str, default='numpy_svd'
+    svd : str, default='truncated_svd'
         Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
     random_state : int, default=None
@@ -216,16 +216,16 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
         a boolean array of the same shape as the original tensor and should be 0
         where the values are missing and 1 everywhere else.
 
+    n_iter_max : int, default=100
+        Maximum number of iteration to reach an optimal solution with the
+        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
+        obtained from the decomposition, but it takes longer to run.
+
     tol : float, default=10e-7
         Tolerance for the decomposition algorithm to stop when the variation in
         the reconstruction error is less than the tolerance. Lower `tol` helps
         to improve the solution obtained from the decomposition, but it takes
         longer to run.
-
-    n_iter_max : int, default=100
-        Maximum number of iteration to reach an optimal solution with the
-        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
-        obtained from the decomposition, but it takes longer to run.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -269,7 +269,7 @@ def _run_elbow_analysis(tensor, upper_rank=50, tf_type='non_negative_cp', init='
     return loss
 
 
-def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_negative_cp', init='svd', svd='numpy_svd',
+def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_negative_cp', init='svd', svd='truncated_svd',
                                   metric='error', random_state=None, mask=None, n_iter_max=100, tol=10e-7,
                                   verbose=False, **kwargs):
     '''Performs an elbow analysis with multiple runs of a tensor factorization for each
@@ -284,7 +284,7 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
     upper_rank : int, default=50
         Upper bound of ranks to explore with the elbow analysis.
 
-    runs : int, default=100
+    runs : int, default=10
         Number of tensor factorization performed for a given rank. Each factorization
         varies in the seed of initialization.
 
@@ -296,7 +296,7 @@ def _multiple_runs_elbow_analysis(tensor, upper_rank=50, runs=10, tf_type='non_n
         Initialization method for computing the Tensor Factorization.
         {‘svd’, ‘random’}
 
-    svd : str, default='numpy_svd'
+    svd : str, default='truncated_svd'
             Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
     metric : str, default='error'
