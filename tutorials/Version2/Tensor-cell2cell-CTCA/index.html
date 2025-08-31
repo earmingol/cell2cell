@@ -90,13 +90,13 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#results">Results</a>
+    <li class="toctree-l2"><a class="reference internal" href="#3-results">3 - Results</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#export-loadings">Export Loadings</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#downstream-analyses">Downstream Analyses</a>
+    <li class="toctree-l2"><a class="reference internal" href="#4-downstream-analyses">4 - Downstream Analyses</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#generate-factor-specific-networks">Generate factor-specific networks</a>
     </li>
@@ -106,7 +106,9 @@
     </li>
     </ul>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-TFs/">Patterns of cell-cell communication and transcription factors</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-TFs/">Patterns of cell-cell communication and transcription factors (DecoupleR)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-Metabolism/">Patterns of cell-cell communication and metabolic activities (scCellFie)</a>
                   </li>
               </ul>
       </div>
@@ -588,7 +590,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>This tutorial is focused on running Tensor-cell2cell v2 using the tools <a href="https://github.com/earmingol/cell2cell">cell2cell</a> and <a href="https://github.com/kaifuchenlab/MEBOCOST">MEBOCOST</a> to predict protein- and metabolite-mediated cell-cell communication (CCC), respectively.</p>
-<p>In this case, we use samples from cortical brain organoids across different time points, previously published on <a href="https://doi.org/10.1016/j.stem.2019.08.002">https://doi.org/10.1016/j.stem.2019.08.002</a>.</p>
+<p>In this case, we use samples from cortical brain organoids across different time points, previously published by <a href="https://doi.org/10.1016/j.stem.2019.08.002">Trujillo et al (2019)</a>.</p>
 </div>
 </div>
 </div>
@@ -1120,7 +1122,7 @@ plt.savefig(output_folder + 'Elbow.pdf', dpi=300, bbox_inches='tight')</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="perform-tensor-factorization">Perform tensor factorization<a class="anchor-link" href="#perform-tensor-factorization">¶</a></h3><p>Next, we apply a tensor decomposition, specifically a non-negative canonical coupled component analysis (CTCA) (same performed in the elbow analysis). Briefly, tensor decomposition identifies a low-rank tensor (here, a rank of 6) for each modality's tensor that  better approximates each original tensor. These low-rank tensors can be represented as the sum of a set of rank-1 tensors (6 of them in this case). Each rank-1 tensor represents a factor in the decomposition and can be further represented as the outer product of n vectors, where n represents the number of tensor dimensions. Each vector represents one of the n tensor dimensions for that factor and its values, corresponding to individual elements in each dimension, represent the factor loadings.</p>
+<h3 id="perform-tensor-factorization">Perform tensor factorization<a class="anchor-link" href="#perform-tensor-factorization">¶</a></h3><p>Next, we apply a non-negative canonical coupled component analysis (CTCA) – the  same performed in the elbow analysis above. Briefly, this tensor decomposition identifies a low-rank tensor. Briefly, tensor decomposition identifies a low-rank tensor (here, a rank of 6) for each modality's tensor that better approximates each original tensor. These low-rank tensors can be represented as the sum of a set of rank-1 tensors (6 of them in this case). Each rank-1 tensor represents a factor in the decomposition and can be further represented as the outer product of n vectors, where n represents the number of tensor dimensions. Each vector represents one of the n tensor dimensions for that factor and its values, corresponding to individual elements in each dimension, represent the factor loadings.</p>
 <p>In the CTCA, we have vectors that are shared between the coupled tensors (here contexts, sender cells, and receiver cells), while we have other vectors that are private for each modality (protein-based LR pair and metabolite-based LR pair dimensions). The loadings shared between both tensors behave exactly the same in both modalities, representing that we are capturing LR pairs of each modality that present similar trends in each factor. If each tensor was decomposed separately with the standard TCA in Tensor-cell2cell v1, we would not ensure that the key LR pairs for each factor would behave the same, as this could lead to loadings for the context, sender cells and receiver cells with different behaviors between modalities.</p>
 <p><img alt="tensor-fact" src="../figures/CTCA.png"/></p>
 </div>
@@ -1194,7 +1196,7 @@ plt.savefig(output_folder + 'Elbow.pdf', dpi=300, bbox_inches='tight')</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="results">Results<a class="anchor-link" href="#results">¶</a></h2>
+<h2 id="3-results">3 - Results<a class="anchor-link" href="#3-results">¶</a></h2>
 </div>
 </div>
 </div>
@@ -1588,7 +1590,7 @@ Name: Factor 6, dtype: float64
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="downstream-analyses">Downstream Analyses<a class="anchor-link" href="#downstream-analyses">¶</a></h2>
+<h2 id="4-downstream-analyses">4 - Downstream Analyses<a class="anchor-link" href="#4-downstream-analyses">¶</a></h2>
 </div>
 </div>
 </div>
@@ -2324,7 +2326,7 @@ df2 = (df2 / df2.max().max())</div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../Building-Tensors/" class="btn btn-neutral float-left" title="Building multimodal 4D communication tensors"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../Tensor-cell2cell-CTCA-TFs/" class="btn btn-neutral float-right" title="Patterns of cell-cell communication and transcription factors">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../Tensor-cell2cell-CTCA-TFs/" class="btn btn-neutral float-right" title="Patterns of cell-cell communication and transcription factors (DecoupleR)">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>

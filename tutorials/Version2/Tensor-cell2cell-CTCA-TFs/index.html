@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../../../img/favicon.ico" />
-    <title>Patterns of cell-cell communication and transcription factors - cell2cell</title>
+    <title>Patterns of cell-cell communication and transcription factors (DecoupleR) - cell2cell</title>
     <link rel="stylesheet" href="../../../css/theme.css" />
     <link rel="stylesheet" href="../../../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -13,7 +13,7 @@
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Patterns of cell-cell communication and transcription factors";
+        var mkdocs_page_name = "Patterns of cell-cell communication and transcription factors (DecoupleR)";
         var mkdocs_page_input_path = "tutorials/Version2/Tensor-cell2cell-CTCA-TFs.ipynb";
         var mkdocs_page_url = null;
       </script>
@@ -74,7 +74,7 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA/">Patterns of multimodal cell-cell communication with Tensor-cell2cell v2</a>
                   </li>
-                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Patterns of cell-cell communication and transcription factors</a>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Patterns of cell-cell communication and transcription factors (DecoupleR)</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#1-load-data">1 - Load Data</a>
         <ul>
@@ -128,6 +128,8 @@
     </li>
     </ul>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-Metabolism/">Patterns of cell-cell communication and metabolic activities (scCellFie)</a>
+                  </li>
               </ul>
       </div>
     </div>
@@ -144,7 +146,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="../../.." class="icon icon-home" aria-label="Docs"></a></li>
           <li class="breadcrumb-item">Tensor-cell2cell v2 Tutorials</li>
-      <li class="breadcrumb-item active">Patterns of cell-cell communication and transcription factors</li>
+      <li class="breadcrumb-item active">Patterns of cell-cell communication and transcription factors (DecoupleR)</li>
     <li class="wy-breadcrumbs-aside">
           <a href="https://github.com/earmingol/cell2cell/edit/master/docs/tutorials/Version2/Tensor-cell2cell-CTCA-TFs.ipynb" class="icon icon-github"> Edit on GitHub</a>
     </li>
@@ -596,7 +598,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="patterns-of-cell-cell-communication-and-transcription-factors">Patterns of cell-cell communication and transcription factors<a class="anchor-link" href="#patterns-of-cell-cell-communication-and-transcription-factors">¶</a></h1>
+<h1 id="patterns-of-cell-cell-communication-and-transcription-factors-decoupler">Patterns of cell-cell communication and transcription factors (DecoupleR)<a class="anchor-link" href="#patterns-of-cell-cell-communication-and-transcription-factors-decoupler">¶</a></h1>
 </div>
 </div>
 </div>
@@ -607,8 +609,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Here we will run Tensor-cell2cell v2 to show how our CTCA can be extended to couple  cell-cell communication (CCC) and downstream transcription factor activity. Here we use the tools <a href="https://github.com/earmingol/cell2cell">cell2cell</a> and <a href="https://decoupler-py.readthedocs.io/">decoupleR-py</a> to predict CCC and transcription factor activity, respectively.</p>
-<p>In this case, we use samples from cortical brain organoids across different time points, previously published on <a href="https://doi.org/10.1016/j.stem.2019.08.002">https://doi.org/10.1016/j.stem.2019.08.002</a>.</p>
+<p>Previously we showed how Tensor-cell2cell can be used to <a href="../Tensor-cell2cell-CTCA">extract patterns of multiple modalities of cell-cell communication (CCC)</a>. Here we will show how our CTCA can be extended to couple CCC and downstream transcription factor activity. Here we use the tools <a href="https://github.com/earmingol/cell2cell">cell2cell</a> and <a href="https://decoupler-py.readthedocs.io/">decoupleR-py</a> to predict CCC and transcription factor activity, respectively.</p>
+<p>In this case, we use samples from cortical brain organoids across different time points, previously published by <a href="https://doi.org/10.1016/j.stem.2019.08.002">Trujillo et al (2019)</a>.</p>
 </div>
 </div>
 </div>
@@ -2175,7 +2177,7 @@ Building tensor for the provided context
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [26]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-26">
@@ -2188,11 +2190,11 @@ Building tensor for the provided context
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">tensor_tf_</span> <span class="o">=</span> <span class="n">tl</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">tf_activities_nan</span><span class="p">)</span>
-<span class="n">tensor_tf_</span><span class="o">.</span><span class="n">shape</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">tensor_3d</span> <span class="o">=</span> <span class="n">tl</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">tf_activities_nan</span><span class="p">)</span>
+<span class="n">tensor_3d</span><span class="o">.</span><span class="n">shape</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-26">tensor_tf_ = tl.tensor(tf_activities_nan)
-tensor_tf_.shape</div>
+<div class="clipboard-copy-txt" id="cell-26">tensor_3d = tl.tensor(tf_activities_nan)
+tensor_3d.shape</div>
 </div>
 </div>
 </div>
@@ -2202,7 +2204,7 @@ tensor_tf_.shape</div>
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[26]:</div>
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
 <pre>(4, 728, 5)</pre>
 </div>
@@ -2265,7 +2267,7 @@ tensor_tf_.shape</div>
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [28]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-28">
@@ -2278,12 +2280,12 @@ tensor_tf_.shape</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">tensor_tf</span> <span class="o">=</span> <span class="n">c2c</span><span class="o">.</span><span class="n">tensor</span><span class="o">.</span><span class="n">PreBuiltTensor</span><span class="p">(</span><span class="n">tl</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">tf_activities_nan</span><span class="p">),</span> 
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">tensor_tf</span> <span class="o">=</span> <span class="n">c2c</span><span class="o">.</span><span class="n">tensor</span><span class="o">.</span><span class="n">PreBuiltTensor</span><span class="p">(</span><span class="n">tensor_3d</span><span class="p">,</span> 
                                       <span class="n">order_names</span><span class="o">=</span><span class="p">[</span><span class="n">contexts</span><span class="p">,</span> <span class="n">tf_names</span><span class="p">,</span> <span class="n">celltypes</span><span class="p">],</span>
                                       <span class="n">order_labels</span><span class="o">=</span><span class="p">[</span><span class="s1">'Contexts'</span><span class="p">,</span> <span class="s1">'TFs'</span><span class="p">,</span> <span class="s1">'Receiver Cells'</span><span class="p">]</span>
                                      <span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-28">tensor_tf = c2c.tensor.PreBuiltTensor(tl.tensor(tf_activities_nan), 
+<div class="clipboard-copy-txt" id="cell-28">tensor_tf = c2c.tensor.PreBuiltTensor(tensor_3d, 
                                       order_names=[contexts, tf_names, celltypes],
                                       order_labels=['Contexts', 'TFs', 'Receiver Cells']
                                      )</div>
@@ -2338,7 +2340,7 @@ tensor_tf_.shape</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5-generate-coupled-tensors">5 - Generate coupled tensors<a class="anchor-link" href="#5-generate-coupled-tensors">¶</a></h2><p>Once we have our 4D communication tensor and our 4D TF activity tensor, we start creating a <code>CoupledInteractionTensor</code>object in Tensor-cell2cell v2. This object will later perform the CTCA.</p>
+<h2 id="5-generate-coupled-tensors">5 - Generate coupled tensors<a class="anchor-link" href="#5-generate-coupled-tensors">¶</a></h2><p>Once we have our 4D communication tensor and our 3D TF activity tensor, we start creating a <code>CoupledInteractionTensor</code>object in Tensor-cell2cell v2. This object will later perform the CTCA.</p>
 <p>For this, we need to specify which dimensions are coupled between each tensor. In our case, the context dimensions are coupled, and both receiver cell dimensions. In this case we asssume that the TF activity occurs in the receiver cells and this activity is related to the LR interactions, so they are <em>coupled</em>.</p>
 <p>The context dimension is the dim 0 in both tensors, while the receiver cell dimension is dim 3 in the 4D and dim 2 in the 3D tensor:</p>
 </div>
@@ -2492,7 +2494,7 @@ coupled_tensor.mask2 = None</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="perform-tensor-factorization">Perform tensor factorization<a class="anchor-link" href="#perform-tensor-factorization">¶</a></h3><p>Next, we apply a tensor decomposition, specifically a non-negative canonical coupled component analysis (CTCA) (same performed in the elbow analysis). Briefly, tensor decomposition identifies a low-rank tensor (here, a rank of 10) for each modality's tensor that  better approximates each original tensor. These low-rank tensors can be represented as the sum of a set of rank-1 tensors (10 of them in this case). Each rank-1 tensor represents a factor in the decomposition and can be further represented as the outer product of n vectors, where n represents the number of tensor dimensions. Each vector represents one of the n tensor dimensions for that factor and its values, corresponding to individual elements in each dimension, represent the factor loadings.</p>
+<h3 id="perform-tensor-factorization">Perform tensor factorization<a class="anchor-link" href="#perform-tensor-factorization">¶</a></h3><p>Next, we apply a non-negative canonical coupled component analysis (CTCA). Briefly, this tensor decomposition identifies a low-rank tensor (here, a rank of 10) for each modality's tensor that better approximates each original tensor. These low-rank tensors can be represented as the sum of a set of rank-1 tensors (10 of them in this case). Each rank-1 tensor represents a factor in the decomposition and can be further represented as the outer product of n vectors, where n represents the number of tensor dimensions. Each vector represents one of the n tensor dimensions for that factor and its values, corresponding to individual elements in each dimension, represent the factor loadings.</p>
 <p>In the CTCA, we have vectors that are shared between the coupled tensors (here contexts and receiver cells), while we have other vectors that are private for each modality (LR pair and sender cells for the 4D communication tensor; transcription factors for the 3D TF activity tensor). The loadings shared between both tensors behave exactly the same in both modalities, representing that we are capturing LR pairs and TFs from each modality that present similar trends in each factor. If each tensor was decomposed separately with the standard TCA in Tensor-cell2cell v1, we would not ensure that the key LR pair and TFs for each factor would behave the same, as this could lead to loadings for the context and receiver cells with different behaviors between modalities.</p>
 </div>
 </div>
@@ -2618,7 +2620,7 @@ coupled_tensor.mask2 = None</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>We continue with the metabolite-based tensor.</p>
+<p>We continue with the TF activity tensor.</p>
 </div>
 </div>
 </div>
@@ -3004,6 +3006,17 @@ Name: Factor 10, dtype: float64
 </pre>
 </div>
 </div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=fa9af4e4">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p><strong>Top 5 TFs</strong></p>
 </div>
 </div>
 </div>
@@ -3914,6 +3927,7 @@ df2 = (df2 / df2.max().max())</div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../Tensor-cell2cell-CTCA/" class="btn btn-neutral float-left" title="Patterns of multimodal cell-cell communication with Tensor-cell2cell v2"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Tensor-cell2cell-CTCA-Metabolism/" class="btn btn-neutral float-right" title="Patterns of cell-cell communication and metabolic activities (scCellFie)">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -3942,6 +3956,8 @@ df2 = (df2 / df2.max().max())</div>
     
       <span><a href="../Tensor-cell2cell-CTCA/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
+    
+      <span><a href="../Tensor-cell2cell-CTCA-Metabolism/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

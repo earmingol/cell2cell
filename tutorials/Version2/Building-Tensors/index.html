@@ -72,7 +72,7 @@
               <ul class="current">
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Building multimodal 4D communication tensors</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#load-data">Load Data</a>
+    <li class="toctree-l2"><a class="reference internal" href="#1-load-data">1 - Load Data</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#rna-seq-data">RNA-seq data</a>
     </li>
@@ -82,7 +82,7 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#data-preprocessing">Data Preprocessing</a>
+    <li class="toctree-l2"><a class="reference internal" href="#2-data-preprocessing">2 - Data Preprocessing</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#rna-seq">RNA-seq</a>
     </li>
@@ -90,21 +90,23 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#build-tensors">Build Tensors</a>
+    <li class="toctree-l2"><a class="reference internal" href="#3-build-tensors">3 - Build Tensors</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#build-4d-communication-tensor">Build 4D-Communication Tensor</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#re-order-ligand-receptor-interactions-based-on-their-categories">Re-order ligand-receptor interactions based on their categories</a>
+    </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#re-order-ligand-receptor-interactions-based-on-their-categories">Re-order ligand-receptor interactions based on their categories</a>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#export-tensors-and-metadata">Export tensors and metadata</a>
+    <li class="toctree-l2"><a class="reference internal" href="#4-export-tensors-and-metadata">4 - Export tensors and metadata</a>
     </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA/">Patterns of multimodal cell-cell communication with Tensor-cell2cell v2</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-TFs/">Patterns of cell-cell communication and transcription factors</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-TFs/">Patterns of cell-cell communication and transcription factors (DecoupleR)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-Metabolism/">Patterns of cell-cell communication and metabolic activities (scCellFie)</a>
                   </li>
               </ul>
       </div>
@@ -724,7 +726,7 @@ warnings.filterwarnings('ignore')</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="load-data">Load Data<a class="anchor-link" href="#load-data">¶</a></h2>
+<h2 id="1-load-data">1 -  Load Data<a class="anchor-link" href="#1-load-data">¶</a></h2>
 </div>
 </div>
 </div>
@@ -1212,7 +1214,7 @@ MEBOCOST-Month-10.csv
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="data-preprocessing">Data Preprocessing<a class="anchor-link" href="#data-preprocessing">¶</a></h2>
+<h2 id="2-data-preprocessing">2 - Data Preprocessing<a class="anchor-link" href="#2-data-preprocessing">¶</a></h2>
 </div>
 </div>
 </div>
@@ -1864,7 +1866,7 @@ for idx, row in lr_pairs.iterrows():
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="build-tensors">Build Tensors<a class="anchor-link" href="#build-tensors">¶</a></h2>
+<h2 id="3-build-tensors">3 - Build Tensors<a class="anchor-link" href="#3-build-tensors">¶</a></h2>
 </div>
 </div>
 </div>
@@ -2233,7 +2235,7 @@ Building tensor for the provided context
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="re-order-ligand-receptor-interactions-based-on-their-categories">Re-order ligand-receptor interactions based on their categories<a class="anchor-link" href="#re-order-ligand-receptor-interactions-based-on-their-categories">¶</a></h2><p>Later, we will be interested in plotting our results and group LR pairs by their annotations, so we sort them in a way that those with similar annotations will be plot together.</p>
+<h3 id="re-order-ligand-receptor-interactions-based-on-their-categories">Re-order ligand-receptor interactions based on their categories<a class="anchor-link" href="#re-order-ligand-receptor-interactions-based-on-their-categories">¶</a></h3><p>Later, we will be interested in plotting our results and group LR pairs by their annotations, so we sort them in a way that those with similar annotations will be plot together.</p>
 <p>First, we sort them in the metadata.</p>
 </div>
 </div>
@@ -2314,7 +2316,7 @@ tensor_met = c2c.tensor.subset_tensor(tensor_met, subset_dict={1: meta_tf2[1]['E
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="export-tensors-and-metadata">Export tensors and metadata<a class="anchor-link" href="#export-tensors-and-metadata">¶</a></h2><p>Finally, we export both, metadata and tensor for both modalities (protein- and metabolite-based communication).</p>
+<h2 id="4-export-tensors-and-metadata">4 -  Export tensors and metadata<a class="anchor-link" href="#4-export-tensors-and-metadata">¶</a></h2><p>Finally, we export both, metadata and tensor for both modalities (protein- and metabolite-based communication).</p>
 </div>
 </div>
 </div>

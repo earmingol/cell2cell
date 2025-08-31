@@ -69,13 +69,13 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#citations">Citations</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#initial-setups">Initial setups</a>
+    <li class="toctree-l2"><a class="reference internal" href="#1-initial-setups">1 - Initial setups</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#installing-necessary-libraries">Installing necessary libraries</a>
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#load-data">Load Data</a>
+    <li class="toctree-l2"><a class="reference internal" href="#2-load-data">2 - Load Data</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#directories-to-store-data">Directories to store data</a>
     </li>
@@ -85,7 +85,7 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#data-preprocessing">Data Preprocessing</a>
+    <li class="toctree-l2"><a class="reference internal" href="#3-data-preprocessing">3 - Data Preprocessing</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#information-of-samples">Information of samples</a>
     </li>
@@ -95,7 +95,7 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#tensor-cell2cell-analysis">Tensor-cell2cell analysis</a>
+    <li class="toctree-l2"><a class="reference internal" href="#4-tensor-cell2cell-analysis">4 - Tensor-cell2cell analysis</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#evaluate-some-tensor-properties">Evaluate some tensor properties</a>
     </li>
@@ -105,7 +105,7 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#export-objects">Export objects</a>
+    <li class="toctree-l2"><a class="reference internal" href="#5-export-objects">5 - Export objects</a>
     </li>
     </ul>
                   </li>
@@ -116,7 +116,9 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../Version2/Tensor-cell2cell-CTCA/">Patterns of multimodal cell-cell communication with Tensor-cell2cell v2</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../Version2/Tensor-cell2cell-CTCA-TFs/">Patterns of cell-cell communication and transcription factors</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../Version2/Tensor-cell2cell-CTCA-TFs/">Patterns of cell-cell communication and transcription factors (DecoupleR)</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../Version2/Tensor-cell2cell-CTCA-Metabolism/">Patterns of cell-cell communication and metabolic activities (scCellFie)</a>
                   </li>
               </ul>
       </div>
@@ -615,7 +617,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="initial-setups">Initial setups<a class="anchor-link" href="#initial-setups">¶</a></h2>
+<h2 id="1-initial-setups">1 - Initial setups<a class="anchor-link" href="#1-initial-setups">¶</a></h2>
 </div>
 </div>
 </div>
@@ -777,7 +779,7 @@ warnings.filterwarnings('ignore')</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="load-data">Load Data<a class="anchor-link" href="#load-data">¶</a></h2>
+<h2 id="2-load-data">2 - Load Data<a class="anchor-link" href="#2-load-data">¶</a></h2>
 </div>
 </div>
 </div>
@@ -1120,7 +1122,7 @@ lr_pairs = lr_pairs.astype(str)</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="data-preprocessing">Data Preprocessing<a class="anchor-link" href="#data-preprocessing">¶</a></h2>
+<h2 id="3-data-preprocessing">3 - Data Preprocessing<a class="anchor-link" href="#3-data-preprocessing">¶</a></h2>
 </div>
 </div>
 </div>
@@ -1385,7 +1387,7 @@ for idx, row in lr_pairs.iterrows():
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="tensor-cell2cell-analysis">Tensor-cell2cell analysis<a class="anchor-link" href="#tensor-cell2cell-analysis">¶</a></h2><p>Build 4D-Communication Tensor
+<h2 id="4-tensor-cell2cell-analysis">4 - Tensor-cell2cell analysis<a class="anchor-link" href="#4-tensor-cell2cell-analysis">¶</a></h2><p>Build 4D-Communication Tensor
 Here we use as input the list of gene expression matrices that were aggregated into a cell-type granularity. This list contains the expression matrices of all samples/contexts.</p>
 <p>The following functions perform all the steps to build a 4D-communication tensor:</p>
 <p><img alt="TC2C" src="https://earmingol.github.io/cell2cell/tutorials/ASD/figures/4d-tensor.png"/>.</p>
@@ -1910,7 +1912,7 @@ Name: Factor 10, dtype: float32
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="export-objects">Export objects<a class="anchor-link" href="#export-objects">¶</a></h2><p>Beyond the generated results, we can export the objects here for using them in posterior analyses.</p>
+<h2 id="5-export-objects">5 - Export objects<a class="anchor-link" href="#5-export-objects">¶</a></h2><p>Beyond the generated results, we can export the objects here for using them in posterior analyses.</p>
 </div>
 </div>
 </div>
