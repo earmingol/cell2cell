@@ -7,7 +7,6 @@ theme:
 repo_url: https://github.com/earmingol/cell2cell
 plugins:
   - search
-  - mkapi
   - mkdocs-jupyter:
       execute: false
       include: ["*.ipynb"]
