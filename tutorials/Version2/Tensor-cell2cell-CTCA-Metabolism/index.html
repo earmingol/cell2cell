@@ -70,9 +70,9 @@
               </ul>
               <p class="caption"><span class="caption-text">Tensor-cell2cell v2 Tutorials</span></p>
               <ul class="current">
-                  <li class="toctree-l1"><a class="reference internal" href="../Building-Tensors/">Building multimodal 4D communication tensors</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../Building-Tensors/">Building multimodal 4D communication tensors (MEBOCOST)</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA/">Patterns of multimodal cell-cell communication with Tensor-cell2cell v2</a>
+                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA/">Patterns of protein- and metabolite-based cell-cell communication (MEBOCOST)</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-TFs/">Patterns of cell-cell communication and transcription factors (DecoupleR)</a>
                   </li>
@@ -116,6 +116,10 @@
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#metadata">Metadata</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#plot-factor-loadings">Plot factor loadings</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#top-lr-pairs-and-metabolic-tasks">Top LR pairs and metabolic tasks</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#export-loadings">Export Loadings</a>
     </li>
         </ul>
@@ -129,6 +133,8 @@
         </ul>
     </li>
     </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../Tensor-cell2cell-CTCA-LIANA/">Patterns of protein- and metabolite-based cell-cell communication (LIANA+)</a>
                   </li>
               </ul>
       </div>
@@ -3384,8 +3390,7 @@ coupled_tensor.mask2 = None</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><strong>Plot factor loadings</strong></p>
-<p>After performing the CTCA, a set of loadings is obtained in a factor-specific way, for each tensor. These loadings provide details of what elements of each dimension are important within each factor. Here we plot first the loadings for the shared dimensions, followed by the private dimensions of the first and second tensor (LR pairs and Metabolic Tasks, respectively).</p>
+<h3 id="plot-factor-loadings">Plot factor loadings<a class="anchor-link" href="#plot-factor-loadings">¶</a></h3><p>After performing the CTCA, a set of loadings is obtained in a factor-specific way, for each tensor. These loadings provide details of what elements of each dimension are important within each factor. Here we plot first the loadings for the shared dimensions, followed by the private dimensions of the first and second tensor (LR pairs and Metabolic Tasks, respectively).</p>
 </div>
 </div>
 </div>
@@ -3545,6 +3550,17 @@ cmaps = ['viridis', 'tab20', 'tab20', 'Dark2', 'tab20']</div>
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>Each factor represents a context-dependent communication pattern. In this visualization, each row is a factor and each column is a tensor dimension in that factor (Shared dimensions: contexts and receiver-cells; Private dimensions: LR pairs, sender-cells, and metabolic tasks).</p>
 <p>The loadings represent the contribution of each element to that pattern, and their combinations between all dimensions represent the overall pattern. For example, in Factor 9, the identified communication pattern occurs in early stages, decreasing across time, where glial cells and progenitors play a major role as sender and as receivers. Then we can identify the top LR pairs and metabolic tasks contributing from cognate modalities. Thus, we can say that the receptors of these LR pairs act in coordination with the metabolic tasks in the receiver cells.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=74982258">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="top-lr-pairs-and-metabolic-tasks">Top LR pairs and metabolic tasks<a class="anchor-link" href="#top-lr-pairs-and-metabolic-tasks">¶</a></h3>
 </div>
 </div>
 </div>
@@ -4690,6 +4706,7 @@ df2 = (df2 / df2.max().max())</div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../Tensor-cell2cell-CTCA-TFs/" class="btn btn-neutral float-left" title="Patterns of cell-cell communication and transcription factors (DecoupleR)"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../Tensor-cell2cell-CTCA-LIANA/" class="btn btn-neutral float-right" title="Patterns of protein- and metabolite-based cell-cell communication (LIANA+)">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -4718,6 +4735,8 @@ df2 = (df2 / df2.max().max())</div>
     
       <span><a href="../Tensor-cell2cell-CTCA-TFs/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
+    
+      <span><a href="../Tensor-cell2cell-CTCA-LIANA/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
