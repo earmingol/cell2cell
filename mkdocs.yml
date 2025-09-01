@@ -60,3 +60,4 @@ nav:
     - tutorials/Version2/Tensor-cell2cell-CTCA.ipynb
     - tutorials/Version2/Tensor-cell2cell-CTCA-TFs.ipynb
     - tutorials/Version2/Tensor-cell2cell-CTCA-Metabolism.ipynb
+    - tutorials/Version2/Tensor-cell2cell-CTCA-LIANA.ipynb
