@@ -2346,9 +2346,18 @@ tensor_3d.shape</div>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5-generate-coupled-tensors">5 - Generate coupled tensors<a class="anchor-link" href="#5-generate-coupled-tensors">¶</a></h2><p>Once we have our 4D communication tensor and our 3D TF activity tensor, we start creating a <code>CoupledInteractionTensor</code>object in Tensor-cell2cell v2. This object will later perform the CTCA.</p>
-<p>For this, we need to specify which dimensions are coupled between each tensor. In our case, the context dimensions are coupled, and both receiver cell dimensions. In this case we asssume that the TF activity occurs in the receiver cells and this activity is related to the LR interactions, so they are <em>coupled</em>.</p>
-<p>The context dimension is the dim 0 in both tensors, while the receiver cell dimension is dim 3 in the 4D and dim 2 in the 3D tensor:</p>
+<h2 id="5-generate-coupled-tensors">5 - Generate coupled tensors<a class="anchor-link" href="#5-generate-coupled-tensors">¶</a></h2><p>After constructing our 4D communication tensor and 3D TF activity tensor, we can create a <code>CoupledInteractionTensor</code> object in Tensor-cell2cell v2. This object will later be used to perform CTCA.</p>
+<p>The key step here is to define which dimensions should be coupled between the tensors. In this example:</p>
+<ul>
+<li><strong>Context dimensions</strong> are coupled directly, since they are identical across both tensors.</li>
+<li><strong>Cell type dimension (in the TF tensor)</strong> can be coupled either with the <strong>sender</strong> or <strong>receiver</strong> dimension (in the communication tensor):<ul>
+<li><strong>Couple to sender:</strong> TF activity is aligned with the cells producing the ligand of each LR pair. This suggests that TFs may regulate or coordinate with the expression of those ligands in the sender cells.</li>
+<li><strong>Couple to receiver:</strong> TF activity is aligned with the cells receiving the ligand via the receptor. This suggests that TFs are potentially activated downstream of the receptor, capturing the intracellular signaling coordinated with the communication programs.</li>
+</ul>
+</li>
+</ul>
+<p>In this tutorial, we choose the <strong>second option (coupling to the receiver)</strong>. This means we focus on TF activity triggered by LR interactions in the CCC program.</p>
+<p>Concretely, the <strong>context dimension</strong> corresponds to <code>dim 0</code> in both tensors, while the <strong>receiver cell dimension</strong> is <code>dim 3</code> in the 4D communication tensor and <code>dim 2</code> in the 3D TF activity tensor.</p>
 </div>
 </div>
 </div>
