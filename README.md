@@ -69,5 +69,8 @@ Please cite our work using the following references:
 - **Tensor-cell2cell**: [Context-aware deconvolution of cell-cell communication with Tensor-cell2cell](https://doi.org/10.1038/s41467-022-31369-2).
   *Nature Communications, 2022.*
 
+- **Tensor-cell2cell v2**: [Tensor-cell2cell v2 unravels coordinated dynamics of protein- and metabolite-mediated cell-cell communication](https://doi.org/10.1101/2022.11.02.514917).
+  *bioRxiv, 2025.*
+
 - **LIANA & Tensor-cell2cell tutorials**: [Combining LIANA and Tensor-cell2cell to decipher cell-cell communication across multiple samples](https://doi.org/10.1016/j.crmeth.2024.100758).
   *Cell Reports Methods, 2024*

@@ -7,7 +7,6 @@ theme:
 repo_url: https://github.com/earmingol/cell2cell
 plugins:
   - search
-  - mkapi
   - mkdocs-jupyter:
       execute: false
       include: ["*.ipynb"]
@@ -20,6 +19,7 @@ plugins:
       handlers:
         python:
           options:
+            show_submodules: true
             docstring_style: sphinx
 
 markdown_extensions:
@@ -59,3 +59,5 @@ nav:
     - tutorials/Version2/Building-Tensors.ipynb
     - tutorials/Version2/Tensor-cell2cell-CTCA.ipynb
     - tutorials/Version2/Tensor-cell2cell-CTCA-TFs.ipynb
+    - tutorials/Version2/Tensor-cell2cell-CTCA-Metabolism.ipynb
+    - tutorials/Version2/Tensor-cell2cell-CTCA-LIANA.ipynb
