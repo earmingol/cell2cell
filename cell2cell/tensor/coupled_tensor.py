@@ -8,7 +8,7 @@ from collections import OrderedDict
 from tqdm import tqdm
 
 from cell2cell.tensor.factorization import _compute_elbow, _compute_norm_error
-from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow
+from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow, plot_coupled_factorization_errors
 from cell2cell.preprocessing.signal import smooth_curve
 from cell2cell.tensor.coupled_factorization import (
    _compute_coupled_tensor_factorization,
@@ -77,6 +77,19 @@ class CoupledInteractionTensor():
 
     factors : dict
         Combined factor loadings with shared and tensor-specific factors.
+
+    factorization_errors1_ : list
+        List of reconstruction errors for tensor1 at each iteration of the coupled
+        tensor factorization. Only available after running compute_tensor_factorization.
+
+    factorization_errors2_ : list
+        List of reconstruction errors for tensor2 at each iteration of the coupled
+        tensor factorization. Only available after running compute_tensor_factorization.
+
+    combined_errors_ : list
+        List of combined weighted reconstruction errors at each iteration of the coupled
+        tensor factorization. The weighting follows the balance_errors parameter.
+        Only available after running compute_tensor_factorization.
     '''
 
     def __init__(self, tensor1, tensor2, mode_mapping, tensor1_name='Tensor1',
@@ -137,6 +150,11 @@ class CoupledInteractionTensor():
         else:
             self.loc_zeros2 = None
 
+        # Initialize factorization error tracking
+        self.factorization_errors1_ = None
+        self.factorization_errors2_ = None
+        self.combined_errors_ = None
+
     def compute_tensor_factorization(self, rank, tf_type='coupled_non_negative_cp', init='svd',
                                      svd='truncated_svd', random_state=None, runs=1,
                                      normalize_loadings=True, var_ordered_factors=True,
@@ -184,6 +202,8 @@ class CoupledInteractionTensor():
         '''
         best_error = np.inf
         best_cp1, best_cp2 = None, None
+        best_errors1, best_errors2 = None, None  # Track errors from best run
+        best_weight1, best_weight2 = 1.0, 1.0  # Track weights from best run
 
         if kwargs is None:
             kwargs = {'return_errors': True}
@@ -242,13 +262,17 @@ class CoupledInteractionTensor():
                     weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
                     combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
                 else:
+                    weight1 = weight2 = 1.0
                     combined_error = (error1 + error2) / 2
             else:
+                weight1 = weight2 = 1.0
                 combined_error = (error1 + error2) / 2
 
             if combined_error < best_error:
                 best_error = combined_error
                 best_cp1, best_cp2 = cp1, cp2
+                best_errors1, best_errors2 = errors1, errors2  # Store errors from best run
+                best_weight1, best_weight2 = weight1, weight2  # Store weights
 
         if runs > 1:
             print(f'Best coupled model has a combined normalized error of: {best_error:.3f}')
@@ -257,6 +281,23 @@ class CoupledInteractionTensor():
         self.tl_object1 = best_cp1
         self.tl_object2 = best_cp2
         self.rank = rank
+
+        # Store factorization errors from the best run
+        if best_errors1 is not None and best_errors2 is not None:
+            self.factorization_errors1_ = [tl.to_numpy(e) if hasattr(e, 'numpy') else e for e in best_errors1]
+            self.factorization_errors2_ = [tl.to_numpy(e) if hasattr(e, 'numpy') else e for e in best_errors2]
+
+            # Compute combined errors for each iteration
+            self.combined_errors_ = []
+            for e1, e2 in zip(best_errors1, best_errors2):
+                e1_np = tl.to_numpy(e1) if hasattr(e1, 'numpy') else e1
+                e2_np = tl.to_numpy(e2) if hasattr(e2, 'numpy') else e2
+
+                if self.balance_errors:
+                    combined = (best_weight1 * e1_np + best_weight2 * e2_np) / (best_weight1 + best_weight2)
+                else:
+                    combined = (e1_np + e2_np) / 2
+                self.combined_errors_.append(combined)
 
         # Create factor DataFrames
         self._create_factor_dataframes(normalize_loadings, var_ordered_factors)
@@ -359,6 +400,39 @@ class CoupledInteractionTensor():
             else:
                 unified_label = label
             self.factors[unified_label] = self.factors2[label]
+
+    def get_factorization_errors(self, plot=False, tensor1_name=None, tensor2_name=None,
+                                 figsize=(10, 5), fontsize=12, show_individual=True,
+                                 filename=None):
+        '''Retrieves the factorization errors across iterations for coupled tensor factorization.'''
+        if self.factorization_errors1_ is None or self.factorization_errors2_ is None:
+            print("No factorization errors available. Please run compute_tensor_factorization first.")
+            return None
+
+        errors = {
+            'tensor1': self.factorization_errors1_,
+            'tensor2': self.factorization_errors2_,
+            'combined': self.combined_errors_
+        }
+
+        if plot:
+            t1_name = tensor1_name if tensor1_name is not None else self.tensor1_name
+            t2_name = tensor2_name if tensor2_name is not None else self.tensor2_name
+
+            fig = plot_coupled_factorization_errors(
+                errors1=self.factorization_errors1_,
+                errors2=self.factorization_errors2_,
+                combined_errors=self.combined_errors_,
+                tensor1_name=t1_name,
+                tensor2_name=t2_name,
+                figsize=figsize,
+                fontsize=fontsize,
+                show_individual=show_individual,
+                filename=filename
+            )
+            return errors, fig
+        else:
+            return errors
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='coupled_non_negative_cp',
                              init='random', svd='truncated_svd', metric='error', random_state=None,
