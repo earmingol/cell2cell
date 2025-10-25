@@ -15,7 +15,8 @@ from cell2cell.tensor.coupled_factorization import (
    _run_coupled_elbow_analysis,
    _multiple_runs_coupled_elbow_analysis,
    _process_mode_mapping,
-   _validate_tensors
+   _validate_tensors,
+   _compute_balancing_weights
 )
 
 
@@ -105,6 +106,7 @@ class CoupledInteractionTensor():
         self.tensor1_name = tensor1_name
         self.tensor2_name = tensor2_name
         self.balance_errors = balance_errors
+        self.manual_weights = None
 
         # Store order information
         self.order_names1 = tensor1.order_names.copy()
@@ -158,7 +160,8 @@ class CoupledInteractionTensor():
     def compute_tensor_factorization(self, rank, tf_type='coupled_non_negative_cp', init='svd',
                                      svd='truncated_svd', random_state=None, runs=1,
                                      normalize_loadings=True, var_ordered_factors=True,
-                                     n_iter_max=100, tol=10e-7, verbose=False, **kwargs):
+                                     n_iter_max=100, tol=10e-7, manual_weights=None,
+                                     verbose=False, **kwargs):
         '''
         Performs coupled tensor factorization on both tensors.
 
@@ -194,6 +197,12 @@ class CoupledInteractionTensor():
         tol : float, default=1e-7
             Convergence tolerance.
 
+        manual_weights : tuple, default=None
+            Manual weights (weight1, weight2) for balancing errors between tensors.
+            If provided, overrides automatic weight calculation from balance_errors.
+            Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+            the importance of tensor2 in the combined error metric.
+
         verbose : boolean, default=False
             Whether printing or not steps of the analysis.
 
@@ -204,6 +213,10 @@ class CoupledInteractionTensor():
         best_cp1, best_cp2 = None, None
         best_errors1, best_errors2 = None, None  # Track errors from best run
         best_weight1, best_weight2 = 1.0, 1.0  # Track weights from best run
+
+        # Store manual weights if provided
+        if manual_weights is not None:
+            self.manual_weights = manual_weights
 
         if kwargs is None:
             kwargs = {'return_errors': True}
@@ -232,6 +245,7 @@ class CoupledInteractionTensor():
                 tol=tol,
                 verbose=verbose,
                 balance_errors=self.balance_errors,
+                manual_weights=manual_weights,
                 **kwargs
             )
 
@@ -246,27 +260,12 @@ class CoupledInteractionTensor():
             else:
                 error2 = _compute_norm_error(self.tensor2, cp2, self.mask2)
 
-            # Apply balanced weighting if requested
-            if self.balance_errors:
-                # Automatically derive tensor-specific modes
-                shared_t1_modes = set([pair[0] for pair in self.mode_mapping.get('shared', [])])
-                shared_t2_modes = set([pair[1] for pair in self.mode_mapping.get('shared', [])])
-                tensor1_only = [i for i in range(tl.ndim(self.tensor1)) if i not in shared_t1_modes]
-                tensor2_only = [i for i in range(tl.ndim(self.tensor2)) if i not in shared_t2_modes]
-
-                nonshared_size1 = np.prod([self.tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
-                nonshared_size2 = np.prod([self.tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
-                total_nonshared = nonshared_size1 + nonshared_size2
-                if total_nonshared > 0:
-                    weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
-                    weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
-                    combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
-                else:
-                    weight1 = weight2 = 1.0
-                    combined_error = (error1 + error2) / 2
-            else:
-                weight1 = weight2 = 1.0
-                combined_error = (error1 + error2) / 2
+            # Calculate balancing weights (manual or automatic)
+            weight1, weight2 = _compute_balancing_weights(
+                self.tensor1, self.tensor2, self.mode_mapping,
+                self.balance_errors, manual_weights
+            )
+            combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
 
             if combined_error < best_error:
                 best_error = combined_error
@@ -437,8 +436,9 @@ class CoupledInteractionTensor():
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='coupled_non_negative_cp',
                              init='random', svd='truncated_svd', metric='error', random_state=None,
                              n_iter_max=100, tol=10e-7, automatic_elbow=True, manual_elbow=None,
-                             smooth=False, mask1=None, mask2=None, ci='std', figsize=(4, 2.25),
-                             fontsize=14, filename=None, output_fig=True, verbose=False, **kwargs):
+                             smooth=False, mask1=None, mask2=None, manual_weights=None,
+                             ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
+                             output_fig=True, verbose=False, **kwargs):
         '''
         Elbow analysis on the error achieved by the Coupled Tensor Factorization.
         '''
@@ -471,6 +471,7 @@ class CoupledInteractionTensor():
                 tol=tol,
                 verbose=verbose,
                 balance_errors=self.balance_errors,
+                manual_weights=manual_weights,
                 **kwargs
             )
             loss = [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss]
@@ -493,6 +494,7 @@ class CoupledInteractionTensor():
                 tol=tol,
                 verbose=verbose,
                 balance_errors=self.balance_errors,
+                manual_weights=manual_weights,
                 **kwargs
             )
             loss = np.nanmean(all_loss, axis=0).tolist()

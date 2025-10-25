@@ -120,6 +120,67 @@ def _validate_tensors(tensor1, tensor2, mode_mapping):
                     f"Element names must match for shared dimensions: tensor1 mode {t1_mode} vs tensor2 mode {t2_mode}")
 
 
+def _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors=True, manual_weights=None):
+    '''
+    Compute or retrieve balancing weights for coupled tensor factorization.
+
+    Parameters
+    ----------
+    tensor1 : tensorly.tensor
+        First tensor
+
+    tensor2 : tensorly.tensor
+        Second tensor
+
+    mode_mapping : dict
+        Mode mapping specification
+
+    balance_errors : bool, default=True
+        Whether to automatically balance errors based on tensor sizes
+
+    manual_weights : tuple of float, default=None
+        Manual weights (weight1, weight2). If provided, overrides balance_errors.
+
+    Returns
+    -------
+    weight1, weight2 : float
+        Weights for balancing errors
+    '''
+    # If manual weights provided, use them directly
+    if manual_weights is not None:
+        if not isinstance(manual_weights, (tuple, list)) or len(manual_weights) != 2:
+            raise ValueError("manual_weights must be a tuple/list of 2 positive numbers (weight1, weight2)")
+        weight1, weight2 = manual_weights
+        if weight1 <= 0 or weight2 <= 0:
+            raise ValueError("manual_weights must be positive")
+        return float(weight1), float(weight2)
+
+    # Otherwise use automatic balancing if requested
+    if balance_errors:
+        shared_pairs = mode_mapping.get('shared', [])
+        shared_t1_modes = set([pair[0] for pair in shared_pairs])
+        shared_t2_modes = set([pair[1] for pair in shared_pairs])
+
+        ndim1 = tl.ndim(tensor1)
+        ndim2 = tl.ndim(tensor2)
+        tensor1_only = [i for i in range(ndim1) if i not in shared_t1_modes]
+        tensor2_only = [i for i in range(ndim2) if i not in shared_t2_modes]
+
+        nonshared_size1 = np.prod([tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
+        nonshared_size2 = np.prod([tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
+        total_nonshared = nonshared_size1 + nonshared_size2
+
+        if total_nonshared > 0:
+            weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
+            weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
+        else:
+            weight1 = weight2 = 1.0
+    else:
+        weight1 = weight2 = 1.0
+
+    return weight1, weight2
+
+
 def coupled_non_negative_parafac(
         tensor1,
         tensor2,
@@ -137,6 +198,7 @@ def coupled_non_negative_parafac(
         return_errors=False,
         cvg_criterion="abs_rec_error",
         balance_errors=True,
+        manual_weights=None,
         separate_weights=True,
 ):
     '''
@@ -194,6 +256,12 @@ def coupled_non_negative_parafac(
     balance_errors : bool, default=True
         Whether to balance errors based on tensor sizes.
 
+    manual_weights : tuple of float, default=None
+        Manual weights (weight1, weight2) for balancing errors between tensors.
+        If provided, overrides automatic weight calculation from balance_errors.
+        Weights should be positive and will be used as-is (no normalization).
+        Example: manual_weights=(1.0, 2.0) gives twice the weight to tensor2 errors.
+
     separate_weights : bool, default=True
         Whether to use separate weights for each tensor during optimization.
 
@@ -216,6 +284,11 @@ def coupled_non_negative_parafac(
     >>> mode_mapping = {'shared': [(0, 0), (1, 1)]}
     >>> cp1, cp2 = coupled_non_negative_parafac(tensor1, tensor2, rank=5,
     ...                                         mode_mapping=mode_mapping)
+    >>>
+    >>> # Using manual weights to prioritize tensor1
+    >>> cp1, cp2 = coupled_non_negative_parafac(tensor1, tensor2, rank=5,
+    ...                                         mode_mapping=mode_mapping,
+    ...                                         manual_weights=(2.0, 1.0))
     '''
 
     epsilon = tl.eps(tensor1.dtype)
@@ -255,18 +328,15 @@ def coupled_non_negative_parafac(
     # Validate rank
     rank = validate_cp_rank(tl.shape(tensor1), rank=rank)
 
-    # Calculate balancing weights based on tensor-specific dimensions
-    if balance_errors:
-        nonshared_size1 = np.prod([tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
-        nonshared_size2 = np.prod([tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
-        total_nonshared = nonshared_size1 + nonshared_size2
-        if total_nonshared > 0:
-            weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
-            weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
-        else:
-            weight1 = weight2 = 1.0
-    else:
-        weight1 = weight2 = 1.0
+    # Calculate balancing weights (either manual or automatic)
+    weight1, weight2 = _compute_balancing_weights(
+        tensor1, tensor2, mode_mapping, balance_errors, manual_weights
+    )
+
+    if verbose > 1 and manual_weights is not None:
+        print(f"Using manual weights: w1={weight1:.3f}, w2={weight2:.3f}")
+    elif verbose > 1 and balance_errors:
+        print(f"Using automatic balanced weights: w1={weight1:.3f}, w2={weight2:.3f}")
 
     # Initialize factors for both tensors
     weights1, factors1 = initialize_cp(
@@ -442,7 +512,7 @@ def coupled_non_negative_parafac(
                     print(f"Iteration {iteration}: rec_error1={rec_error1:.6f}, "
                           f"rec_error2={rec_error2:.6f}, combined={combined_error:.6f}, "
                           f"decrease={error_decrease:.6e}")
-                    if balance_errors and verbose > 1:
+                    if (balance_errors or manual_weights is not None) and verbose > 1:
                         print(f"  Balance weights: w1={weight1:.3f}, w2={weight2:.3f}")
 
                 if cvg_criterion == "abs_rec_error":
@@ -485,7 +555,7 @@ def coupled_non_negative_parafac(
 def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, mode_mapping, mask1=None, mask2=None,
                                           tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           random_state=None, n_iter_max=100, tol=10e-7, verbose=False,
-                                          balance_errors=True, **kwargs):
+                                          balance_errors=True, manual_weights=None, **kwargs):
     '''Performs the Coupled Tensor Factorization with flexible mode mapping'''
 
     if kwargs is None:
@@ -508,6 +578,7 @@ def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, mode_mapping, 
             tol=tol,
             verbose=verbose,
             balance_errors=balance_errors,
+            manual_weights=manual_weights,
             **kwargs
         )
     else:
@@ -519,7 +590,7 @@ def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, mode_mapping, 
 def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, tf_type='coupled_non_negative_cp',
                                 init='svd', svd='truncated_svd', random_state=None, mask1=None, mask2=None,
                                 n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True,
-                                disable_pbar=False, **kwargs):
+                                manual_weights=None, disable_pbar=False, **kwargs):
     '''
     Performs a coupled elbow analysis with mode mapping
 
@@ -541,7 +612,7 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
 
     init : str, default='svd'
         Initialization method for computing the Tensor Factorization.
-        {‘svd’, ‘random’}
+        {'svd', 'random'}
 
     svd : str, default='truncated_svd'
         Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
@@ -573,6 +644,10 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
     balance_errors : boolean, default=True
         Whether to balance the errors from each tensor based on their sizes
         during the elbow analysis. This helps to avoid bias towards larger tensors.
+
+    manual_weights : tuple of float, default=None
+        Manual weights (weight1, weight2) for balancing errors between tensors.
+        If provided, overrides automatic weight calculation from balance_errors.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -612,6 +687,7 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
             tol=tol,
             verbose=verbose,
             balance_errors=balance_errors,
+            manual_weights=manual_weights,
             **kwargs
         )
 
@@ -628,25 +704,9 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
             from cell2cell.tensor.factorization import _compute_norm_error
             error2 = _compute_norm_error(tensor2, cp2, mask2)
 
-        # Calculate combined error with balancing based on non-shared dimensions
-        if balance_errors:
-            # Automatically derive tensor-specific modes
-            shared_t1_modes = set([pair[0] for pair in mode_mapping.get('shared', [])])
-            shared_t2_modes = set([pair[1] for pair in mode_mapping.get('shared', [])])
-            tensor1_only = [i for i in range(tl.ndim(tensor1)) if i not in shared_t1_modes]
-            tensor2_only = [i for i in range(tl.ndim(tensor2)) if i not in shared_t2_modes]
-
-            nonshared_size1 = np.prod([tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
-            nonshared_size2 = np.prod([tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
-            total_nonshared = nonshared_size1 + nonshared_size2
-            if total_nonshared > 0:
-                weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
-                weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
-                combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
-            else:
-                combined_error = (error1 + error2) / 2
-        else:
-            combined_error = (error1 + error2) / 2
+        # Calculate combined error with balancing
+        weight1, weight2 = _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors, manual_weights)
+        combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
 
         loss.append((r, combined_error))
 
@@ -656,7 +716,8 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
 def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, runs=10,
                                           tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           metric='error', random_state=None, mask1=None, mask2=None,
-                                          n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True, **kwargs):
+                                          n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True,
+                                          manual_weights=None, **kwargs):
     '''
     Performs a coupled elbow analysis with multiple runs and mode mapping
 
@@ -684,7 +745,7 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
 
     init : str, default='svd'
         Initialization method for computing the Tensor Factorization.
-        {‘svd’, ‘random’}
+        {'svd', 'random'}
 
     svd : str, default='truncated_svd'
         Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
@@ -716,6 +777,10 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
     balance_errors : boolean, default=True
         Whether to balance the errors from each tensor based on their sizes
         during the elbow analysis. This helps to avoid bias towards larger tensors.
+
+    manual_weights : tuple of float, default=None
+        Manual weights (weight1, weight2) for balancing errors between tensors.
+        If provided, overrides automatic weight calculation from balance_errors.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -767,6 +832,7 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
                 tol=tol,
                 verbose=verbose,
                 balance_errors=balance_errors,
+                manual_weights=manual_weights,
                 **kwargs
             )
 
@@ -784,24 +850,8 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
                 error2 = _compute_norm_error(tensor2, cp2, mask2)
 
             # Calculate combined error with balancing
-            if balance_errors:
-                # Automatically derive tensor-specific modes
-                shared_t1_modes = set([pair[0] for pair in mode_mapping.get('shared', [])])
-                shared_t2_modes = set([pair[1] for pair in mode_mapping.get('shared', [])])
-                tensor1_only = [i for i in range(tl.ndim(tensor1)) if i not in shared_t1_modes]
-                tensor2_only = [i for i in range(tl.ndim(tensor2)) if i not in shared_t2_modes]
-
-                nonshared_size1 = np.prod([tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
-                nonshared_size2 = np.prod([tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
-                total_nonshared = nonshared_size1 + nonshared_size2
-                if total_nonshared > 0:
-                    weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
-                    weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
-                    combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
-                else:
-                    combined_error = (error1 + error2) / 2
-            else:
-                combined_error = (error1 + error2) / 2
+            weight1, weight2 = _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors, manual_weights)
+            combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
 
             run_errors.append(combined_error)
 
