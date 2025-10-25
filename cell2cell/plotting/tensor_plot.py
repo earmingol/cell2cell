@@ -653,3 +653,133 @@ def generate_plot_df(interaction_tensor):
     plot_df.columns = ['Factor', 'Variable', 'Value', 'Order']
 
     return plot_df
+
+
+def plot_factorization_errors(errors, figsize=(8, 5), fontsize=12, filename=None):
+    '''Plots the factorization errors across iterations for a tensor decomposition.
+
+    Parameters
+    ----------
+    errors : list
+        List of reconstruction errors at each iteration of the factorization.
+
+    figsize : tuple, default=(8, 5)
+        Figure size (width, height).
+
+    fontsize : int, default=12
+        Font size for labels and title.
+
+    filename : str, default=None
+        Path to save the figure. If None, the figure is not saved.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib.
+    '''
+    fig, ax = plt.subplots(figsize=figsize)
+    iterations = range(1, len(errors) + 1)
+
+    ax.plot(iterations, errors,
+            marker='o', linewidth=2, markersize=4, color='#2E86AB')
+    ax.set_xlabel('Iteration', fontsize=int(1.2 * fontsize))
+    ax.set_ylabel('Reconstruction Error', fontsize=int(1.2 * fontsize))
+    ax.set_title('Tensor Factorization Convergence',
+                 fontsize=int(1.4 * fontsize), fontweight='bold')
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.tick_params(axis='both', labelsize=fontsize)
+
+    # Add annotation for final error
+    final_error = errors[-1]
+    ax.annotate(f'Final: {final_error:.4f}',
+                xy=(len(iterations), final_error),
+                xytext=(10, 10), textcoords='offset points',
+                fontsize=fontsize,
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.3),
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+
+    plt.tight_layout()
+
+    if filename is not None:
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+
+    return fig
+
+
+def plot_coupled_factorization_errors(errors1, errors2, combined_errors,
+                                      tensor1_name='Tensor 1', tensor2_name='Tensor 2',
+                                      figsize=(10, 5), fontsize=12, show_individual=True,
+                                      filename=None):
+    '''Plots the factorization errors across iterations for coupled tensor decomposition.
+
+    Parameters
+    ----------
+    errors1 : list
+        List of reconstruction errors for the first tensor at each iteration.
+
+    errors2 : list
+        List of reconstruction errors for the second tensor at each iteration.
+
+    combined_errors : list
+        List of combined weighted reconstruction errors at each iteration.
+
+    tensor1_name : str, default='Tensor 1'
+        Name for the first tensor to use in the legend.
+
+    tensor2_name : str, default='Tensor 2'
+        Name for the second tensor to use in the legend.
+
+    figsize : tuple, default=(10, 5)
+        Figure size (width, height).
+
+    fontsize : int, default=12
+        Font size for labels and legend.
+
+    show_individual : bool, default=True
+        Whether to show individual tensor errors or only combined error.
+
+    filename : str, default=None
+        Path to save the figure. If None, the figure is not saved.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib.
+    '''
+    fig, ax = plt.subplots(figsize=figsize)
+    iterations = range(1, len(errors1) + 1)
+
+    if show_individual:
+        # Plot individual tensor errors with transparency
+        ax.plot(iterations, errors1, marker='o', linewidth=2,
+                markersize=4, label=tensor1_name, alpha=0.6, color='#A23B72')
+        ax.plot(iterations, errors2, marker='s', linewidth=2,
+                markersize=4, label=tensor2_name, alpha=0.6, color='#F18F01')
+
+    # Plot combined error prominently
+    ax.plot(iterations, combined_errors, marker='^', linewidth=3,
+            markersize=6, label='Combined (weighted)', color='#2E86AB')
+
+    ax.set_xlabel('Iteration', fontsize=int(1.2 * fontsize))
+    ax.set_ylabel('Reconstruction Error', fontsize=int(1.2 * fontsize))
+    ax.set_title('Coupled Tensor Factorization Convergence',
+                 fontsize=int(1.4 * fontsize), fontweight='bold')
+    ax.legend(fontsize=fontsize, framealpha=0.9, loc='upper right')
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.tick_params(axis='both', labelsize=fontsize)
+
+    # Add annotation for final combined error
+    final_error = combined_errors[-1]
+    ax.annotate(f'Final: {final_error:.4f}',
+                xy=(len(iterations), final_error),
+                xytext=(10, 10), textcoords='offset points',
+                fontsize=fontsize,
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.3),
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+
+    plt.tight_layout()
+
+    if filename is not None:
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+
+    return fig
