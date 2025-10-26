@@ -657,18 +657,18 @@ def plot_coupled_elbow(loss_dict, elbow=None, figsize=(4, 2.25), ylabel='Normali
     if show_individual:
         # Plot tensor1
         plt.plot(*zip(*loss_dict['tensor1']), 'o', color='#A23B72',
-                 alpha=0.6, label=tensor1_name, markersize=4)
+                 alpha=0.6, label=tensor1_name, markersize=3)
 
         # Plot tensor2
         plt.plot(*zip(*loss_dict['tensor2']), 's', color='#F18F01',
-                 alpha=0.6, label=tensor2_name, markersize=4)
+                 alpha=0.6, label=tensor2_name, markersize=3)
 
     # Plot combined (always shown)
-    plt.plot(*zip(*loss_dict['combined']), 'o', color='steelblue', label='Combined')
+    plt.plot(*zip(*loss_dict['combined']), 'o', color='steelblue', label='Combined', markersize=3)
 
     # Mark elbow
     if elbow is not None:
-        _ = plt.plot(*loss_dict['combined'][elbow - 1], 'ro', markersize=8)
+        _ = plt.plot(*loss_dict['combined'][elbow - 1], 'ro', markersize=6)
 
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.xlabel('Rank', fontsize=int(1.2 * fontsize))
@@ -755,7 +755,7 @@ def plot_multiple_run_coupled_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 
         std_t1 = np.nanstd(all_loss['tensor1'], axis=0)
         if smooth:
             mean_t1 = smooth_curve(mean_t1)
-        plt.plot(x, mean_t1, 'o', color='#A23B72', alpha=0.6, label=tensor1_name, markersize=4)
+        plt.plot(x, mean_t1, 'o', color='#A23B72', alpha=0.6, label=tensor1_name, markersize=3)
         plt.fill_between(x, mean_t1 - coeff * std_t1, mean_t1 + coeff * std_t1,
                          color='#A23B72', alpha=0.15)
 
@@ -764,7 +764,7 @@ def plot_multiple_run_coupled_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 
         std_t2 = np.nanstd(all_loss['tensor2'], axis=0)
         if smooth:
             mean_t2 = smooth_curve(mean_t2)
-        plt.plot(x, mean_t2, 's', color='#F18F01', alpha=0.6, label=tensor2_name, markersize=4)
+        plt.plot(x, mean_t2, 's', color='#F18F01', alpha=0.6, label=tensor2_name, markersize=3)
         plt.fill_between(x, mean_t2 - coeff * std_t2, mean_t2 + coeff * std_t2,
                          color='#F18F01', alpha=0.15)
 
@@ -774,7 +774,7 @@ def plot_multiple_run_coupled_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 
     if smooth:
         mean_combined = smooth_curve(mean_combined)
 
-    plt.plot(x, mean_combined, 'o', color='steelblue', label='Combined')
+    plt.plot(x, mean_combined, 'o', color='steelblue', label='Combined', markersize=3)
     plt.fill_between(x, mean_combined - coeff * std_combined, mean_combined + coeff * std_combined,
                      color='steelblue', alpha=0.2)
 
