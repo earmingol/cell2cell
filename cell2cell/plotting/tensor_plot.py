@@ -675,7 +675,7 @@ def plot_coupled_elbow(loss_dict, elbow=None, figsize=(4, 2.25), ylabel='Normali
     plt.ylabel(ylabel, fontsize=int(1.2 * fontsize))
 
     if show_individual:
-        plt.legend(fontsize=fontsize, framealpha=0.9, loc='best')
+        plt.legend(fontsize=fontsize, framealpha=0.9, loc='center left', bbox_to_anchor=(1.01, 0.5))
 
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches='tight')
@@ -787,7 +787,7 @@ def plot_multiple_run_coupled_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 
     plt.ylabel(ylabel, fontsize=int(1.2 * fontsize))
 
     if show_individual:
-        plt.legend(fontsize=fontsize, framealpha=0.9, loc='best')
+        plt.legend(fontsize=fontsize, framealpha=0.9, loc='center left', bbox_to_anchor=(1.01, 0.5))
 
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches='tight')
