@@ -50,6 +50,13 @@ class CoupledInteractionTensor():
     balance_errors : bool, default=True
         Whether to balance the errors based on tensor-specific dimensions.
 
+    manual_weights : tuple, default=(0.5, 0.5)
+            Manual weights (weight1, weight2) for importance of tensors in the factorization.
+            Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+            the importance of tensor2 in both the factorization and the combined error metric.
+            If None, automatic weight calculation is performed to have weigh1 and weight2
+            inversely proportional to non-shared mode dimensions of each tensor.
+
     device : str, default=None
         Device to use when backend allows using multiple devices.
 
@@ -160,7 +167,7 @@ class CoupledInteractionTensor():
     def compute_tensor_factorization(self, rank, tf_type='coupled_non_negative_cp', init='svd',
                                      svd='truncated_svd', random_state=None, runs=1,
                                      normalize_loadings=True, var_ordered_factors=True,
-                                     n_iter_max=100, tol=10e-7, manual_weights=None,
+                                     n_iter_max=100, tol=10e-7, balance_errors=None, manual_weights=(0.5, 0.5),
                                      verbose=False, **kwargs):
         '''
         Performs coupled tensor factorization on both tensors.
@@ -197,11 +204,16 @@ class CoupledInteractionTensor():
         tol : float, default=1e-7
             Convergence tolerance.
 
-        manual_weights : tuple, default=None
-            Manual weights (weight1, weight2) for balancing errors between tensors.
-            If provided, overrides automatic weight calculation from balance_errors.
+        balance_errors : bool, default=None
+            Whether to balance the errors based on tensor-specific dimensions.
+            If None, valued used when initializing the CoupledTensor will be used.
+
+        manual_weights : tuple, default=(0.5, 0.5)
+            Manual weights (weight1, weight2) for importance of tensors in the factorization.
             Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
-            the importance of tensor2 in the combined error metric.
+            the importance of tensor2 in both the factorization and the combined error metric.
+            If None, automatic weight calculation is performed to have weigh1 and weight2
+            inversely proportional to non-shared mode dimensions of each tensor.
 
         verbose : boolean, default=False
             Whether printing or not steps of the analysis.
@@ -213,6 +225,9 @@ class CoupledInteractionTensor():
         best_cp1, best_cp2 = None, None
         best_errors1, best_errors2 = None, None  # Track errors from best run
         best_weight1, best_weight2 = 1.0, 1.0  # Track weights from best run
+
+        if balance_errors is None:
+            balance_errors = self.balance_errors
 
         # Store manual weights if provided
         if manual_weights is not None:
@@ -244,7 +259,7 @@ class CoupledInteractionTensor():
                 n_iter_max=n_iter_max,
                 tol=tol,
                 verbose=verbose,
-                balance_errors=self.balance_errors,
+                balance_errors=balance_errors,
                 manual_weights=manual_weights,
                 **kwargs
             )
@@ -436,7 +451,7 @@ class CoupledInteractionTensor():
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='coupled_non_negative_cp',
                              init='random', svd='truncated_svd', metric='error', random_state=None,
                              n_iter_max=100, tol=10e-7, automatic_elbow=True, manual_elbow=None,
-                             smooth=False, mask1=None, mask2=None, manual_weights=None,
+                             smooth=False, mask1=None, mask2=None, balance_errors=None, manual_weights=(0.5, 0.5),
                              ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
                              output_fig=True, show_individual=False, verbose=False, **kwargs):
         '''
@@ -489,8 +504,16 @@ class CoupledInteractionTensor():
         mask2 : tensorly.tensor, default=None
             Mask for the second tensor.
 
-        manual_weights : tuple, default=None
-            Manual weights (weight1, weight2) for balancing errors.
+        balance_errors : bool, default=None
+            Whether to balance the errors based on tensor-specific dimensions.
+            If None, valued used when initializing the CoupledTensor will be used.
+
+        manual_weights : tuple, default=(0.5, 0.5)
+            Manual weights (weight1, weight2) for importance of tensors in the factorization.
+            Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+            the importance of tensor2 in both the factorization and the combined error metric.
+            If None, automatic weight calculation is performed to have weigh1 and weight2
+            inversely proportional to non-shared mode dimensions of each tensor.
 
         ci : str, default='std'
             Confidence interval. {'std', '95%'}
@@ -543,6 +566,9 @@ class CoupledInteractionTensor():
         if metric == 'similarity':
             assert runs > 1, "`runs` must be greater than 1 when `metric` = 'similarity'"
 
+        if balance_errors is None:
+            balance_errors = self.balance_errors
+
         # Run analysis
         if runs == 1:
             loss_dict = _run_coupled_elbow_analysis(
@@ -559,7 +585,7 @@ class CoupledInteractionTensor():
                 n_iter_max=n_iter_max,
                 tol=tol,
                 verbose=verbose,
-                balance_errors=self.balance_errors,
+                balance_errors=balance_errors,
                 manual_weights=manual_weights,
                 **kwargs
             )
@@ -593,7 +619,7 @@ class CoupledInteractionTensor():
                 n_iter_max=n_iter_max,
                 tol=tol,
                 verbose=verbose,
-                balance_errors=self.balance_errors,
+                balance_errors=balance_errors,
                 manual_weights=manual_weights,
                 **kwargs
             )

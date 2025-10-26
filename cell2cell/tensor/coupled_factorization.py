@@ -123,7 +123,7 @@ def _validate_tensors(tensor1, tensor2, mode_mapping):
                     f"Element names must match for shared dimensions: tensor1 mode {t1_mode} vs tensor2 mode {t2_mode}")
 
 
-def _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors=True, manual_weights=None):
+def _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors=True, manual_weights=(0.5, 0.5)):
     '''
     Compute or retrieve balancing weights for coupled tensor factorization.
 
@@ -139,27 +139,32 @@ def _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors=Tr
         Mode mapping specification
 
     balance_errors : bool, default=True
-        Whether to automatically balance errors based on tensor sizes
+        Whether to automatically balance errors based on tensor sizes. If not,
+        automatic weight1 = weight2 = 0.5 is used.
 
-    manual_weights : tuple of float, default=None
-        Manual weights (weight1, weight2). If provided, overrides balance_errors.
+    manual_weights : tuple, default=(0.5, 0.5)
+        Manual weights (weight1, weight2) for importance of tensors in the factorization.
+        Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+        the importance of tensor2 in both the factorization and the combined error metric.
+        If None, automatic weight calculation is performed to have weigh1 and weight2
+        inversely proportional to non-shared mode dimensions of each tensor.
 
     Returns
     -------
     weight1, weight2 : float
         Weights for balancing errors
     '''
-    # If manual weights provided, use them directly
-    if manual_weights is not None:
-        if not isinstance(manual_weights, (tuple, list)) or len(manual_weights) != 2:
-            raise ValueError("manual_weights must be a tuple/list of 2 positive numbers (weight1, weight2)")
-        weight1, weight2 = manual_weights
-        if weight1 <= 0 or weight2 <= 0:
-            raise ValueError("manual_weights must be positive")
-        return float(weight1), float(weight2)
-
-    # Otherwise use automatic balancing if requested
     if balance_errors:
+        # If manual weights provided, use them directly
+        if manual_weights is not None:
+            if not isinstance(manual_weights, (tuple, list)) or len(manual_weights) != 2:
+                raise ValueError("manual_weights must be a tuple/list of 2 positive numbers (weight1, weight2)")
+            weight1, weight2 = manual_weights
+            if weight1 <= 0 or weight2 <= 0:
+                raise ValueError("manual_weights must be positive")
+            return float(weight1), float(weight2)
+
+        # If manual not provided, use weights inversely proportional to dimensions of non-shared modes
         shared_pairs = mode_mapping.get('shared', [])
         shared_t1_modes = set([pair[0] for pair in shared_pairs])
         shared_t2_modes = set([pair[1] for pair in shared_pairs])
@@ -174,13 +179,12 @@ def _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors=Tr
         total_nonshared = nonshared_size1 + nonshared_size2
 
         if total_nonshared > 0:
-            weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
-            weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
+            weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 0.5
+            weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 0.5
         else:
-            weight1 = weight2 = 1.0
+            weight1 = weight2 = 0.5
     else:
-        weight1 = weight2 = 1.0
-
+        weight1 = weight2 = 0.5
     return weight1, weight2
 
 
@@ -201,7 +205,7 @@ def coupled_non_negative_parafac(
         return_errors=False,
         cvg_criterion="abs_rec_error",
         balance_errors=True,
-        manual_weights=None,
+        manual_weights=(0.5, 0.5),
         separate_weights=True,
 ):
     '''
@@ -259,11 +263,12 @@ def coupled_non_negative_parafac(
     balance_errors : bool, default=True
         Whether to balance errors based on tensor sizes.
 
-    manual_weights : tuple of float, default=None
-        Manual weights (weight1, weight2) for balancing errors between tensors.
-        If provided, overrides automatic weight calculation from balance_errors.
-        Weights should be positive and will be used as-is (no normalization).
-        Example: manual_weights=(1.0, 2.0) gives twice the weight to tensor2 errors.
+    manual_weights : tuple, default=(0.5, 0.5)
+        Manual weights (weight1, weight2) for importance of tensors in the factorization.
+        Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+        the importance of tensor2 in both the factorization and the combined error metric.
+        If None, automatic weight calculation is performed to have weigh1 and weight2
+        inversely proportional to non-shared mode dimensions of each tensor.
 
     separate_weights : bool, default=True
         Whether to use separate weights for each tensor during optimization.
@@ -336,10 +341,8 @@ def coupled_non_negative_parafac(
         tensor1, tensor2, mode_mapping, balance_errors, manual_weights
     )
 
-    if verbose > 1 and manual_weights is not None:
-        print(f"Using manual weights: w1={weight1:.3f}, w2={weight2:.3f}")
-    elif verbose > 1 and balance_errors:
-        print(f"Using automatic balanced weights: w1={weight1:.3f}, w2={weight2:.3f}")
+    if verbose > 1 and balance_errors:
+        print(f"Using weights: w1={weight1:.3f}, w2={weight2:.3f}")
 
     # Initialize factors for both tensors
     weights1, factors1 = initialize_cp(
@@ -439,7 +442,6 @@ def coupled_non_negative_parafac(
 
             else:  # shared mode
                 # Update shared modes using combined information from both tensors
-
                 # Compute accumulation for tensor1
                 accum1 = tl.ones((rank, rank), **tl.context(tensor1))
                 for i in range(ndim1):
@@ -465,9 +467,13 @@ def coupled_non_negative_parafac(
                 mttkrp2 = unfolding_dot_khatri_rao(tensor2, (weights2, factors2), t2_mode)
 
                 # Combine updates from both tensors
-                numerator = tl.clip((mttkrp1 + mttkrp2) / 2., a_min=epsilon, a_max=None)
+                numerator = tl.clip(
+                    (weight1 * mttkrp1 + weight2 * mttkrp2) / (weight1 + weight2),
+                    a_min=epsilon, a_max=None
+                )
                 denominator = tl.clip(
-                    (tl.dot(factors1[t1_mode], accum1) + tl.dot(factors2[t2_mode], accum2)) / 2.,
+                    (weight1 * tl.dot(factors1[t1_mode], accum1) +
+                     weight2 * tl.dot(factors2[t2_mode], accum2)) / (weight1 + weight2),
                     a_min=epsilon, a_max=None
                 )
 
@@ -558,7 +564,7 @@ def coupled_non_negative_parafac(
 def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, mode_mapping, mask1=None, mask2=None,
                                           tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           random_state=None, n_iter_max=100, tol=10e-7, verbose=False,
-                                          balance_errors=True, manual_weights=None, **kwargs):
+                                          balance_errors=True, manual_weights=(0.5, 0.5), **kwargs):
     '''Performs the Coupled Tensor Factorization with flexible mode mapping'''
 
     if kwargs is None:
@@ -593,7 +599,7 @@ def _compute_coupled_tensor_factorization(tensor1, tensor2, rank, mode_mapping, 
 def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, tf_type='coupled_non_negative_cp',
                                 init='svd', svd='truncated_svd', random_state=None, mask1=None, mask2=None,
                                 n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True,
-                                manual_weights=None, disable_pbar=False, **kwargs):
+                                manual_weights=(0.5, 0.5), disable_pbar=False, **kwargs):
     '''
     Performs a coupled elbow analysis with mode mapping
 
@@ -648,9 +654,12 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
         Whether to balance the errors from each tensor based on their sizes
         during the elbow analysis. This helps to avoid bias towards larger tensors.
 
-    manual_weights : tuple of float, default=None
-        Manual weights (weight1, weight2) for balancing errors between tensors.
-        If provided, overrides automatic weight calculation from balance_errors.
+    manual_weights : tuple, default=(0.5, 0.5)
+        Manual weights (weight1, weight2) for importance of tensors in the factorization.
+        Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+        the importance of tensor2 in both the factorization and the combined error metric.
+        If None, automatic weight calculation is performed to have weigh1 and weight2
+        inversely proportional to non-shared mode dimensions of each tensor.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
@@ -783,7 +792,7 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
                                           tf_type='coupled_non_negative_cp', init='svd', svd='truncated_svd',
                                           metric='error', random_state=None, mask1=None, mask2=None,
                                           n_iter_max=100, tol=10e-7, verbose=False, balance_errors=True,
-                                          manual_weights=None, **kwargs):
+                                          manual_weights=(0.5, 0.5), **kwargs):
     '''
     Performs a coupled elbow analysis with multiple runs and mode mapping
 
@@ -841,8 +850,12 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
     balance_errors : boolean, default=True
         Whether to balance the errors from each tensor based on their sizes.
 
-    manual_weights : tuple of float, default=None
-        Manual weights (weight1, weight2) for balancing errors between tensors.
+    manual_weights : tuple, default=(0.5, 0.5)
+        Manual weights (weight1, weight2) for importance of tensors in the factorization.
+        Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+        the importance of tensor2 in both the factorization and the combined error metric.
+        If None, automatic weight calculation is performed to have weigh1 and weight2
+        inversely proportional to non-shared mode dimensions of each tensor.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
