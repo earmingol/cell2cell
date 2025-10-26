@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # This code is an adaptation built upon the non_negative_parafac function in tensorly.
 import numpy as np
+import scipy.spatial as sp
 import tensorly as tl
 from tqdm import tqdm
 from tensorly.decomposition._cp import initialize_cp, error_calc
@@ -10,6 +11,8 @@ from tensorly.cp_tensor import (
     cp_normalize,
     validate_cp_rank,
 )
+
+from cell2cell.tensor.metrics import pairwise_correlation_index
 
 
 def _process_mode_mapping(tensor1, tensor2, mode_mapping):
@@ -660,9 +663,9 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
 
     Returns
     -------
-    loss : list
-        List of  tuples with (x, y) coordinates for the elbow analysis. X values are
-        the different ranks and Y values are the errors of each decomposition.
+    loss : dict
+        Dictionary with keys 'tensor1', 'tensor2', and 'combined', each containing
+        a list of (rank, error) tuples for the respective errors.
     '''
 
     if kwargs is None:
@@ -670,7 +673,10 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
     else:
         kwargs['return_errors'] = True
 
-    loss = []
+    loss_t1 = []
+    loss_t2 = []
+    loss_combined = []
+
     for r in tqdm(range(1, upper_rank + 1), disable=disable_pbar):
         cp1, cp2, (errors1, errors2) = _compute_coupled_tensor_factorization(
             tensor1=tensor1,
@@ -691,7 +697,7 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
             **kwargs
         )
 
-        # Calculate combined error
+        # Calculate individual errors
         if mask1 is None:
             error1 = tl.to_numpy(errors1[-1])
         else:
@@ -708,9 +714,69 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
         weight1, weight2 = _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors, manual_weights)
         combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
 
-        loss.append((r, combined_error))
+        loss_t1.append((r, error1))
+        loss_t2.append((r, error2))
+        loss_combined.append((r, combined_error))
 
-    return loss
+    return {
+        'tensor1': loss_t1,
+        'tensor2': loss_t2,
+        'combined': loss_combined
+    }
+
+
+def _create_combined_factors_dict(factors1_dict, factors2_dict, mode_mapping):
+    '''
+    Creates a combined factors dictionary from two separate factor dictionaries
+    based on the mode mapping.
+
+    Parameters
+    ----------
+    factors1_dict : dict
+        Dictionary with integer keys (dimension indices) and numpy array values
+        (factor loadings) for tensor1.
+
+    factors2_dict : dict
+        Dictionary with integer keys (dimension indices) and numpy array values
+        (factor loadings) for tensor2.
+
+    mode_mapping : dict
+        Mode mapping specification: {'shared': [(t1_mode, t2_mode), ...]}
+
+    Returns
+    -------
+    combined_dict : dict
+        Combined dictionary with all factor loadings. Shared modes use tensor1's
+        version, and tensor-specific modes are added with unique keys.
+    '''
+    combined_dict = {}
+    shared_pairs = mode_mapping.get('shared', [])
+
+    # Get shared modes
+    shared_t1_modes = set([pair[0] for pair in shared_pairs])
+    shared_t2_modes = set([pair[1] for pair in shared_pairs])
+
+    # Identify tensor-specific modes
+    tensor1_only = [i for i in factors1_dict.keys() if i not in shared_t1_modes]
+    tensor2_only = [i for i in factors2_dict.keys() if i not in shared_t2_modes]
+
+    # Add shared factors (use tensor1's version)
+    current_idx = 0
+    for t1_mode, t2_mode in shared_pairs:
+        combined_dict[current_idx] = factors1_dict[t1_mode]
+        current_idx += 1
+
+    # Add tensor1-specific factors
+    for mode in tensor1_only:
+        combined_dict[current_idx] = factors1_dict[mode]
+        current_idx += 1
+
+    # Add tensor2-specific factors
+    for mode in tensor2_only:
+        combined_dict[current_idx] = factors2_dict[mode]
+        current_idx += 1
+
+    return combined_dict
 
 
 def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, runs=10,
@@ -720,8 +786,6 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
                                           manual_weights=None, **kwargs):
     '''
     Performs a coupled elbow analysis with multiple runs and mode mapping
-
-    Performs a coupled elbow analysis with mode mapping
 
     Parameters
     ----------
@@ -743,6 +807,9 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
         Number of tensor factorization performed for a given rank. Each factorization
         varies in the seed of initialization.
 
+    tf_type : str, default='coupled_non_negative_cp'
+        Type of Tensor Factorization.
+
     init : str, default='svd'
         Initialization method for computing the Tensor Factorization.
         {'svd', 'random'}
@@ -750,52 +817,44 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
     svd : str, default='truncated_svd'
         Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
 
+    metric : str, default='error'
+        Metric to perform the elbow analysis (y-axis)
+
+        - 'error' : Normalized error to compute the elbow.
+        - 'similarity' : Similarity based on CorrIndex (1-CorrIndex).
+
     random_state : int, default=None
         Seed for randomization.
 
     mask1 : tensorly.tensor, default=None
-        Mask for the first tensor. Helps avoiding missing values during a
-        tensor factorization. A mask should be a boolean array of the same
-        shape as the original tensor and should be 0 where the values are missing and 1 everywhere else.
+        Mask for the first tensor.
 
     mask2 : tensorly.tensor, default=None
-        Mask for the second tensor. Helps avoiding missing values during a
-        tensor factorization. A mask should be a boolean array of the same
-        shape as the original tensor and should be 0 where the values are missing and 1 everywhere else.
+        Mask for the second tensor.
 
     n_iter_max : int, default=100
-        Maximum number of iteration to reach an optimal solution with the
-        decomposition algorithm. Higher `n_iter_max`helps to improve the solution
-        obtained from the decomposition, but it takes longer to run.
+        Maximum number of iterations.
 
     tol : float, default=10e-7
-        Tolerance for the decomposition algorithm to stop when the variation in
-        the reconstruction error is less than the tolerance. Lower `tol` helps
-        to improve the solution obtained from the decomposition, but it takes
-        longer to run.
+        Convergence tolerance.
 
     balance_errors : boolean, default=True
-        Whether to balance the errors from each tensor based on their sizes
-        during the elbow analysis. This helps to avoid bias towards larger tensors.
+        Whether to balance the errors from each tensor based on their sizes.
 
     manual_weights : tuple of float, default=None
         Manual weights (weight1, weight2) for balancing errors between tensors.
-        If provided, overrides automatic weight calculation from balance_errors.
 
     verbose : boolean, default=False
         Whether printing or not steps of the analysis.
 
-    disable_pbar : boolean, default=False
-        Whether displaying a tqdm progress bar or not.
-
     **kwargs : dict
-        Extra arguments for the tensor factorization according to inputs in tensorly.
+        Extra arguments for the tensor factorization.
 
     Returns
     -------
-    loss : list
-        List of  tuples with (x, y) coordinates for the elbow analysis. X values are
-        the different ranks and Y values are the errors of each decomposition.
+    all_loss : dict
+        Dictionary with keys 'tensor1', 'tensor2', and 'combined', each containing
+        arrays of shape (runs, upper_rank) with the metric values (errors or similarities).
     '''
 
     assert isinstance(runs, int), "runs must be an integer"
@@ -804,9 +863,6 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
         kwargs = {'return_errors': True}
     else:
         kwargs['return_errors'] = True
-
-    if metric == 'similarity':
-        raise NotImplementedError("Similarity metric for coupled tensors not yet implemented")
 
     all_loss = []
     for r in tqdm(range(1, upper_rank + 1)):
@@ -836,26 +892,79 @@ def _multiple_runs_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_
                 **kwargs
             )
 
-            # Calculate combined error
-            if mask1 is None:
-                error1 = tl.to_numpy(errors1[-1])
-            else:
-                from cell2cell.tensor.factorization import _compute_norm_error
-                error1 = _compute_norm_error(tensor1, cp1, mask1)
+            if metric == 'error':
+                # Calculate individual and combined errors
+                if mask1 is None:
+                    error1 = tl.to_numpy(errors1[-1])
+                else:
+                    from cell2cell.tensor.factorization import _compute_norm_error
+                    error1 = _compute_norm_error(tensor1, cp1, mask1)
 
-            if mask2 is None:
-                error2 = tl.to_numpy(errors2[-1])
-            else:
-                from cell2cell.tensor.factorization import _compute_norm_error
-                error2 = _compute_norm_error(tensor2, cp2, mask2)
+                if mask2 is None:
+                    error2 = tl.to_numpy(errors2[-1])
+                else:
+                    from cell2cell.tensor.factorization import _compute_norm_error
+                    error2 = _compute_norm_error(tensor2, cp2, mask2)
 
-            # Calculate combined error with balancing
-            weight1, weight2 = _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors, manual_weights)
-            combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
+                # Calculate combined error with balancing
+                weight1, weight2 = _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors,
+                                                              manual_weights)
+                combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
 
-            run_errors.append(combined_error)
+                run_errors.append({
+                    'tensor1': error1,
+                    'tensor2': error2,
+                    'combined': combined_error
+                })
+
+            elif metric == 'similarity':
+                # Store factors from both tensors
+                (weights1, factors1) = cp1
+                (weights2, factors2) = cp2
+
+                factors1_dict = dict(zip(list(range(len(factors1))), [tl.to_numpy(f) for f in factors1]))
+                factors2_dict = dict(zip(list(range(len(factors2))), [tl.to_numpy(f) for f in factors2]))
+
+                # Create combined factors dictionary
+                combined_factors_dict = _create_combined_factors_dict(factors1_dict, factors2_dict, mode_mapping)
+
+                run_errors.append({
+                    'tensor1': factors1_dict,
+                    'tensor2': factors2_dict,
+                    'combined': combined_factors_dict
+                })
+
+        if metric == 'similarity':
+            # Compute pairwise correlation index for each set of factors
+            corridx_t1 = pairwise_correlation_index([d['tensor1'] for d in run_errors])
+            corridx_t2 = pairwise_correlation_index([d['tensor2'] for d in run_errors])
+            corridx_combined = pairwise_correlation_index([d['combined'] for d in run_errors])
+
+            # Convert to distance metric (1 - similarity)
+            similarity_t1 = 1.0 - sp.distance.squareform(corridx_t1.values)
+            similarity_t2 = 1.0 - sp.distance.squareform(corridx_t2.values)
+            similarity_combined = 1.0 - sp.distance.squareform(corridx_combined.values)
+
+            run_errors = {
+                'tensor1': similarity_t1.tolist(),
+                'tensor2': similarity_t2.tolist(),
+                'combined': similarity_combined.tolist()
+            }
+        elif metric == 'error':
+            # Reorganize error data
+            run_errors = {
+                'tensor1': [d['tensor1'] for d in run_errors],
+                'tensor2': [d['tensor2'] for d in run_errors],
+                'combined': [d['combined'] for d in run_errors]
+            }
 
         all_loss.append(run_errors)
 
-    all_loss = np.array(all_loss).T
+    # Reorganize into separate arrays for each tensor
+    all_loss = {
+        'tensor1': np.array([all_loss[i]['tensor1'] for i in range(len(all_loss))]).T,
+        'tensor2': np.array([all_loss[i]['tensor2'] for i in range(len(all_loss))]).T,
+        'combined': np.array([all_loss[i]['combined'] for i in range(len(all_loss))]).T
+    }
+
     return all_loss

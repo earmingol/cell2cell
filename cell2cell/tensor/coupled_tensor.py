@@ -8,7 +8,7 @@ from collections import OrderedDict
 from tqdm import tqdm
 
 from cell2cell.tensor.factorization import _compute_elbow, _compute_norm_error
-from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow, plot_coupled_factorization_errors
+from cell2cell.plotting.tensor_plot import plot_coupled_elbow, plot_multiple_run_coupled_elbow, plot_coupled_factorization_errors
 from cell2cell.preprocessing.signal import smooth_curve
 from cell2cell.tensor.coupled_factorization import (
    _compute_coupled_tensor_factorization,
@@ -438,12 +438,98 @@ class CoupledInteractionTensor():
                              n_iter_max=100, tol=10e-7, automatic_elbow=True, manual_elbow=None,
                              smooth=False, mask1=None, mask2=None, manual_weights=None,
                              ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
-                             output_fig=True, verbose=False, **kwargs):
+                             output_fig=True, show_individual=False, verbose=False, **kwargs):
         '''
-        Elbow analysis on the error achieved by the Coupled Tensor Factorization.
+        Elbow analysis on the error/similarity achieved by the Coupled Tensor Factorization.
+
+        Parameters
+        ----------
+        upper_rank : int, default=50
+            Upper bound of ranks to explore with the elbow analysis.
+
+        runs : int, default=20
+            Number of tensor factorization performed for a given rank.
+
+        tf_type : str, default='coupled_non_negative_cp'
+            Type of Tensor Factorization.
+
+        init : str, default='random'
+            Initialization method. {'svd', 'random'}
+
+        svd : str, default='truncated_svd'
+            Function to compute the SVD.
+
+        metric : str, default='error'
+            Metric to perform the elbow analysis.
+
+            - 'error' : Normalized error to compute the elbow.
+            - 'similarity' : Similarity based on CorrIndex (1-CorrIndex).
+
+        random_state : int, default=None
+            Seed for randomization.
+
+        n_iter_max : int, default=100
+            Maximum number of iterations.
+
+        tol : float, default=1e-7
+            Convergence tolerance.
+
+        automatic_elbow : boolean, default=True
+            Whether using an automatic strategy to find the elbow.
+
+        manual_elbow : int, default=None
+            Rank to highlight. Considered only when `automatic_elbow=False`.
+
+        smooth : boolean, default=False
+            Whether smoothing the curve.
+
+        mask1 : tensorly.tensor, default=None
+            Mask for the first tensor.
+
+        mask2 : tensorly.tensor, default=None
+            Mask for the second tensor.
+
+        manual_weights : tuple, default=None
+            Manual weights (weight1, weight2) for balancing errors.
+
+        ci : str, default='std'
+            Confidence interval. {'std', '95%'}
+
+        figsize : tuple, default=(4, 2.25)
+            Figure size.
+
+        fontsize : int, default=14
+            Font size for axis labels.
+
+        filename : str, default=None
+            Path to save the figure.
+
+        output_fig : boolean, default=True
+            Whether generating the figure.
+
+        show_individual : boolean, default=False
+            Whether to show individual tensor metrics alongside the combined metric.
+            Applies to both 'error' and 'similarity' metrics when runs > 1.
+            If True, plots will show tensor1, tensor2, and combined metrics.
+            If False, only shows the combined metric.
+
+        verbose : boolean, default=False
+            Whether printing or not steps of the analysis.
+
+        **kwargs : dict
+            Extra arguments for the tensor factorization.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            Figure object made with matplotlib
+
+        loss : dict
+            Dictionary with 'tensor1', 'tensor2', and 'combined' keys, each containing
+            a list of (rank, value) tuples for the respective metric.
         '''
-        assert metric in ['error'], "`metric` must be 'error' for coupled factorization"
-        ylabel = 'Normalized Error'
+        assert metric in ['similarity', 'error'], "`metric` must be either 'similarity' or 'error'"
+        ylabel = {'similarity': 'Similarity\n(1-CorrIndex)', 'error': 'Normalized Error'}
 
         if verbose:
             print('Running Coupled Elbow Analysis')
@@ -454,9 +540,12 @@ class CoupledInteractionTensor():
         if mask2 is None:
             mask2 = self.mask2
 
+        if metric == 'similarity':
+            assert runs > 1, "`runs` must be greater than 1 when `metric` = 'similarity'"
+
         # Run analysis
         if runs == 1:
-            loss = _run_coupled_elbow_analysis(
+            loss_dict = _run_coupled_elbow_analysis(
                 tensor1=self.tensor1,
                 tensor2=self.tensor2,
                 mode_mapping=self.mode_mapping,
@@ -474,8 +563,19 @@ class CoupledInteractionTensor():
                 manual_weights=manual_weights,
                 **kwargs
             )
-            loss = [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss]
-            all_loss = np.array([[l[1] for l in loss]])
+            # Convert to numeric for all metrics
+            loss_dict = {
+                'tensor1': [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss_dict['tensor1']],
+                'tensor2': [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss_dict['tensor2']],
+                'combined': [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss_dict['combined']]
+            }
+            # Create array structure for consistency with multiple runs
+            all_loss = {
+                'tensor1': np.array([[l[1] for l in loss_dict['tensor1']]]),
+                'tensor2': np.array([[l[1] for l in loss_dict['tensor2']]]),
+                'combined': np.array([[l[1] for l in loss_dict['combined']]])
+            }
+            loss = loss_dict
         else:
             all_loss = _multiple_runs_coupled_elbow_analysis(
                 tensor1=self.tensor1,
@@ -497,29 +597,56 @@ class CoupledInteractionTensor():
                 manual_weights=manual_weights,
                 **kwargs
             )
-            loss = np.nanmean(all_loss, axis=0).tolist()
-            loss = [(i + 1, l) for i, l in enumerate(loss)]
 
-        if smooth:
-            loss_values = [l[1] for l in loss]
-            smoothed_values = smooth_curve(loss_values)
-            loss = [(i + 1, l) for i, l in enumerate(smoothed_values)]
+            # all_loss is always a dict with 'tensor1', 'tensor2', 'combined'
+            loss = {
+                'tensor1': np.nanmean(all_loss['tensor1'], axis=0).tolist(),
+                'tensor2': np.nanmean(all_loss['tensor2'], axis=0).tolist(),
+                'combined': np.nanmean(all_loss['combined'], axis=0).tolist()
+            }
 
-        # Find elbow
+            if smooth:
+                loss['tensor1'] = smooth_curve(loss['tensor1'])
+                loss['tensor2'] = smooth_curve(loss['tensor2'])
+                loss['combined'] = smooth_curve(loss['combined'])
+
+            # Convert to (rank, value) tuples
+            loss_combined = [(i + 1, l) for i, l in enumerate(loss['combined'])]
+            loss_t1 = [(i + 1, l) for i, l in enumerate(loss['tensor1'])]
+            loss_t2 = [(i + 1, l) for i, l in enumerate(loss['tensor2'])]
+            loss = {
+                'tensor1': loss_t1,
+                'tensor2': loss_t2,
+                'combined': loss_combined
+            }
+
+        # Find elbow (always on combined metric)
         if automatic_elbow:
-            rank = int(_compute_elbow(loss))
+            rank = int(_compute_elbow(loss['combined']))
         else:
             rank = manual_elbow
 
         # Generate plot
         if output_fig:
             if runs == 1:
-                fig = plot_elbow(loss=loss, elbow=rank, figsize=figsize,
-                                 ylabel=ylabel, fontsize=fontsize, filename=filename)
+                # For runs=1, use the new coupled plotting function
+                fig = plot_coupled_elbow(
+                    loss_dict=loss, elbow=rank, figsize=figsize,
+                    ylabel=ylabel[metric], fontsize=fontsize, filename=filename,
+                    show_individual=show_individual,
+                    tensor1_name=self.tensor1_name,
+                    tensor2_name=self.tensor2_name
+                )
             else:
-                fig = plot_multiple_run_elbow(all_loss=all_loss, ci=ci, elbow=rank,
-                                              figsize=figsize, ylabel=ylabel,
-                                              smooth=smooth, fontsize=fontsize, filename=filename)
+                # For runs>1, use the existing coupled plotting function
+                fig = plot_multiple_run_coupled_elbow(
+                    all_loss=all_loss, ci=ci, elbow=rank,
+                    figsize=figsize, ylabel=ylabel[metric],
+                    smooth=smooth, fontsize=fontsize, filename=filename,
+                    show_individual=show_individual,
+                    tensor1_name=self.tensor1_name,
+                    tensor2_name=self.tensor2_name
+                )
         else:
             fig = None
 
