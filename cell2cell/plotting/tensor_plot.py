@@ -780,7 +780,7 @@ def plot_multiple_run_coupled_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 
 
     # Mark elbow
     if elbow is not None:
-        _ = plt.plot(x[elbow - 1], mean_combined[elbow - 1], 'ro', markersize=8)
+        _ = plt.plot(x[elbow - 1], mean_combined[elbow - 1], 'ro', markersize=6)
 
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.xlabel('Rank', fontsize=int(1.2 * fontsize))
