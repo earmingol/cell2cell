@@ -212,12 +212,24 @@ class BaseTensor():
             self.tensor = tl.tensor(self.tensor, device=device)
             if self.mask is not None:
                 self.mask = tl.tensor(self.mask, device=device)
+            if self.tl_object is not None:
+                self.tl_object.factors = [tl.tensor(f, device=device) for f in self.tl_object.factors]
+                self.tl_object.weights = tl.tensor(self.tl_object.weights, device=device)
+            if self.norm_tl_object is not None:
+                self.norm_tl_object.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object.factors]
+                self.norm_tl_object.weights = tl.tensor(self.norm_tl_object.weights, device=device)
         except:
             print('Device is either not available or the backend used with tensorly does not support this device.\
                    Try changing it with tensorly.set_backend("<backend_name>") before.')
             self.tensor = tl.tensor(self.tensor)
             if self.mask is not None:
                 self.mask = tl.tensor(self.mask)
+            if self.tl_object is not None:
+                self.tl_object.factors = [tl.tensor(f) for f in self.tl_object.factors]
+                self.tl_object.weights = tl.tensor(self.tl_object.weights)
+            if self.norm_tl_object is not None:
+                self.norm_tl_object.factors = [tl.tensor(f) for f in self.norm_tl_object.factors]
+                self.norm_tl_object.weights = tl.tensor(self.norm_tl_object.weights)
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', svd='truncated_svd',
                                      random_state=None, runs=1, normalize_loadings=True, var_ordered_factors=True,

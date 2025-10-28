@@ -781,6 +781,18 @@ class CoupledInteractionTensor():
                 self.mask1 = tl.tensor(self.mask1, device=device)
             if self.mask2 is not None:
                 self.mask2 = tl.tensor(self.mask2, device=device)
+            if self.tl_object1 is not None:
+                self.tl_object1.factors = [tl.tensor(f, device=device) for f in self.tl_object1.factors]
+                self.tl_object1.weights = tl.tensor(self.tl_object1.weights, device=device)
+            if self.tl_object2 is not None:
+                self.tl_object2.factors = [tl.tensor(f, device=device) for f in self.tl_object2.factors]
+                self.tl_object2.weights = tl.tensor(self.tl_object2.weights, device=device)
+            if self.norm_tl_object1 is not None:
+                self.norm_tl_object1.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object1.factors]
+                self.norm_tl_object1.weights = tl.tensor(self.norm_tl_object1.weights, device=device)
+            if self.norm_tl_object2 is not None:
+                self.norm_tl_object2.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object2.factors]
+                self.norm_tl_object2.weights = tl.tensor(self.norm_tl_object2.weights, device=device)
         except:
             print('Device not available or backend does not support this device.')
             self.tensor1 = tl.tensor(self.tensor1)
@@ -789,6 +801,18 @@ class CoupledInteractionTensor():
                 self.mask1 = tl.tensor(self.mask1)
             if self.mask2 is not None:
                 self.mask2 = tl.tensor(self.mask2)
+            if self.tl_object1 is not None:
+                self.tl_object1.factors = [tl.tensor(f) for f in self.tl_object1.factors]
+                self.tl_object1.weights = tl.tensor(self.tl_object1.weights)
+            if self.tl_object2 is not None:
+                self.tl_object2.factors = [tl.tensor(f) for f in self.tl_object2.factors]
+                self.tl_object2.weights = tl.tensor(self.tl_object2.weights)
+            if self.norm_tl_object1 is not None:
+                self.norm_tl_object1.factors = [tl.tensor(f) for f in self.norm_tl_object1.factors]
+                self.norm_tl_object1.weights = tl.tensor(self.norm_tl_object1.weights)
+            if self.norm_tl_object2 is not None:
+                self.norm_tl_object2.factors = [tl.tensor(f) for f in self.norm_tl_object2.factors]
+                self.norm_tl_object2.weights = tl.tensor(self.norm_tl_object2.weights)
 
     def copy(self):
         '''Performs a deep copy of this object'''
