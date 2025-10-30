@@ -611,6 +611,190 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), y
     return fig
 
 
+def plot_coupled_elbow(loss_dict, elbow=None, figsize=(4, 2.25), ylabel='Normalized Error',
+                       fontsize=14, filename=None, show_individual=False,
+                       tensor1_name='Tensor1', tensor2_name='Tensor2'):
+    '''Plots the errors of an elbow analysis for coupled tensors with a single run.
+
+    Parameters
+    ----------
+    loss_dict : dict
+        Dictionary with keys 'tensor1', 'tensor2', and 'combined', each containing
+        a list of (rank, error) tuples.
+
+    elbow : int, default=None
+        Rank to mark with a red dot. Usually used to represent the detected elbow.
+
+    figsize : tuple, default=(4, 2.25)
+        Figure size, width by height
+
+    ylabel : str, default='Normalized Error'
+        Label for the y-axis
+
+    fontsize : int, default=14
+        Fontsize for axis labels.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not saved.
+
+    show_individual : bool, default=False
+        Whether to show individual tensor errors (tensor1, tensor2) alongside the
+        combined error. If False, only the combined error is shown.
+
+    tensor1_name : str, default='Tensor1'
+        Name for the first tensor to use in the legend.
+
+    tensor2_name : str, default='Tensor2'
+        Name for the second tensor to use in the legend.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib
+    '''
+    fig = plt.figure(figsize=figsize)
+
+    if show_individual:
+        # Plot tensor1
+        plt.plot(*zip(*loss_dict['tensor1']), 'o', color='#A23B72',
+                 alpha=0.6, label=tensor1_name, markersize=3)
+
+        # Plot tensor2
+        plt.plot(*zip(*loss_dict['tensor2']), 's', color='#F18F01',
+                 alpha=0.6, label=tensor2_name, markersize=3)
+
+    # Plot combined (always shown)
+    plt.plot(*zip(*loss_dict['combined']), 'o', color='steelblue', label='Combined', markersize=3)
+
+    # Mark elbow
+    if elbow is not None:
+        _ = plt.plot(*loss_dict['combined'][elbow - 1], 'ro', markersize=6)
+
+    plt.tick_params(axis='both', labelsize=fontsize)
+    plt.xlabel('Rank', fontsize=int(1.2 * fontsize))
+    plt.ylabel(ylabel, fontsize=int(1.2 * fontsize))
+
+    if show_individual:
+        plt.legend(fontsize=fontsize, framealpha=0.9, loc='center left', bbox_to_anchor=(1.01, 0.5))
+
+    if filename is not None:
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+
+    return fig
+
+
+def plot_multiple_run_coupled_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25),
+                                    ylabel='Normalized Error', fontsize=14,
+                                    smooth=False, filename=None, show_individual=False,
+                                    tensor1_name='Tensor1', tensor2_name='Tensor2'):
+    '''Plots the errors/similarities of a coupled elbow analysis with multiple runs of
+    tensor factorizations for each rank.
+
+    Parameters
+    ----------
+    all_loss : dict
+        Dictionary containing arrays with metrics associated with multiple runs for
+        each tensor. Keys are 'tensor1', 'tensor2', and 'combined'. Each value is an
+        array of shape (runs, upper_rank).
+
+    elbow : int, default=None
+        X coordinate to color the metric as red. Usually used to represent the detected
+        elbow.
+
+    ci : str, default='95%'
+        Confidence interval for representing the multiple runs in each rank.
+        {'std', '95%'}
+
+    figsize : tuple, default=(4, 2.25)
+        Figure size, width by height
+
+    ylabel : str, default='Normalized Error'
+        Label for the y-axis. Should be 'Normalized Error' for error metric or
+        'Similarity\n(1-CorrIndex)' for similarity metric.
+
+    fontsize : int, default=14
+        Fontsize for axis labels.
+
+    smooth : boolean, default=False
+        Whether smoothing the curve with a Savitzky-Golay filter.
+
+    filename : str, default=None
+        Path to save the figure of the elbow analysis. If None, the figure is not
+        saved.
+
+    show_individual : boolean, default=False
+        Whether to show individual tensor metrics (tensor1, tensor2) alongside the
+        combined metric. If False, only the combined metric is shown.
+
+    tensor1_name : str, default='Tensor1'
+        Name for the first tensor to use in the legend.
+
+    tensor2_name : str, default='Tensor2'
+        Name for the second tensor to use in the legend.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib
+    '''
+    fig = plt.figure(figsize=figsize)
+
+    x = list(range(1, all_loss['combined'].shape[1] + 1))
+
+    # Get CI coefficient
+    if ci == '95%':
+        coeff = 1.96
+    elif ci == 'std':
+        coeff = 1.0
+    else:
+        raise ValueError("Specify a correct ci. Either '95%' or 'std'")
+
+    if show_individual:
+        # Plot tensor1
+        mean_t1 = np.nanmean(all_loss['tensor1'], axis=0)
+        std_t1 = np.nanstd(all_loss['tensor1'], axis=0)
+        if smooth:
+            mean_t1 = smooth_curve(mean_t1)
+        plt.plot(x, mean_t1, 'o', color='#A23B72', alpha=0.6, label=tensor1_name, markersize=3)
+        plt.fill_between(x, mean_t1 - coeff * std_t1, mean_t1 + coeff * std_t1,
+                         color='#A23B72', alpha=0.15)
+
+        # Plot tensor2
+        mean_t2 = np.nanmean(all_loss['tensor2'], axis=0)
+        std_t2 = np.nanstd(all_loss['tensor2'], axis=0)
+        if smooth:
+            mean_t2 = smooth_curve(mean_t2)
+        plt.plot(x, mean_t2, 's', color='#F18F01', alpha=0.6, label=tensor2_name, markersize=3)
+        plt.fill_between(x, mean_t2 - coeff * std_t2, mean_t2 + coeff * std_t2,
+                         color='#F18F01', alpha=0.15)
+
+    # Plot combined (always shown)
+    mean_combined = np.nanmean(all_loss['combined'], axis=0)
+    std_combined = np.nanstd(all_loss['combined'], axis=0)
+    if smooth:
+        mean_combined = smooth_curve(mean_combined)
+
+    plt.plot(x, mean_combined, 'o', color='steelblue', label='Combined', markersize=3)
+    plt.fill_between(x, mean_combined - coeff * std_combined, mean_combined + coeff * std_combined,
+                     color='steelblue', alpha=0.2)
+
+    # Mark elbow
+    if elbow is not None:
+        _ = plt.plot(x[elbow - 1], mean_combined[elbow - 1], 'ro', markersize=6)
+
+    plt.tick_params(axis='both', labelsize=fontsize)
+    plt.xlabel('Rank', fontsize=int(1.2 * fontsize))
+    plt.ylabel(ylabel, fontsize=int(1.2 * fontsize))
+
+    if show_individual:
+        plt.legend(fontsize=fontsize, framealpha=0.9, loc='center left', bbox_to_anchor=(1.01, 0.5))
+
+    if filename is not None:
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+
+    return fig
+
+
 def generate_plot_df(interaction_tensor):
     '''Generates a melt dataframe with loadings for each element in all dimensions
     across factors
@@ -653,3 +837,133 @@ def generate_plot_df(interaction_tensor):
     plot_df.columns = ['Factor', 'Variable', 'Value', 'Order']
 
     return plot_df
+
+
+def plot_factorization_errors(errors, figsize=(8, 5), fontsize=12, filename=None):
+    '''Plots the factorization errors across iterations for a tensor decomposition.
+
+    Parameters
+    ----------
+    errors : list
+        List of reconstruction errors at each iteration of the factorization.
+
+    figsize : tuple, default=(8, 5)
+        Figure size (width, height).
+
+    fontsize : int, default=12
+        Font size for labels and title.
+
+    filename : str, default=None
+        Path to save the figure. If None, the figure is not saved.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib.
+    '''
+    fig, ax = plt.subplots(figsize=figsize)
+    iterations = range(1, len(errors) + 1)
+
+    ax.plot(iterations, errors,
+            marker='o', linewidth=2, markersize=4, color='#2E86AB')
+    ax.set_xlabel('Iteration', fontsize=int(1.2 * fontsize))
+    ax.set_ylabel('Reconstruction Error', fontsize=int(1.2 * fontsize))
+    ax.set_title('Tensor Factorization Convergence',
+                 fontsize=int(1.4 * fontsize), fontweight='bold')
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.tick_params(axis='both', labelsize=fontsize)
+
+    # Add annotation for final error
+    final_error = errors[-1]
+    ax.annotate(f'Final: {final_error:.4f}',
+                xy=(len(iterations), final_error),
+                xytext=(10, 10), textcoords='offset points',
+                fontsize=fontsize,
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.3),
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+
+    plt.tight_layout()
+
+    if filename is not None:
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+
+    return fig
+
+
+def plot_coupled_factorization_errors(errors1, errors2, combined_errors,
+                                      tensor1_name='Tensor 1', tensor2_name='Tensor 2',
+                                      figsize=(10, 5), fontsize=12, show_individual=True,
+                                      filename=None):
+    '''Plots the factorization errors across iterations for coupled tensor decomposition.
+
+    Parameters
+    ----------
+    errors1 : list
+        List of reconstruction errors for the first tensor at each iteration.
+
+    errors2 : list
+        List of reconstruction errors for the second tensor at each iteration.
+
+    combined_errors : list
+        List of combined weighted reconstruction errors at each iteration.
+
+    tensor1_name : str, default='Tensor 1'
+        Name for the first tensor to use in the legend.
+
+    tensor2_name : str, default='Tensor 2'
+        Name for the second tensor to use in the legend.
+
+    figsize : tuple, default=(10, 5)
+        Figure size (width, height).
+
+    fontsize : int, default=12
+        Font size for labels and legend.
+
+    show_individual : bool, default=True
+        Whether to show individual tensor errors or only combined error.
+
+    filename : str, default=None
+        Path to save the figure. If None, the figure is not saved.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure object made with matplotlib.
+    '''
+    fig, ax = plt.subplots(figsize=figsize)
+    iterations = range(1, len(errors1) + 1)
+
+    if show_individual:
+        # Plot individual tensor errors with transparency
+        ax.plot(iterations, errors1, marker='o', linewidth=2,
+                markersize=4, label=tensor1_name, alpha=0.6, color='#A23B72')
+        ax.plot(iterations, errors2, marker='s', linewidth=2,
+                markersize=4, label=tensor2_name, alpha=0.6, color='#F18F01')
+
+    # Plot combined error
+    ax.plot(iterations, combined_errors, marker='^', linewidth=3,
+            markersize=6, label='Combined (weighted)', color='#2E86AB')
+
+    ax.set_xlabel('Iteration', fontsize=int(1.2 * fontsize))
+    ax.set_ylabel('Reconstruction Error', fontsize=int(1.2 * fontsize))
+    ax.set_title('Coupled Tensor Factorization Convergence',
+                 fontsize=int(1.4 * fontsize), fontweight='bold')
+    ax.legend(fontsize=fontsize, framealpha=0.9, loc='upper right')
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.tick_params(axis='both', labelsize=fontsize)
+
+    # Add annotation for final combined error
+    final_error = combined_errors[-1]
+    ax.annotate(f'Final: {final_error:.4f}',
+                xy=(len(iterations), final_error),
+                xytext=(10, 10), textcoords='offset points',
+                fontsize=fontsize,
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.3),
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+
+    plt.tight_layout()
+
+    if filename is not None:
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+
+    return fig

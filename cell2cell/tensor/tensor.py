@@ -14,7 +14,7 @@ from cell2cell.preprocessing.rnaseq import add_complexes_to_expression
 from cell2cell.preprocessing.ppi import filter_ppi_by_proteins
 from cell2cell.preprocessing.signal import smooth_curve
 from cell2cell.tensor.factorization import _compute_tensor_factorization, _run_elbow_analysis, _multiple_runs_elbow_analysis, _compute_elbow, _compute_norm_error
-from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow
+from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow, plot_factorization_errors
 
 
 class BaseTensor():
@@ -139,6 +139,11 @@ class BaseTensor():
         it is an array of shape runs by ranks that were used for the analysis.
         It contains all the metrics for each run in each of the evaluated ranks.
 
+    factorization_errors_ : list
+    List of reconstruction errors at each iteration of the tensor factorization.
+    Only available after running compute_tensor_factorization. Each element is
+    the normalized reconstruction error for that iteration.
+
     shape : tuple
         Shape of the tensor.
     '''
@@ -164,6 +169,7 @@ class BaseTensor():
         self.elbow_metric = None
         self.elbow_metric_mean = None
         self.elbow_metric_raw = None
+        self.factorization_errors_ = None
 
     def copy(self):
         '''Performs a deep copy of this object.'''
@@ -206,19 +212,31 @@ class BaseTensor():
             self.tensor = tl.tensor(self.tensor, device=device)
             if self.mask is not None:
                 self.mask = tl.tensor(self.mask, device=device)
+            if self.tl_object is not None:
+                self.tl_object.factors = [tl.tensor(f, device=device) for f in self.tl_object.factors]
+                self.tl_object.weights = tl.tensor(self.tl_object.weights, device=device)
+            if self.norm_tl_object is not None:
+                self.norm_tl_object.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object.factors]
+                self.norm_tl_object.weights = tl.tensor(self.norm_tl_object.weights, device=device)
         except:
             print('Device is either not available or the backend used with tensorly does not support this device.\
                    Try changing it with tensorly.set_backend("<backend_name>") before.')
             self.tensor = tl.tensor(self.tensor)
             if self.mask is not None:
                 self.mask = tl.tensor(self.mask)
+            if self.tl_object is not None:
+                self.tl_object.factors = [tl.tensor(f) for f in self.tl_object.factors]
+                self.tl_object.weights = tl.tensor(self.tl_object.weights)
+            if self.norm_tl_object is not None:
+                self.norm_tl_object.factors = [tl.tensor(f) for f in self.norm_tl_object.factors]
+                self.norm_tl_object.weights = tl.tensor(self.norm_tl_object.weights)
 
-    def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', svd='truncated_svd', random_state=None,
-                                     runs=1, normalize_loadings=True, var_ordered_factors=True, n_iter_max=100, tol=10e-7,
-                                     verbose=False, **kwargs):
+    def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', svd='truncated_svd',
+                                     random_state=None, runs=1, normalize_loadings=True, var_ordered_factors=True,
+                                     n_iter_max=100, tol=10e-7, verbose=False, **kwargs):
         '''Performs a Tensor Factorization.
-        There are no returns, instead the attributes factors and rank
-         of the Tensor class are updated.
+        There are no returns, instead the attributes factors, rank, and factorization_errors_
+        of the Tensor class are updated.
 
         Parameters
         ----------
@@ -244,7 +262,7 @@ class BaseTensor():
 
         init : str, default='svd'
             Initialization method for computing the Tensor Factorization.
-            {‘svd’, ‘random’}
+            {'svd', 'random'}
 
         svd : str, default='truncated_svd'
             Function to use to compute the SVD, acceptable values in tensorly.SVD_FUNS
@@ -285,13 +303,14 @@ class BaseTensor():
         tensor_dim = len(self.tensor.shape)
         best_err = np.inf
         tf = None
+        best_errors = None  # Track errors from best run
 
         if kwargs is None:
-            kwargs = {'return_errors' : True}
+            kwargs = {'return_errors': True}
         else:
             kwargs['return_errors'] = True
 
-        for run in tqdm(range(runs), disable=(runs==1)):
+        for run in tqdm(range(runs), disable=(runs == 1)):
             if random_state is not None:
                 random_state_ = random_state + run
             else:
@@ -313,25 +332,32 @@ class BaseTensor():
                 if best_err > err:
                     best_err = err
                     tf = local_tf
+                    best_errors = errors  # Store errors from best run
             else:
                 err = _compute_norm_error(self.tensor, local_tf, self.mask)
                 if best_err > err:
                     best_err = err
                     tf = local_tf
+                    best_errors = errors  # Store errors from best run
 
         if runs > 1:
             print('Best model has a normalized error of: {0:.3f}'.format(best_err))
 
         self.tl_object = tf
+
+        # Store factorization errors from the best run
+        if best_errors is not None:
+            self.factorization_errors_ = [tl.to_numpy(e) if hasattr(e, 'numpy') else e for e in best_errors]
+
         if normalize_loadings:
             self.norm_tl_object = tl.cp_tensor.cp_normalize(self.tl_object)
 
-        factor_names = ['Factor {}'.format(i) for i in range(1, rank+1)]
+        factor_names = ['Factor {}'.format(i) for i in range(1, rank + 1)]
         if self.order_labels is None:
             if tensor_dim == 4:
                 order_labels = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
             elif tensor_dim > 4:
-                order_labels = ['Contexts-{}'.format(i+1) for i in range(tensor_dim-3)] + ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
+                order_labels = ['Contexts-{}'.format(i + 1) for i in range(tensor_dim - 3)] + ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
             elif tensor_dim == 3:
                 order_labels = ['Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
             else:
@@ -360,6 +386,21 @@ class BaseTensor():
         self.factors = OrderedDict(zip(order_labels,
                                        [pd.DataFrame(tl.to_numpy(f), index=idx, columns=factor_names) for f, idx in zip(factors, self.order_names)]))
         self.rank = rank
+
+    def get_factorization_errors(self, plot=False, figsize=(8, 5), fontsize=12, filename=None):
+        '''Retrieves the factorization errors across iterations and optionally plots them.'''
+        if self.factorization_errors_ is None:
+            print("No factorization errors available. Please run compute_tensor_factorization first.")
+            return None
+
+        if plot:
+            fig = plot_factorization_errors(errors=self.factorization_errors_,
+                                            figsize=figsize,
+                                            fontsize=fontsize,
+                                            filename=filename)
+            return self.factorization_errors_, fig
+        else:
+            return self.factorization_errors_
 
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='non_negative_cp', init='random', svd='truncated_svd',
                              metric='error', random_state=None, n_iter_max=100, tol=10e-7, automatic_elbow=True,

@@ -8,14 +8,15 @@ from collections import OrderedDict
 from tqdm import tqdm
 
 from cell2cell.tensor.factorization import _compute_elbow, _compute_norm_error
-from cell2cell.plotting.tensor_plot import plot_elbow, plot_multiple_run_elbow
+from cell2cell.plotting.tensor_plot import plot_coupled_elbow, plot_multiple_run_coupled_elbow, plot_coupled_factorization_errors
 from cell2cell.preprocessing.signal import smooth_curve
 from cell2cell.tensor.coupled_factorization import (
    _compute_coupled_tensor_factorization,
    _run_coupled_elbow_analysis,
    _multiple_runs_coupled_elbow_analysis,
    _process_mode_mapping,
-   _validate_tensors
+   _validate_tensors,
+   _compute_balancing_weights
 )
 
 
@@ -49,6 +50,13 @@ class CoupledInteractionTensor():
     balance_errors : bool, default=True
         Whether to balance the errors based on tensor-specific dimensions.
 
+    manual_weights : tuple, default=(0.5, 0.5)
+            Manual weights (weight1, weight2) for importance of tensors in the factorization.
+            Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+            the importance of tensor2 in both the factorization and the combined error metric.
+            If None, automatic weight calculation is performed to have weigh1 and weight2
+            inversely proportional to non-shared mode dimensions of each tensor.
+
     device : str, default=None
         Device to use when backend allows using multiple devices.
 
@@ -77,6 +85,19 @@ class CoupledInteractionTensor():
 
     factors : dict
         Combined factor loadings with shared and tensor-specific factors.
+
+    factorization_errors1_ : list
+        List of reconstruction errors for tensor1 at each iteration of the coupled
+        tensor factorization. Only available after running compute_tensor_factorization.
+
+    factorization_errors2_ : list
+        List of reconstruction errors for tensor2 at each iteration of the coupled
+        tensor factorization. Only available after running compute_tensor_factorization.
+
+    combined_errors_ : list
+        List of combined weighted reconstruction errors at each iteration of the coupled
+        tensor factorization. The weighting follows the balance_errors parameter.
+        Only available after running compute_tensor_factorization.
     '''
 
     def __init__(self, tensor1, tensor2, mode_mapping, tensor1_name='Tensor1',
@@ -92,6 +113,7 @@ class CoupledInteractionTensor():
         self.tensor1_name = tensor1_name
         self.tensor2_name = tensor2_name
         self.balance_errors = balance_errors
+        self.manual_weights = None
 
         # Store order information
         self.order_names1 = tensor1.order_names.copy()
@@ -137,10 +159,16 @@ class CoupledInteractionTensor():
         else:
             self.loc_zeros2 = None
 
+        # Initialize factorization error tracking
+        self.factorization_errors1_ = None
+        self.factorization_errors2_ = None
+        self.combined_errors_ = None
+
     def compute_tensor_factorization(self, rank, tf_type='coupled_non_negative_cp', init='svd',
                                      svd='truncated_svd', random_state=None, runs=1,
                                      normalize_loadings=True, var_ordered_factors=True,
-                                     n_iter_max=100, tol=10e-7, verbose=False, **kwargs):
+                                     n_iter_max=100, tol=10e-7, balance_errors=None, manual_weights=(0.5, 0.5),
+                                     verbose=False, **kwargs):
         '''
         Performs coupled tensor factorization on both tensors.
 
@@ -176,6 +204,17 @@ class CoupledInteractionTensor():
         tol : float, default=1e-7
             Convergence tolerance.
 
+        balance_errors : bool, default=None
+            Whether to balance the errors based on tensor-specific dimensions.
+            If None, valued used when initializing the CoupledTensor will be used.
+
+        manual_weights : tuple, default=(0.5, 0.5)
+            Manual weights (weight1, weight2) for importance of tensors in the factorization.
+            Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+            the importance of tensor2 in both the factorization and the combined error metric.
+            If None, automatic weight calculation is performed to have weigh1 and weight2
+            inversely proportional to non-shared mode dimensions of each tensor.
+
         verbose : boolean, default=False
             Whether printing or not steps of the analysis.
 
@@ -184,6 +223,15 @@ class CoupledInteractionTensor():
         '''
         best_error = np.inf
         best_cp1, best_cp2 = None, None
+        best_errors1, best_errors2 = None, None  # Track errors from best run
+        best_weight1, best_weight2 = 1.0, 1.0  # Track weights from best run
+
+        if balance_errors is None:
+            balance_errors = self.balance_errors
+
+        # Store manual weights if provided
+        if manual_weights is not None:
+            self.manual_weights = manual_weights
 
         if kwargs is None:
             kwargs = {'return_errors': True}
@@ -211,7 +259,8 @@ class CoupledInteractionTensor():
                 n_iter_max=n_iter_max,
                 tol=tol,
                 verbose=verbose,
-                balance_errors=self.balance_errors,
+                balance_errors=balance_errors,
+                manual_weights=manual_weights,
                 **kwargs
             )
 
@@ -226,29 +275,18 @@ class CoupledInteractionTensor():
             else:
                 error2 = _compute_norm_error(self.tensor2, cp2, self.mask2)
 
-            # Apply balanced weighting if requested
-            if self.balance_errors:
-                # Automatically derive tensor-specific modes
-                shared_t1_modes = set([pair[0] for pair in self.mode_mapping.get('shared', [])])
-                shared_t2_modes = set([pair[1] for pair in self.mode_mapping.get('shared', [])])
-                tensor1_only = [i for i in range(tl.ndim(self.tensor1)) if i not in shared_t1_modes]
-                tensor2_only = [i for i in range(tl.ndim(self.tensor2)) if i not in shared_t2_modes]
-
-                nonshared_size1 = np.prod([self.tensor1.shape[i] for i in tensor1_only]) if tensor1_only else 1
-                nonshared_size2 = np.prod([self.tensor2.shape[i] for i in tensor2_only]) if tensor2_only else 1
-                total_nonshared = nonshared_size1 + nonshared_size2
-                if total_nonshared > 0:
-                    weight1 = total_nonshared / nonshared_size1 if nonshared_size1 > 0 else 1.0
-                    weight2 = total_nonshared / nonshared_size2 if nonshared_size2 > 0 else 1.0
-                    combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
-                else:
-                    combined_error = (error1 + error2) / 2
-            else:
-                combined_error = (error1 + error2) / 2
+            # Calculate balancing weights (manual or automatic)
+            weight1, weight2 = _compute_balancing_weights(
+                self.tensor1, self.tensor2, self.mode_mapping,
+                self.balance_errors, manual_weights
+            )
+            combined_error = (weight1 * error1 + weight2 * error2) / (weight1 + weight2)
 
             if combined_error < best_error:
                 best_error = combined_error
                 best_cp1, best_cp2 = cp1, cp2
+                best_errors1, best_errors2 = errors1, errors2  # Store errors from best run
+                best_weight1, best_weight2 = weight1, weight2  # Store weights
 
         if runs > 1:
             print(f'Best coupled model has a combined normalized error of: {best_error:.3f}')
@@ -257,6 +295,23 @@ class CoupledInteractionTensor():
         self.tl_object1 = best_cp1
         self.tl_object2 = best_cp2
         self.rank = rank
+
+        # Store factorization errors from the best run
+        if best_errors1 is not None and best_errors2 is not None:
+            self.factorization_errors1_ = [tl.to_numpy(e) if hasattr(e, 'numpy') else e for e in best_errors1]
+            self.factorization_errors2_ = [tl.to_numpy(e) if hasattr(e, 'numpy') else e for e in best_errors2]
+
+            # Compute combined errors for each iteration
+            self.combined_errors_ = []
+            for e1, e2 in zip(best_errors1, best_errors2):
+                e1_np = tl.to_numpy(e1) if hasattr(e1, 'numpy') else e1
+                e2_np = tl.to_numpy(e2) if hasattr(e2, 'numpy') else e2
+
+                if self.balance_errors:
+                    combined = (best_weight1 * e1_np + best_weight2 * e2_np) / (best_weight1 + best_weight2)
+                else:
+                    combined = (e1_np + e2_np) / 2
+                self.combined_errors_.append(combined)
 
         # Create factor DataFrames
         self._create_factor_dataframes(normalize_loadings, var_ordered_factors)
@@ -360,16 +415,144 @@ class CoupledInteractionTensor():
                 unified_label = label
             self.factors[unified_label] = self.factors2[label]
 
+    def get_factorization_errors(self, plot=False, tensor1_name=None, tensor2_name=None,
+                                 figsize=(10, 5), fontsize=12, show_individual=True,
+                                 filename=None):
+        '''Retrieves the factorization errors across iterations for coupled tensor factorization.'''
+        if self.factorization_errors1_ is None or self.factorization_errors2_ is None:
+            print("No factorization errors available. Please run compute_tensor_factorization first.")
+            return None
+
+        errors = {
+            'tensor1': self.factorization_errors1_,
+            'tensor2': self.factorization_errors2_,
+            'combined': self.combined_errors_
+        }
+
+        if plot:
+            t1_name = tensor1_name if tensor1_name is not None else self.tensor1_name
+            t2_name = tensor2_name if tensor2_name is not None else self.tensor2_name
+
+            fig = plot_coupled_factorization_errors(
+                errors1=self.factorization_errors1_,
+                errors2=self.factorization_errors2_,
+                combined_errors=self.combined_errors_,
+                tensor1_name=t1_name,
+                tensor2_name=t2_name,
+                figsize=figsize,
+                fontsize=fontsize,
+                show_individual=show_individual,
+                filename=filename
+            )
+            return errors, fig
+        else:
+            return errors
+
     def elbow_rank_selection(self, upper_rank=50, runs=20, tf_type='coupled_non_negative_cp',
                              init='random', svd='truncated_svd', metric='error', random_state=None,
                              n_iter_max=100, tol=10e-7, automatic_elbow=True, manual_elbow=None,
-                             smooth=False, mask1=None, mask2=None, ci='std', figsize=(4, 2.25),
-                             fontsize=14, filename=None, output_fig=True, verbose=False, **kwargs):
+                             smooth=False, mask1=None, mask2=None, balance_errors=None, manual_weights=(0.5, 0.5),
+                             ci='std', figsize=(4, 2.25), fontsize=14, filename=None,
+                             output_fig=True, show_individual=False, verbose=False, **kwargs):
         '''
-        Elbow analysis on the error achieved by the Coupled Tensor Factorization.
+        Elbow analysis on the error/similarity achieved by the Coupled Tensor Factorization.
+
+        Parameters
+        ----------
+        upper_rank : int, default=50
+            Upper bound of ranks to explore with the elbow analysis.
+
+        runs : int, default=20
+            Number of tensor factorization performed for a given rank.
+
+        tf_type : str, default='coupled_non_negative_cp'
+            Type of Tensor Factorization.
+
+        init : str, default='random'
+            Initialization method. {'svd', 'random'}
+
+        svd : str, default='truncated_svd'
+            Function to compute the SVD.
+
+        metric : str, default='error'
+            Metric to perform the elbow analysis.
+
+            - 'error' : Normalized error to compute the elbow.
+            - 'similarity' : Similarity based on CorrIndex (1-CorrIndex).
+
+        random_state : int, default=None
+            Seed for randomization.
+
+        n_iter_max : int, default=100
+            Maximum number of iterations.
+
+        tol : float, default=1e-7
+            Convergence tolerance.
+
+        automatic_elbow : boolean, default=True
+            Whether using an automatic strategy to find the elbow.
+
+        manual_elbow : int, default=None
+            Rank to highlight. Considered only when `automatic_elbow=False`.
+
+        smooth : boolean, default=False
+            Whether smoothing the curve.
+
+        mask1 : tensorly.tensor, default=None
+            Mask for the first tensor.
+
+        mask2 : tensorly.tensor, default=None
+            Mask for the second tensor.
+
+        balance_errors : bool, default=None
+            Whether to balance the errors based on tensor-specific dimensions.
+            If None, valued used when initializing the CoupledTensor will be used.
+
+        manual_weights : tuple, default=(0.5, 0.5)
+            Manual weights (weight1, weight2) for importance of tensors in the factorization.
+            Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+            the importance of tensor2 in both the factorization and the combined error metric.
+            If None, automatic weight calculation is performed to have weigh1 and weight2
+            inversely proportional to non-shared mode dimensions of each tensor.
+
+        ci : str, default='std'
+            Confidence interval. {'std', '95%'}
+
+        figsize : tuple, default=(4, 2.25)
+            Figure size.
+
+        fontsize : int, default=14
+            Font size for axis labels.
+
+        filename : str, default=None
+            Path to save the figure.
+
+        output_fig : boolean, default=True
+            Whether generating the figure.
+
+        show_individual : boolean, default=False
+            Whether to show individual tensor metrics alongside the combined metric.
+            Applies to both 'error' and 'similarity' metrics when runs > 1.
+            If True, plots will show tensor1, tensor2, and combined metrics.
+            If False, only shows the combined metric.
+
+        verbose : boolean, default=False
+            Whether printing or not steps of the analysis.
+
+        **kwargs : dict
+            Extra arguments for the tensor factorization.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            Figure object made with matplotlib
+
+        loss : dict
+            Dictionary with 'tensor1', 'tensor2', and 'combined' keys, each containing
+            a list of (rank, value) tuples for the respective metric.
         '''
-        assert metric in ['error'], "`metric` must be 'error' for coupled factorization"
-        ylabel = 'Normalized Error'
+        assert metric in ['similarity', 'error'], "`metric` must be either 'similarity' or 'error'"
+        ylabel = {'similarity': 'Similarity\n(1-CorrIndex)', 'error': 'Normalized Error'}
 
         if verbose:
             print('Running Coupled Elbow Analysis')
@@ -380,9 +563,15 @@ class CoupledInteractionTensor():
         if mask2 is None:
             mask2 = self.mask2
 
+        if metric == 'similarity':
+            assert runs > 1, "`runs` must be greater than 1 when `metric` = 'similarity'"
+
+        if balance_errors is None:
+            balance_errors = self.balance_errors
+
         # Run analysis
         if runs == 1:
-            loss = _run_coupled_elbow_analysis(
+            loss_dict = _run_coupled_elbow_analysis(
                 tensor1=self.tensor1,
                 tensor2=self.tensor2,
                 mode_mapping=self.mode_mapping,
@@ -396,11 +585,23 @@ class CoupledInteractionTensor():
                 n_iter_max=n_iter_max,
                 tol=tol,
                 verbose=verbose,
-                balance_errors=self.balance_errors,
+                balance_errors=balance_errors,
+                manual_weights=manual_weights,
                 **kwargs
             )
-            loss = [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss]
-            all_loss = np.array([[l[1] for l in loss]])
+            # Convert to numeric for all metrics
+            loss_dict = {
+                'tensor1': [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss_dict['tensor1']],
+                'tensor2': [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss_dict['tensor2']],
+                'combined': [(l[0], l[1].item() if hasattr(l[1], 'item') else l[1]) for l in loss_dict['combined']]
+            }
+            # Create array structure for consistency with multiple runs
+            all_loss = {
+                'tensor1': np.array([[l[1] for l in loss_dict['tensor1']]]),
+                'tensor2': np.array([[l[1] for l in loss_dict['tensor2']]]),
+                'combined': np.array([[l[1] for l in loss_dict['combined']]])
+            }
+            loss = loss_dict
         else:
             all_loss = _multiple_runs_coupled_elbow_analysis(
                 tensor1=self.tensor1,
@@ -418,32 +619,60 @@ class CoupledInteractionTensor():
                 n_iter_max=n_iter_max,
                 tol=tol,
                 verbose=verbose,
-                balance_errors=self.balance_errors,
+                balance_errors=balance_errors,
+                manual_weights=manual_weights,
                 **kwargs
             )
-            loss = np.nanmean(all_loss, axis=0).tolist()
-            loss = [(i + 1, l) for i, l in enumerate(loss)]
 
-        if smooth:
-            loss_values = [l[1] for l in loss]
-            smoothed_values = smooth_curve(loss_values)
-            loss = [(i + 1, l) for i, l in enumerate(smoothed_values)]
+            # all_loss is always a dict with 'tensor1', 'tensor2', 'combined'
+            loss = {
+                'tensor1': np.nanmean(all_loss['tensor1'], axis=0).tolist(),
+                'tensor2': np.nanmean(all_loss['tensor2'], axis=0).tolist(),
+                'combined': np.nanmean(all_loss['combined'], axis=0).tolist()
+            }
 
-        # Find elbow
+            if smooth:
+                loss['tensor1'] = smooth_curve(loss['tensor1'])
+                loss['tensor2'] = smooth_curve(loss['tensor2'])
+                loss['combined'] = smooth_curve(loss['combined'])
+
+            # Convert to (rank, value) tuples
+            loss_combined = [(i + 1, l) for i, l in enumerate(loss['combined'])]
+            loss_t1 = [(i + 1, l) for i, l in enumerate(loss['tensor1'])]
+            loss_t2 = [(i + 1, l) for i, l in enumerate(loss['tensor2'])]
+            loss = {
+                'tensor1': loss_t1,
+                'tensor2': loss_t2,
+                'combined': loss_combined
+            }
+
+        # Find elbow (always on combined metric)
         if automatic_elbow:
-            rank = int(_compute_elbow(loss))
+            rank = int(_compute_elbow(loss['combined']))
         else:
             rank = manual_elbow
 
         # Generate plot
         if output_fig:
             if runs == 1:
-                fig = plot_elbow(loss=loss, elbow=rank, figsize=figsize,
-                                 ylabel=ylabel, fontsize=fontsize, filename=filename)
+                # For runs=1, use the new coupled plotting function
+                fig = plot_coupled_elbow(
+                    loss_dict=loss, elbow=rank, figsize=figsize,
+                    ylabel=ylabel[metric], fontsize=fontsize, filename=filename,
+                    show_individual=show_individual,
+                    tensor1_name=self.tensor1_name,
+                    tensor2_name=self.tensor2_name
+                )
             else:
-                fig = plot_multiple_run_elbow(all_loss=all_loss, ci=ci, elbow=rank,
-                                              figsize=figsize, ylabel=ylabel,
-                                              smooth=smooth, fontsize=fontsize, filename=filename)
+                # For runs>1, use the existing coupled plotting function
+                fig = plot_multiple_run_coupled_elbow(
+                    all_loss=all_loss, ci=ci, elbow=rank,
+                    figsize=figsize, ylabel=ylabel[metric],
+                    smooth=smooth, fontsize=fontsize, filename=filename,
+                    show_individual=show_individual,
+                    tensor1_name=self.tensor1_name,
+                    tensor2_name=self.tensor2_name
+                )
         else:
             fig = None
 
@@ -552,6 +781,18 @@ class CoupledInteractionTensor():
                 self.mask1 = tl.tensor(self.mask1, device=device)
             if self.mask2 is not None:
                 self.mask2 = tl.tensor(self.mask2, device=device)
+            if self.tl_object1 is not None:
+                self.tl_object1.factors = [tl.tensor(f, device=device) for f in self.tl_object1.factors]
+                self.tl_object1.weights = tl.tensor(self.tl_object1.weights, device=device)
+            if self.tl_object2 is not None:
+                self.tl_object2.factors = [tl.tensor(f, device=device) for f in self.tl_object2.factors]
+                self.tl_object2.weights = tl.tensor(self.tl_object2.weights, device=device)
+            if self.norm_tl_object1 is not None:
+                self.norm_tl_object1.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object1.factors]
+                self.norm_tl_object1.weights = tl.tensor(self.norm_tl_object1.weights, device=device)
+            if self.norm_tl_object2 is not None:
+                self.norm_tl_object2.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object2.factors]
+                self.norm_tl_object2.weights = tl.tensor(self.norm_tl_object2.weights, device=device)
         except:
             print('Device not available or backend does not support this device.')
             self.tensor1 = tl.tensor(self.tensor1)
@@ -560,6 +801,18 @@ class CoupledInteractionTensor():
                 self.mask1 = tl.tensor(self.mask1)
             if self.mask2 is not None:
                 self.mask2 = tl.tensor(self.mask2)
+            if self.tl_object1 is not None:
+                self.tl_object1.factors = [tl.tensor(f) for f in self.tl_object1.factors]
+                self.tl_object1.weights = tl.tensor(self.tl_object1.weights)
+            if self.tl_object2 is not None:
+                self.tl_object2.factors = [tl.tensor(f) for f in self.tl_object2.factors]
+                self.tl_object2.weights = tl.tensor(self.tl_object2.weights)
+            if self.norm_tl_object1 is not None:
+                self.norm_tl_object1.factors = [tl.tensor(f) for f in self.norm_tl_object1.factors]
+                self.norm_tl_object1.weights = tl.tensor(self.norm_tl_object1.weights)
+            if self.norm_tl_object2 is not None:
+                self.norm_tl_object2.factors = [tl.tensor(f) for f in self.norm_tl_object2.factors]
+                self.norm_tl_object2.weights = tl.tensor(self.norm_tl_object2.weights)
 
     def copy(self):
         '''Performs a deep copy of this object'''
