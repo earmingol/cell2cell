@@ -198,8 +198,7 @@ class BaseTensor():
         export_variable_with_pickle(self, filename=filename)
 
     def to_device(self, device):
-        '''Changes the device where the tensor
-        is analyzed.
+        '''Move tensors to specified device
 
         Parameters
         ----------
@@ -208,28 +207,24 @@ class BaseTensor():
             Options could be 'cpu', 'cuda', 'gpu', depending on
             the backend used with tensorly.
         '''
+        def _apply_device(dev):
+            # Simple tensors
+            for attr in ['tensor', 'mask', 'loc_nans', 'loc_zeros']:
+                val = getattr(self, attr, None)
+                if val is not None:
+                    setattr(self, attr, tl.tensor(val, device=dev))
+
+            # CP tensor objects
+            for attr in ['tl_object', 'norm_tl_object']:
+                obj = getattr(self, attr, None)
+                if obj is not None:
+                    obj.factors = [tl.tensor(f, device=dev) for f in obj.factors]
+                    obj.weights = tl.tensor(obj.weights, device=dev)
         try:
-            self.tensor = tl.tensor(self.tensor, device=device)
-            if self.mask is not None:
-                self.mask = tl.tensor(self.mask, device=device)
-            if self.tl_object is not None:
-                self.tl_object.factors = [tl.tensor(f, device=device) for f in self.tl_object.factors]
-                self.tl_object.weights = tl.tensor(self.tl_object.weights, device=device)
-            if self.norm_tl_object is not None:
-                self.norm_tl_object.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object.factors]
-                self.norm_tl_object.weights = tl.tensor(self.norm_tl_object.weights, device=device)
+            _apply_device(device)
         except:
-            print('Device is either not available or the backend used with tensorly does not support this device.\
-                   Try changing it with tensorly.set_backend("<backend_name>") before.')
-            self.tensor = tl.tensor(self.tensor)
-            if self.mask is not None:
-                self.mask = tl.tensor(self.mask)
-            if self.tl_object is not None:
-                self.tl_object.factors = [tl.tensor(f) for f in self.tl_object.factors]
-                self.tl_object.weights = tl.tensor(self.tl_object.weights)
-            if self.norm_tl_object is not None:
-                self.norm_tl_object.factors = [tl.tensor(f) for f in self.norm_tl_object.factors]
-                self.norm_tl_object.weights = tl.tensor(self.norm_tl_object.weights)
+            print('Device not available or backend does not support this device.')
+            _apply_device(None)
 
     def compute_tensor_factorization(self, rank, tf_type='non_negative_cp', init='svd', svd='truncated_svd',
                                      random_state=None, runs=1, normalize_loadings=True, var_ordered_factors=True,

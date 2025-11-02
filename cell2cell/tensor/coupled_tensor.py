@@ -773,46 +773,33 @@ class CoupledInteractionTensor():
         return (self.tensor1.shape, self.tensor2.shape)
 
     def to_device(self, device):
-        '''Move tensors to specified device'''
+        '''Move tensors to specified device
+
+        Parameters
+        ----------
+        device : str
+            Device name to use for the decomposition.
+            Options could be 'cpu', 'cuda', 'gpu', depending on
+            the backend used with tensorly.
+        '''
+        def _apply_device(dev):
+            # Simple tensors
+            for attr in ['tensor1', 'tensor2', 'mask1', 'mask2', 'loc_nans1', 'loc_nans2', 'loc_zeros1', 'loc_zeros2']:
+                val = getattr(self, attr, None)
+                if val is not None:
+                    setattr(self, attr, tl.tensor(val, device=dev))
+
+            # CP tensor objects
+            for attr in ['tl_object1', 'tl_object2', 'norm_tl_object1', 'norm_tl_object2']:
+                obj = getattr(self, attr, None)
+                if obj is not None:
+                    obj.factors = [tl.tensor(f, device=dev) for f in obj.factors]
+                    obj.weights = tl.tensor(obj.weights, device=dev)
         try:
-            self.tensor1 = tl.tensor(self.tensor1, device=device)
-            self.tensor2 = tl.tensor(self.tensor2, device=device)
-            if self.mask1 is not None:
-                self.mask1 = tl.tensor(self.mask1, device=device)
-            if self.mask2 is not None:
-                self.mask2 = tl.tensor(self.mask2, device=device)
-            if self.tl_object1 is not None:
-                self.tl_object1.factors = [tl.tensor(f, device=device) for f in self.tl_object1.factors]
-                self.tl_object1.weights = tl.tensor(self.tl_object1.weights, device=device)
-            if self.tl_object2 is not None:
-                self.tl_object2.factors = [tl.tensor(f, device=device) for f in self.tl_object2.factors]
-                self.tl_object2.weights = tl.tensor(self.tl_object2.weights, device=device)
-            if self.norm_tl_object1 is not None:
-                self.norm_tl_object1.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object1.factors]
-                self.norm_tl_object1.weights = tl.tensor(self.norm_tl_object1.weights, device=device)
-            if self.norm_tl_object2 is not None:
-                self.norm_tl_object2.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object2.factors]
-                self.norm_tl_object2.weights = tl.tensor(self.norm_tl_object2.weights, device=device)
+            _apply_device(device)
         except:
             print('Device not available or backend does not support this device.')
-            self.tensor1 = tl.tensor(self.tensor1)
-            self.tensor2 = tl.tensor(self.tensor2)
-            if self.mask1 is not None:
-                self.mask1 = tl.tensor(self.mask1)
-            if self.mask2 is not None:
-                self.mask2 = tl.tensor(self.mask2)
-            if self.tl_object1 is not None:
-                self.tl_object1.factors = [tl.tensor(f) for f in self.tl_object1.factors]
-                self.tl_object1.weights = tl.tensor(self.tl_object1.weights)
-            if self.tl_object2 is not None:
-                self.tl_object2.factors = [tl.tensor(f) for f in self.tl_object2.factors]
-                self.tl_object2.weights = tl.tensor(self.tl_object2.weights)
-            if self.norm_tl_object1 is not None:
-                self.norm_tl_object1.factors = [tl.tensor(f) for f in self.norm_tl_object1.factors]
-                self.norm_tl_object1.weights = tl.tensor(self.norm_tl_object1.weights)
-            if self.norm_tl_object2 is not None:
-                self.norm_tl_object2.factors = [tl.tensor(f) for f in self.norm_tl_object2.factors]
-                self.norm_tl_object2.weights = tl.tensor(self.norm_tl_object2.weights)
+            _apply_device(None)
 
     def copy(self):
         '''Performs a deep copy of this object'''
