@@ -250,7 +250,7 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
                        fontsize=tick_size,
                        rotation=0, ha='right', va='center')
 
-    # CRITICAL: Set explicit axis limits with small padding to eliminate white space
+    # Set explicit axis limits with small padding to eliminate white space
     ax.set_xlim(-0.5, n_cols - 0.5)
     ax.set_ylim(-0.5, n_rows - 0.5)
 
@@ -285,13 +285,20 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     cax.set_title(cbar_title, fontsize=title_size)
 
     # Reference size legend
-    pval_values = [np.min([np.min(np.min(pval_df)), -1. * np.log10(0.99)]),
-                   -1. * np.log10(significance + 1e-9),
-                   3.0]
+    # Calculate reference p-values to show in legend
+    min_pval_shown = np.max([np.min(np.min(pval_df)), -1. * np.log10(0.99)])  # Show at least -log10(0.99)
+    threshold_pval = -1. * np.log10(significance + 1e-9)
+    max_pval_shown = 3.0
+
+    pval_values = [min_pval_shown, threshold_pval, max_pval_shown]
 
     for i, v in enumerate(pval_values):
-        ax2.scatter(i, 0, s=(max_size(v) * tick_size * 2) ** 2, c='k')
-        if v == 3.0:
+        # Cap at 3 just like in the main plot for consistency
+        v_capped = np.min([v, 3.0])
+        size = (max_size(v_capped) * tick_size * 2) ** 2
+        ax2.scatter(i, 0, s=size, c='k')
+
+        if v >= 3.0:
             extra = '>='
         elif i == 1:
             extra = 'Threshold: '
