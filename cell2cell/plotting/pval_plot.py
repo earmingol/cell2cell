@@ -123,8 +123,9 @@ def dot_plot(sc_interactions, evaluation='communication', significance=0.05, sen
 
 
 def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel='', cbar_title='Score', cmap='PuOr',
-                      figsize=(16, 9), label_size=20, title_size=20, tick_size=14, filename=None):
-    '''Generates a dot plot for given P-values and respective scores.
+                      figsize=None, label_size=20, title_size=20, tick_size=14, filename=None,
+                      min_row_height=0.3, reference_height=1.0):
+    '''Generates a dot plot for given P-values and respective scores with improved spacing.
 
     Parameters
     ----------
@@ -154,8 +155,9 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     cmap : str, default='PuOr'
         A matplotlib color palette name.
 
-    figsize : tuple, default=(16, 9)
+    figsize : tuple, default=None
         Size of the figure (width*height), each in inches.
+        If None, it will be automatically calculated based on the data.
 
     label_size : int, default=20
         Specifies the size of the labels of both X and Y axes.
@@ -171,6 +173,12 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
         Path to save the figure of the elbow analysis. If None, the figure is not
         saved.
 
+    min_row_height : float, default=0.3
+        Minimum height per row in inches to prevent dot overlap.
+
+    reference_height : float, default=1.0
+        Fixed height in inches for the reference legend subplot.
+
     Returns
     -------
     fig : matplotlib.figure.Figure
@@ -183,6 +191,21 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     df = df.T.loc[(df != 0).any(axis=0)].T
     pval_df = pval_df[df.columns].loc[df.index].applymap(lambda x: -1. * np.log10(x + 1e-9))
 
+    n_rows = len(pval_df.index)
+    n_cols = len(pval_df.columns)
+
+    # Auto-calculate figure size if not provided
+    if figsize is None:
+        # Calculate width based on number of columns (with a reasonable range)
+        width = max(8, min(20, n_cols * 0.4 + 4))
+        # Calculate height based on number of rows to prevent overlap
+        main_plot_height = max(6, n_rows * min_row_height)
+        height = main_plot_height + reference_height + 1.5  # +1.5 for labels and padding
+        figsize = (width, height)
+    else:
+        # If figsize is provided, extract main plot height
+        main_plot_height = figsize[1] - reference_height - 1.5
+
     # Set dot sizes and color range
     max_abs = np.max([np.abs(np.min(np.min(score_df))), np.abs(np.max(np.max(score_df)))])
     norm = mpl.colors.Normalize(vmin=-1. * max_abs, vmax=max_abs)
@@ -191,8 +214,18 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     # Colormap
     cmap = mpl.cm.get_cmap(cmap)
 
-    # Dot plot
-    fig, (ax2, ax) = plt.subplots(2, 1, figsize=figsize, gridspec_kw={'height_ratios': [1, 9]})
+    # Create figure with proper height ratios
+    # Use height_ratios based on actual inches rather than arbitrary numbers
+    height_ratio_ref = reference_height / main_plot_height
+
+    fig = plt.figure(figsize=figsize)
+    gs = fig.add_gridspec(2, 1, height_ratios=[height_ratio_ref, 1.0],
+                          hspace=0.15)  # Reduced space between subplots
+
+    ax2 = fig.add_subplot(gs[0])
+    ax = fig.add_subplot(gs[1])
+
+    # Dot plot - scatter each point
     for i, idx in enumerate(pval_df.index):
         for j, col in enumerate(pval_df.columns):
             color = np.asarray(cmap(norm(score_df[[col]].loc[[idx]].values.item()))).reshape(1, -1)
@@ -215,57 +248,72 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     ax.set_yticks(ticks=range(0, len(pval_df.index)))
     ax.set_yticklabels(ylabels,
                        fontsize=tick_size,
-                       rotation=0, ha='right', va='center'
-                       )
+                       rotation=0, ha='right', va='center')
 
-    plt.gca().invert_yaxis()
+    # Set explicit axis limits with small padding to eliminate white space
+    ax.set_xlim(-0.5, n_cols - 0.5)
+    ax.set_ylim(-0.5, n_rows - 0.5)
 
-    plt.tick_params(axis='both',
-                    which='both',
-                    bottom=True,
-                    top=False,
-                    right=False,
-                    left=True,
-                    labelleft=True,
-                    labelbottom=True)
+    ax.invert_yaxis()
+
+    ax.tick_params(axis='both',
+                   which='both',
+                   bottom=True,
+                   top=False,
+                   right=False,
+                   left=True,
+                   labelleft=True,
+                   labelbottom=True)
     ax.set_xlabel(xlabel, fontsize=label_size)
     ax.set_ylabel(ylabel, fontsize=label_size)
 
     # Colorbar
-    # create an axes on the top side of ax. The width of cax will be 3%
-    # of ax and the padding between cax and ax will be fixed at 0.21 inch.
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("top", size="3%", pad=0.21)
 
     cbar = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
                         cax=cax,
-                        orientation='horizontal'
-                        )
+                        orientation='horizontal')
     cbar.ax.tick_params(labelsize=tick_size)
 
-    cax.tick_params(axis='x',  # changes apply to the x-axis
-                    which='both',  # both major and minor ticks are affected
-                    bottom=False,  # ticks along the bottom edge are off
-                    top=True,  # ticks along the top edge are off
-                    labelbottom=False,  # labels along the bottom edge are off
-                    labeltop=True
-                    )
+    cax.tick_params(axis='x',
+                    which='both',
+                    bottom=False,
+                    top=True,
+                    labelbottom=False,
+                    labeltop=True)
     cax.set_title(cbar_title, fontsize=title_size)
 
-    for i, v in enumerate([np.min([np.min(np.min(pval_df)), -1. * np.log10(0.99)]), -1. * np.log10(significance + 1e-9), 3.0]): # old min np.min(np.min(pval_df))
-        ax2.scatter(i, 0, s=(max_size(v) * tick_size * 2) ** 2, c='k')
-        ax2.scatter(i, 1, s=0, c='k')
-        if v == 3.0:
+    # Reference size legend
+    # Calculate reference p-values to show in legend
+    min_pval_shown = np.max([np.min(np.min(pval_df)), -1. * np.log10(0.99)])  # Show at least -log10(0.99)
+    threshold_pval = -1. * np.log10(significance + 1e-9)
+    max_pval_shown = 3.0
+
+    pval_values = [min_pval_shown, threshold_pval, max_pval_shown]
+
+    for i, v in enumerate(pval_values):
+        # Cap at 3 just like in the main plot for consistency
+        v_capped = np.min([v, 3.0])
+        size = (max_size(v_capped) * tick_size * 2) ** 2
+        ax2.scatter(i, 0, s=size, c='k')
+
+        if v >= 3.0:
             extra = '>='
         elif i == 1:
             extra = 'Threshold: '
         else:
             extra = ''
-        ax2.annotate(extra + str(np.round(abs(v), 4)), (i, 1), fontsize=tick_size, horizontalalignment='center')
-    ax2.set_ylim(-0.5, 2)
+        ax2.annotate(extra + str(np.round(abs(v), 4)), (i, 0.5),
+                     fontsize=tick_size, horizontalalignment='center')
+
+    # Set limits for reference plot to minimize white space
+    ax2.set_xlim(-0.5, 2.5)
+    ax2.set_ylim(-0.2, 0.8)
     ax2.axis('off')
-    ax2.set_title('-log10(P-value) sizes', fontsize=title_size)
+    ax2.set_title('-log10(P-value) sizes', fontsize=title_size, pad=10)
 
     if filename is not None:
         plt.savefig(filename, dpi=300, bbox_inches='tight')
+
     return fig

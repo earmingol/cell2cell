@@ -10,6 +10,7 @@ from tqdm import tqdm
 from cell2cell.tensor.factorization import _compute_elbow, _compute_norm_error
 from cell2cell.plotting.tensor_plot import plot_coupled_elbow, plot_multiple_run_coupled_elbow, plot_coupled_factorization_errors
 from cell2cell.preprocessing.signal import smooth_curve
+from cell2cell.tensor.subset import subset_tensor
 from cell2cell.tensor.coupled_factorization import (
    _compute_coupled_tensor_factorization,
    _run_coupled_elbow_analysis,
@@ -47,15 +48,14 @@ class CoupledInteractionTensor():
     tensor2_name : str, default='Tensor2'
         Name for the second tensor (used in factor labeling).
 
+    auto_sort_shared : bool, default=True
+        Whether to automatically sort the shared modes in both tensors if
+        there is a mismatch in the order of elements in any shared mode.
+        It will reorder the elements in the tensor2 to match the order
+        in tensor1.
+
     balance_errors : bool, default=True
         Whether to balance the errors based on tensor-specific dimensions.
-
-    manual_weights : tuple, default=(0.5, 0.5)
-            Manual weights (weight1, weight2) for importance of tensors in the factorization.
-            Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
-            the importance of tensor2 in both the factorization and the combined error metric.
-            If None, automatic weight calculation is performed to have weigh1 and weight2
-            inversely proportional to non-shared mode dimensions of each tensor.
 
     device : str, default=None
         Device to use when backend allows using multiple devices.
@@ -98,13 +98,19 @@ class CoupledInteractionTensor():
         List of combined weighted reconstruction errors at each iteration of the coupled
         tensor factorization. The weighting follows the balance_errors parameter.
         Only available after running compute_tensor_factorization.
+
+    manual_weights : tuple
+        Manual weights (weight1, weight2) for importance of tensors in the factorization.
+        Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
+        the importance of tensor2 in both the factorization and the combined error metric.
     '''
 
     def __init__(self, tensor1, tensor2, mode_mapping, tensor1_name='Tensor1',
-                 tensor2_name='Tensor2', balance_errors=True, device=None):
+                 tensor2_name='Tensor2', auto_sort_shared=True, balance_errors=True,  device=None):
 
         # Handle backward compatibility and validate inputs
         self.mode_mapping = _process_mode_mapping(tensor1.tensor, tensor2.tensor, mode_mapping)
+        tensor1, tensor2 = _validate_and_sort_shared_modes(tensor1, tensor2, self.mode_mapping, auto_sort_shared=auto_sort_shared)
         _validate_tensors(tensor1, tensor2, self.mode_mapping)
 
         # Store tensor objects and metadata
@@ -212,7 +218,7 @@ class CoupledInteractionTensor():
             Manual weights (weight1, weight2) for importance of tensors in the factorization.
             Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
             the importance of tensor2 in both the factorization and the combined error metric.
-            If None, automatic weight calculation is performed to have weigh1 and weight2
+            If None, automatic weight calculation is performed to have weight1 and weight2
             inversely proportional to non-shared mode dimensions of each tensor.
 
         verbose : boolean, default=False
@@ -512,7 +518,7 @@ class CoupledInteractionTensor():
             Manual weights (weight1, weight2) for importance of tensors in the factorization.
             Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
             the importance of tensor2 in both the factorization and the combined error metric.
-            If None, automatic weight calculation is performed to have weigh1 and weight2
+            If None, automatic weight calculation is performed to have weight1 and weight2
             inversely proportional to non-shared mode dimensions of each tensor.
 
         ci : str, default='std'
@@ -773,46 +779,33 @@ class CoupledInteractionTensor():
         return (self.tensor1.shape, self.tensor2.shape)
 
     def to_device(self, device):
-        '''Move tensors to specified device'''
+        '''Move tensors to specified device
+
+        Parameters
+        ----------
+        device : str
+            Device name to use for the decomposition.
+            Options could be 'cpu', 'cuda', 'gpu', depending on
+            the backend used with tensorly.
+        '''
+        def _apply_device(dev):
+            # Simple tensors
+            for attr in ['tensor1', 'tensor2', 'mask1', 'mask2', 'loc_nans1', 'loc_nans2', 'loc_zeros1', 'loc_zeros2']:
+                val = getattr(self, attr, None)
+                if val is not None:
+                    setattr(self, attr, tl.tensor(val, device=dev))
+
+            # CP tensor objects
+            for attr in ['tl_object1', 'tl_object2', 'norm_tl_object1', 'norm_tl_object2']:
+                obj = getattr(self, attr, None)
+                if obj is not None:
+                    obj.factors = [tl.tensor(f, device=dev) for f in obj.factors]
+                    obj.weights = tl.tensor(obj.weights, device=dev)
         try:
-            self.tensor1 = tl.tensor(self.tensor1, device=device)
-            self.tensor2 = tl.tensor(self.tensor2, device=device)
-            if self.mask1 is not None:
-                self.mask1 = tl.tensor(self.mask1, device=device)
-            if self.mask2 is not None:
-                self.mask2 = tl.tensor(self.mask2, device=device)
-            if self.tl_object1 is not None:
-                self.tl_object1.factors = [tl.tensor(f, device=device) for f in self.tl_object1.factors]
-                self.tl_object1.weights = tl.tensor(self.tl_object1.weights, device=device)
-            if self.tl_object2 is not None:
-                self.tl_object2.factors = [tl.tensor(f, device=device) for f in self.tl_object2.factors]
-                self.tl_object2.weights = tl.tensor(self.tl_object2.weights, device=device)
-            if self.norm_tl_object1 is not None:
-                self.norm_tl_object1.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object1.factors]
-                self.norm_tl_object1.weights = tl.tensor(self.norm_tl_object1.weights, device=device)
-            if self.norm_tl_object2 is not None:
-                self.norm_tl_object2.factors = [tl.tensor(f, device=device) for f in self.norm_tl_object2.factors]
-                self.norm_tl_object2.weights = tl.tensor(self.norm_tl_object2.weights, device=device)
+            _apply_device(device)
         except:
             print('Device not available or backend does not support this device.')
-            self.tensor1 = tl.tensor(self.tensor1)
-            self.tensor2 = tl.tensor(self.tensor2)
-            if self.mask1 is not None:
-                self.mask1 = tl.tensor(self.mask1)
-            if self.mask2 is not None:
-                self.mask2 = tl.tensor(self.mask2)
-            if self.tl_object1 is not None:
-                self.tl_object1.factors = [tl.tensor(f) for f in self.tl_object1.factors]
-                self.tl_object1.weights = tl.tensor(self.tl_object1.weights)
-            if self.tl_object2 is not None:
-                self.tl_object2.factors = [tl.tensor(f) for f in self.tl_object2.factors]
-                self.tl_object2.weights = tl.tensor(self.tl_object2.weights)
-            if self.norm_tl_object1 is not None:
-                self.norm_tl_object1.factors = [tl.tensor(f) for f in self.norm_tl_object1.factors]
-                self.norm_tl_object1.weights = tl.tensor(self.norm_tl_object1.weights)
-            if self.norm_tl_object2 is not None:
-                self.norm_tl_object2.factors = [tl.tensor(f) for f in self.norm_tl_object2.factors]
-                self.norm_tl_object2.weights = tl.tensor(self.norm_tl_object2.weights)
+            _apply_device(None)
 
     def copy(self):
         '''Performs a deep copy of this object'''
@@ -972,3 +965,127 @@ class CoupledInteractionTensor():
             reordered_metadata.append(metadata2[mode])
 
         return reordered_metadata
+
+
+def _validate_and_sort_shared_modes(tensor1, tensor2, mode_mapping, auto_sort_shared=True):
+    '''
+    Validates that shared modes have matching element orders and optionally sorts them.
+
+    Parameters
+    ----------
+    tensor1 : cell2cell.tensor.BaseTensor
+        First interaction tensor.
+
+    tensor2 : cell2cell.tensor.BaseTensor
+        Second interaction tensor.
+
+    mode_mapping : dict
+        Mode mapping specification with 'shared' key containing pairs of shared modes.
+
+    auto_sort_shared : bool, default=True
+        Whether to automatically sort shared mode elements to match.
+        If False and elements don't match, raises ValueError.
+
+    Returns
+    -------
+    tensor1_sorted : cell2cell.tensor.BaseTensor
+        First tensor, potentially reordered.
+
+    tensor2_sorted : cell2cell.tensor.BaseTensor
+        Second tensor, potentially reordered.
+    '''
+    shared_pairs = mode_mapping.get('shared', [])
+
+    if not shared_pairs:
+        return tensor1, tensor2
+
+    # Track mismatches
+    element_mismatches = []  # Different elements
+    order_mismatches = []  # Same elements, different order
+    subset_dict2 = {}
+
+    for t1_mode, t2_mode in shared_pairs:
+        elements1 = tensor1.order_names[t1_mode]
+        elements2 = tensor2.order_names[t2_mode]
+
+        set1 = set(elements1)
+        set2 = set(elements2)
+
+        # Step 1: Check if they have the same elements (ignore order)
+        if set1 != set2:
+            missing_in_t2 = set1 - set2
+            missing_in_t1 = set2 - set1
+            element_mismatches.append({
+                'modes': (t1_mode, t2_mode),
+                'missing_in_t2': missing_in_t2,
+                'missing_in_t1': missing_in_t1
+            })
+        # Step 2: If same elements, check if order matches
+        elif elements1 != elements2:
+            order_mismatches.append((t1_mode, t2_mode))
+            if auto_sort_shared:
+                # Use tensor1's order as reference
+                subset_dict2[t2_mode] = elements1
+
+    # Handle element mismatches (fatal error - can't proceed)
+    if element_mismatches:
+        error_msg = "Shared modes have different elements:\n"
+        for mismatch in element_mismatches:
+            modes = mismatch['modes']
+            error_msg += f"\n  Mode pair ({modes[0]}, {modes[1]}):\n"
+            if mismatch['missing_in_t2']:
+                error_msg += f"    In tensor1 but not tensor2: {mismatch['missing_in_t2']}\n"
+            if mismatch['missing_in_t1']:
+                error_msg += f"    In tensor2 but not tensor1: {mismatch['missing_in_t1']}\n"
+        error_msg += "\nPlease ensure shared modes contain the same elements."
+        raise ValueError(error_msg)
+
+    # Handle order mismatches
+    if order_mismatches:
+        if auto_sort_shared:
+            print(f"Shared modes {order_mismatches} have the same elements but different orders.")
+            print("Reordering tensor2 to match tensor1's element order...")
+
+            tensor2_sorted = subset_tensor(
+                interaction_tensor=tensor2,
+                subset_dict=subset_dict2,
+                remove_duplicates=True,
+                keep='first',
+                original_order=False  # Use the order specified in subset_dict
+            )
+
+            # Verify the reordering worked
+            for t1_mode, t2_mode in order_mismatches:
+                if tensor1.order_names[t1_mode] != tensor2_sorted.order_names[t2_mode]:
+                    raise RuntimeError(
+                        f"Failed to reorder mode {t2_mode} in tensor2. "
+                        f"Please check the subset_tensor function."
+                    )
+
+            return tensor1, tensor2_sorted
+        else:
+            # Build detailed error message showing order differences
+            error_msg = "Shared modes have different element orders:\n"
+            for t1_mode, t2_mode in order_mismatches:
+                elements1 = tensor1.order_names[t1_mode]
+                elements2 = tensor2.order_names[t2_mode]
+
+                # Show first few elements to illustrate the difference
+                n_show = min(5, len(elements1))
+                error_msg += f"\n  Mode pair ({t1_mode}, {t2_mode}):\n"
+                error_msg += f"    Tensor1 order: {elements1[:n_show]}"
+                if len(elements1) > n_show:
+                    error_msg += "..."
+                error_msg += f"\n    Tensor2 order: {elements2[:n_show]}"
+                if len(elements2) > n_show:
+                    error_msg += "..."
+                error_msg += "\n"
+
+            error_msg += (
+                "\nSet auto_sort_shared=True to automatically reorder tensor2, "
+                "or manually reorder the tensors before coupling."
+            )
+            raise ValueError(error_msg)
+
+    # No mismatches - tensors are compatible
+    return tensor1, tensor2
