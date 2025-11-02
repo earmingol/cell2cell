@@ -139,6 +139,12 @@ def subset_tensor(interaction_tensor, subset_dict, remove_duplicates=True, keep=
     mask = None
     if subset_tensor.mask is not None:
         mask = tl.to_numpy(subset_tensor.mask)
+    loc_nans = None
+    if subset_tensor.loc_nans is not None:
+        loc_nans = tl.to_numpy(subset_tensor.loc_nans)
+    loc_zeros = None
+    if subset_tensor.loc_zeros is not None:
+        loc_zeros = tl.to_numpy(subset_tensor.loc_zeros)
 
     # Search for indexes
     axis_idxs = dict()
@@ -170,14 +176,24 @@ def subset_tensor(interaction_tensor, subset_dict, remove_duplicates=True, keep=
                 mask = mask.take(indices=v,
                                  axis=k
                                  )
+            if loc_nans is not None:
+                loc_nans = loc_nans.take(indices=v,
+                                         axis=k
+                                         )
+            if loc_zeros is not None:
+                loc_zeros = loc_zeros.take(indices=v,
+                                           axis=k
+                                           )
 
     # Restore tensor and mask properties
-    tensor = tl.tensor(tensor, **context)
+    subset_tensor.tensor = tl.tensor(tensor, **context)
     if mask is not None:
-        mask = tl.tensor(mask, **context)
+        subset_tensor.mask = tl.tensor(mask, **context)
+    if loc_nans is not None:
+        subset_tensor.loc_nans = tl.tensor(loc_nans, **context)
+    if loc_zeros is not None:
+        subset_tensor.loc_zeros = tl.tensor(loc_zeros, **context)
 
-    subset_tensor.tensor = tensor
-    subset_tensor.mask = mask
     return subset_tensor
 
 
