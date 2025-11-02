@@ -146,7 +146,7 @@ def _compute_balancing_weights(tensor1, tensor2, mode_mapping, balance_errors=Tr
         Manual weights (weight1, weight2) for importance of tensors in the factorization.
         Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
         the importance of tensor2 in both the factorization and the combined error metric.
-        If None, automatic weight calculation is performed to have weigh1 and weight2
+        If None, automatic weight calculation is performed to have weight1 and weight2
         inversely proportional to non-shared mode dimensions of each tensor.
 
     Returns
@@ -267,7 +267,7 @@ def coupled_non_negative_parafac(
         Manual weights (weight1, weight2) for importance of tensors in the factorization.
         Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
         the importance of tensor2 in both the factorization and the combined error metric.
-        If None, automatic weight calculation is performed to have weigh1 and weight2
+        If None, automatic weight calculation is performed to have weight1 and weight2
         inversely proportional to non-shared mode dimensions of each tensor.
 
     separate_weights : bool, default=True
@@ -658,7 +658,7 @@ def _run_coupled_elbow_analysis(tensor1, tensor2, mode_mapping, upper_rank=50, t
         Manual weights (weight1, weight2) for importance of tensors in the factorization.
         Weights should be positive. Example: (2.0, 1.0) gives tensor1 twice
         the importance of tensor2 in both the factorization and the combined error metric.
-        If None, automatic weight calculation is performed to have weigh1 and weight2
+        If None, automatic weight calculation is performed to have weight1 and weight2
         inversely proportional to non-shared mode dimensions of each tensor.
 
     verbose : boolean, default=False
