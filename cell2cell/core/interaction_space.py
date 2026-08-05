@@ -64,7 +64,9 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
         else:
             raise NotImplementedError("CCI type has to be directed or undirected")
     if remove_duplicates:
-        pairs = list(set(pairs))  # Remove duplicates
+        # `dict.fromkeys` removes duplicates while keeping the order given by the
+        # list of cells, so the resulting pairs are reproducible across runs.
+        pairs = list(dict.fromkeys(pairs))
     return pairs
 
 

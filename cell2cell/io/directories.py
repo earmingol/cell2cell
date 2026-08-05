@@ -2,6 +2,8 @@
 
 import os
 
+from natsort import natsorted
+
 
 def create_directory(pathname):
     '''Creates a directory.
@@ -37,8 +39,10 @@ def get_files_from_directory(pathname, dir_in_filepath=False):
     -------
     filenames : list
         A list containing the names (strings) of the files
-        in the folder.
+        in the folder, naturally sorted by filename.
     '''
     directory = os.fsencode(pathname)
-    filenames = [pathname + '/' + os.fsdecode(file) if dir_in_filepath else os.fsdecode(file) for file in os.listdir(directory)]
+    # Naturally sorted to avoid a filesystem-dependent order of the files
+    files = natsorted([os.fsdecode(file) for file in os.listdir(directory)])
+    filenames = [pathname + '/' + file if dir_in_filepath else file for file in files]
     return filenames

@@ -2,6 +2,8 @@
 import numpy as np
 import pandas as pd
 
+from natsort import natsorted
+
 
 def create_spatial_grid(adata, num_bins, copy=False):
     """
@@ -162,9 +164,10 @@ def add_sliding_window_info_to_adata(adata, window_mapping):
     """
 
     # Initialize all window columns to 0.0
-    for window in sorted(window_mapping.keys()):
+    for window in natsorted(window_mapping.keys()):
         adata.obs[window] = 0.0
 
     # Mark cells that belong to each window
     for window, barcode_indeces in window_mapping.items():
-        adata.obs.loc[barcode_indeces, window] = 1.0
+        # Converted to a list because pandas does not accept a set as an indexer
+        adata.obs.loc[list(barcode_indeces), window] = 1.0

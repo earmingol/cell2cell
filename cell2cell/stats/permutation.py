@@ -12,6 +12,7 @@ import seaborn as sns
 import cell2cell.core.interaction_space as ispace
 from cell2cell.preprocessing import shuffle_rows_in_df
 
+from natsort import natsorted
 from sklearn.utils import shuffle
 from tqdm import tqdm
 
@@ -198,7 +199,8 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
         if genes is None:
             genes = list(np.unique(ppi_data_[interaction_columns].values.flatten()))
         else:
-            genes = list(set(genes))
+            # Sorted to make the permutation reproducible for a given random_state
+            genes = natsorted(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
         ppi_data_[prot_a] = ppi_data_[prot_a].apply(lambda x: mapper[x])
         ppi_data_[prot_b] = ppi_data_[prot_b].apply(lambda x: mapper[x])
@@ -206,14 +208,16 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
         if genes is None:
             genes = list(np.unique(ppi_data_[prot_a].values.flatten()))
         else:
-            genes = list(set(genes))
+            # Sorted to make the permutation reproducible for a given random_state
+            genes = natsorted(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
         ppi_data_[prot_a] = ppi_data_[prot_a].apply(lambda x: mapper[x])
     elif permuted_column == 'second':
         if genes is None:
             genes = list(np.unique(ppi_data_[prot_b].values.flatten()))
         else:
-            genes = list(set(genes))
+            # Sorted to make the permutation reproducible for a given random_state
+            genes = natsorted(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
         ppi_data_[prot_b] = ppi_data_[prot_b].apply(lambda x: mapper[x])
     else: raise ValueError('Not valid option')
@@ -331,9 +335,9 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
         genes = list(rnaseq_data.index)
 
     if excluded_cells is not None:
-        included_cells = sorted(list(set(rnaseq_data.columns) - set(excluded_cells)))
+        included_cells = natsorted(set(rnaseq_data.columns) - set(excluded_cells))
     else:
-        included_cells = sorted(list(set(rnaseq_data.columns)))
+        included_cells = natsorted(set(rnaseq_data.columns))
 
     rnaseq_data_ = rnaseq_data.loc[genes, included_cells]
 

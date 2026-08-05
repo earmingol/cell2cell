@@ -6,6 +6,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from statannotations.Annotator import Annotator
 from scipy.stats import zscore
+from natsort import natsorted
 
 from cell2cell.clustering.cluster_interactions import compute_distance, compute_linkage
 from cell2cell.analysis.tensor_downstream import get_factor_specific_ccc_networks
@@ -116,7 +117,7 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
     if group_order is not None:
         assert len(set(group_order) & set(metadict.values())) == len(set(metadict.values())), "All groups in `metadict` must be contained in `group_order`"
     else:
-        group_order = list(set(metadict.values()))
+        group_order = natsorted(set(metadict.values()))
     df = context_loadings.copy()
 
     if included_factors is None:

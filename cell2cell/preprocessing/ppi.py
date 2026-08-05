@@ -7,6 +7,8 @@ import pandas as pd
 
 from itertools import combinations
 
+from natsort import natsorted
+
 
 ### Preprocess a PPI table from a known list
 def preprocess_ppi_data(ppi_data, interaction_columns, sort_values=None, score=None, rnaseq_genes=None, complex_sep=None,
@@ -596,7 +598,7 @@ def get_filtered_ppi_network(ppi_data, contact_proteins, mediator_proteins=None,
                                           interaction_columns=interaction_columns)
 
     elif interaction_type == 'complete':
-        total_proteins = list(set(contact_proteins + mediator_proteins))
+        total_proteins = natsorted(set(contact_proteins + mediator_proteins))
 
         new_ppi_data = get_all_to_all_ppi(ppi_data=ppi_data,
                                           proteins=total_proteins,

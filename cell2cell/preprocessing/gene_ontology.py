@@ -5,6 +5,8 @@ from __future__ import absolute_import
 import numpy as np
 import networkx
 
+from natsort import natsorted
+
 
 def get_genes_from_go_terms(go_annotations, go_filter, go_header='GO', gene_header='Gene', verbose=True):
     '''
@@ -80,7 +82,7 @@ def get_genes_from_go_hierarchy(go_annotations, go_terms, go_filter, go_header='
     iter = len(go_hierarchy)
     for i in range(iter):
         find_all_children_of_go_term(go_terms, go_hierarchy[i], go_hierarchy, verbose=verbose)
-    go_hierarchy = list(set(go_hierarchy))
+    go_hierarchy = natsorted(set(go_hierarchy))
     genes = get_genes_from_go_terms(go_annotations=go_annotations,
                                     go_filter=go_hierarchy,
                                     go_header=go_header,
