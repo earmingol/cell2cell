@@ -253,3 +253,27 @@ def test_run_label_permutation_excludes_cells(toy_rnaseq, toy_ppi, analysis_setu
                                                permutations=3, excluded_cells=['C1'],
                                                verbose=False)
     assert 'C1' not in result.columns
+
+
+# ---------------------------------------------------------------------------------
+# random_switching_ppi_labels crashed with its own default arguments
+#
+# `ppi_data[interaction_columns]` passed a TUPLE to pandas, which reads it as a
+# single column name. So the simplest possible call -- default genes=None and
+# default permuted_column='both' -- always raised KeyError: ('A', 'B').
+# ---------------------------------------------------------------------------------
+
+def test_random_switching_ppi_labels_works_with_default_arguments(toy_ppi):
+    result = permutation.random_switching_ppi_labels(toy_ppi, random_state=0)
+    assert result.shape == toy_ppi.shape
+    assert list(result.columns) == list(toy_ppi.columns)
+    # The permutation relabels genes, so the multiset of genes is preserved
+    original = sorted(list(toy_ppi['A']) + list(toy_ppi['B']))
+    permuted = sorted(list(result['A']) + list(result['B']))
+    assert len(original) == len(permuted)
+
+
+def test_random_switching_ppi_labels_default_is_reproducible(toy_ppi):
+    first = permutation.random_switching_ppi_labels(toy_ppi, random_state=3)
+    second = permutation.random_switching_ppi_labels(toy_ppi, random_state=3)
+    pd.testing.assert_frame_equal(first, second)

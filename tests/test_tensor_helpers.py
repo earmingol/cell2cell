@@ -189,3 +189,30 @@ def test_concatenated_tensor_can_be_factorized(toy_contexts, toy_ppi):
                                                                   order_labels=labels)
     combined.compute_tensor_factorization(rank=2, random_state=0)
     assert len(combined.factors) == 4
+
+
+# ---------------------------------------------------------------------------------
+# Functions that were broken on the default (numpy) tensorly backend
+#
+# `concatenate_interaction_tensors` called `.to('cpu')`, a pytorch-only method, and
+# then read `context['device']`, a key that a numpy context does not have. So it
+# always failed unless a pytorch backend was configured.
+# ---------------------------------------------------------------------------------
+
+def test_concatenate_interaction_tensors_works_on_the_numpy_backend(toy_contexts, toy_ppi):
+    matrices = list(toy_contexts.values())
+    names = list(toy_contexts.keys())
+    labels = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
+
+    def build(start, stop):
+        return c2c.tensor.InteractionTensor(rnaseq_matrices=matrices[start:stop],
+                                            ppi_data=toy_ppi,
+                                            context_names=names[start:stop],
+                                            how='inner', complex_sep=None, verbose=False)
+
+    first, second = build(0, 2), build(2, 4)
+    combined = c2c.tensor.concatenate_interaction_tensors([first, second], axis=0,
+                                                          order_labels=labels)
+    assert combined.tensor.shape[0] == 4
+    assert list(combined.order_names[0]) == names
+    assert np.allclose(np.asarray(combined.tensor)[:2], np.asarray(first.tensor))

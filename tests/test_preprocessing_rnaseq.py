@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import cell2cell as c2c
 from cell2cell.preprocessing import rnaseq
 from cell2cell.preprocessing.rnaseq import _trimean
 
@@ -299,3 +300,64 @@ def test_aggregate_single_cells_single_cell_per_type():
     result = rnaseq.aggregate_single_cells(data.T, metadata, method='trimean')
     assert np.allclose(result['x'].values, [5.0, 7.0])
     assert np.allclose(result['y'].values, [1.0, 2.0])
+
+
+# ---------------------------------------------------------------------------------
+# aggregate_single_cells modified the dataframe passed by the user
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.parametrize('method', ['average', 'nn_cell_fraction', 'trimean'])
+@pytest.mark.parametrize('transposed', [True, False])
+def test_aggregate_single_cells_does_not_modify_its_input(toy_single_cells, method, transposed):
+    single_cells, metadata = toy_single_cells
+    data = single_cells.T if transposed else single_cells
+
+    index_before = list(data.index)
+    columns_before = list(data.columns)
+    values_before = data.values.copy()
+
+    rnaseq.aggregate_single_cells(data, metadata, barcode_col='barcodes',
+                                 celltype_col='cell_types', method=method,
+                                 transposed=transposed)
+
+    assert list(data.index) == index_before
+    assert list(data.columns) == columns_before
+    assert np.array_equal(data.values, values_before)
+
+
+def test_aggregate_single_cells_can_be_called_twice(toy_single_cells):
+    '''Previously raised KeyError, because the first call replaced the index.'''
+    single_cells, metadata = toy_single_cells
+    data = single_cells.T
+
+    first = rnaseq.aggregate_single_cells(data, metadata, barcode_col='barcodes',
+                                          celltype_col='cell_types', method='average')
+    second = rnaseq.aggregate_single_cells(data, metadata, barcode_col='barcodes',
+                                           celltype_col='cell_types', method='average')
+    pd.testing.assert_frame_equal(first, second)
+
+
+def test_aggregate_single_cells_orders_cell_types_naturally():
+    single_cells, metadata = c2c.datasets.generate_toy_single_cells(n_cell_types=11,
+                                                                   n_cells_per_type=2)
+    aggregated = rnaseq.aggregate_single_cells(single_cells.T, metadata,
+                                              barcode_col='barcodes',
+                                              celltype_col='cell_types', method='average')
+    columns = list(aggregated.columns)
+    assert columns == ['CT-{}'.format(i) for i in range(1, 12)]
+    assert columns != sorted(columns)
+
+
+# ---------------------------------------------------------------------------------
+# scale_expression_by_sum could not normalize across columns
+#
+# The sums were not kept 2-dimensional, so the documented `axis=1` option raised
+# "operands could not be broadcast together with shapes (6,5) (6,)".
+# ---------------------------------------------------------------------------------
+
+def test_scale_expression_by_sum_supports_both_axes(toy_rnaseq):
+    by_column = rnaseq.scale_expression_by_sum(toy_rnaseq, axis=0, sum_value=1e6)
+    assert np.allclose(by_column.sum(axis=0).values, 1e6)
+
+    by_row = rnaseq.scale_expression_by_sum(toy_rnaseq, axis=1, sum_value=1e6)
+    assert np.allclose(by_row.sum(axis=1).values, 1e6)

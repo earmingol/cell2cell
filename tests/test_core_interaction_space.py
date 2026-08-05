@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import cell2cell as c2c
 from cell2cell.core import interaction_space as ispace
 
 
@@ -153,3 +154,63 @@ def test_interaction_space_excluded_cells(toy_rnaseq, toy_ppi, analysis_setup,
         analysis_setup=analysis_setup, excluded_cells=['C1'], complex_sep=None,
         verbose=False)
     assert 'C1' not in space.interaction_elements['cell_names']
+
+
+# ---------------------------------------------------------------------------------
+# Distance matrix for the 'count' and 'icellnet' CCI scores
+#
+# The branch was guarded by `if ~(cci_score in [...])`. Bitwise inversion of a bool
+# gives -2/-1, which are both truthy, so the regularized-distance branch was dead
+# code and those scores produced NEGATIVE distances (down to -7 on the toy data).
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.parametrize('cci_score', ['count', 'icellnet'])
+def test_unbounded_cci_scores_give_non_negative_distances(toy_rnaseq, toy_ppi, cci_score):
+    interactions = c2c.analysis.BulkInteractions(rnaseq_data=toy_rnaseq, ppi_data=toy_ppi,
+                                                 cci_score=cci_score, cci_type='undirected',
+                                                 complex_sep=None, verbose=False)
+    interactions.compute_pairwise_cci_scores(verbose=False)
+    distance = interactions.interaction_space.distance_matrix
+
+    assert (distance.values >= 0).all(), 'a distance can never be negative'
+    assert np.allclose(np.diag(distance.values), 0.0)
+    # The raw scores are unbounded, so 1 - score would have gone negative
+    assert interactions.interaction_space.interaction_elements['cci_matrix'].values.max() > 1
+
+
+@pytest.mark.parametrize('cci_score', ['bray_curtis', 'jaccard'])
+def test_bounded_cci_scores_use_the_plain_complement(toy_rnaseq, toy_ppi, cci_score):
+    '''Scores already in [0, 1] must keep using 1 - score, unchanged by the fix.'''
+    interactions = c2c.analysis.BulkInteractions(rnaseq_data=toy_rnaseq, ppi_data=toy_ppi,
+                                                 cci_score=cci_score, cci_type='undirected',
+                                                 complex_sep=None, verbose=False)
+    interactions.compute_pairwise_cci_scores(verbose=False)
+    cci = interactions.interaction_space.interaction_elements['cci_matrix']
+    distance = interactions.interaction_space.distance_matrix
+
+    expected = 1 - cci.values
+    np.fill_diagonal(expected, 0.0)
+    assert np.allclose(distance.values, expected)
+
+
+# ---------------------------------------------------------------------------------
+# Reproducibility -- these orders came from an unsorted set() and varied per run
+# ---------------------------------------------------------------------------------
+
+def test_generate_pairs_follows_the_order_of_the_cells():
+    pairs = ispace.generate_pairs(['C3', 'C1', 'C2'], 'directed')
+    assert pairs == [('C3', 'C3'), ('C3', 'C1'), ('C3', 'C2'),
+                     ('C1', 'C3'), ('C1', 'C1'), ('C1', 'C2'),
+                     ('C2', 'C3'), ('C2', 'C1'), ('C2', 'C2')]
+
+
+def test_generate_pairs_deduplicates_without_losing_order():
+    pairs = ispace.generate_pairs(['A', 'A', 'B'], 'directed')
+    assert pairs == [('A', 'A'), ('A', 'B'), ('B', 'A'), ('B', 'B')]
+
+
+def test_generate_pairs_is_reproducible():
+    first = ispace.generate_pairs(['C3', 'C1', 'C2'], 'undirected')
+    second = ispace.generate_pairs(['C3', 'C1', 'C2'], 'undirected')
+    assert first == second
+    assert len(first) == len(set(first))

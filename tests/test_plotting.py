@@ -173,7 +173,12 @@ def test_plot_elbow():
 
 
 def test_reorder_dimension_elements(factorized_tensor):
-    '''Returns a (reordered_factors, new_metadata) tuple; metadata may be None.'''
+    '''Returns a (reordered_factors, new_metadata) tuple; metadata may be None.
+
+    The `metadata=None` default used to crash, because `metadata.copy()` ran
+    unconditionally even though the lines after it already guard with
+    `if new_metadata is not None`.
+    '''
     from cell2cell.plotting.tensor_plot import reorder_dimension_elements
     cells = list(factorized_tensor.order_names[2])
     reordered, metadata = reorder_dimension_elements(factorized_tensor.factors,

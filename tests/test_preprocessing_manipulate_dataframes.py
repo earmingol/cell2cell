@@ -193,3 +193,41 @@ def test_shuffle_dataframe_accepts_a_read_only_frame(read_only_frame, toy_rnaseq
     result = manipulate.shuffle_dataframe(frame, random_state=0)
     assert result.shape == frame.shape
     assert sorted(result.values.flatten()) == sorted(frame.values.flatten())
+
+
+# ---------------------------------------------------------------------------------
+# convert_to_distance_matrix raised instead of warning
+#
+# `raise Warning(...)` aborts, so the diagonal was never "automatically replaced by
+# zeros" as the message claimed. This broke the public `pcoa()` for any similarity
+# or correlation matrix, since pcoa calls it unconditionally.
+# ---------------------------------------------------------------------------------
+
+def test_convert_to_distance_matrix_replaces_a_non_zero_diagonal(toy_distance):
+    similarity = 1 - toy_distance / toy_distance.values.max()
+    assert not np.allclose(np.diag(similarity.values), 0.0)
+
+    with pytest.warns(UserWarning):
+        result = manipulate.convert_to_distance_matrix(similarity)
+    assert np.allclose(np.diag(result.values), 0.0)
+
+
+def test_convert_to_distance_matrix_still_rejects_asymmetric_input(toy_distance):
+    asymmetric = toy_distance.copy()
+    asymmetric.iloc[0, 1] = 999.0
+    with pytest.raises(ValueError):
+        manipulate.convert_to_distance_matrix(asymmetric)
+
+
+# ---------------------------------------------------------------------------------
+# check_presence_in_dataframe crashed on mixed data types
+#
+# It sorted the values with np.unique, which cannot compare strings to floats, so
+# the documented `columns=None` default failed on any dataframe holding both.
+# ---------------------------------------------------------------------------------
+
+def test_check_presence_in_dataframe_handles_mixed_dtypes(toy_ppi):
+    # toy_ppi mixes gene names with a float 'score' column
+    assert toy_ppi.dtypes.nunique() > 1
+    found = manipulate.check_presence_in_dataframe(toy_ppi, ['Protein-F'])
+    assert found == ['Protein-F']

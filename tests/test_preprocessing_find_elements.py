@@ -66,3 +66,21 @@ def test_element_abundance_pipeline_is_reproducible():
     second = find_elements.get_elements_over_fraction(
         find_elements.get_element_abundances(lists), 0.5)
     assert first == second
+
+
+# ---------------------------------------------------------------------------------
+# Reproducibility -- these orders came from an unsorted set() and varied per run
+# ---------------------------------------------------------------------------------
+
+def test_get_element_abundances_keeps_first_appearance_order():
+    '''Used to iterate over sets, making the tensor axes vary between runs.'''
+    element_lists = [['b', 'a', 'c'], ['c', 'b', 'z'], ['b', 'c', 'q']]
+    abundances = find_elements.get_element_abundances(element_lists)
+    assert list(abundances.keys()) == ['b', 'a', 'c', 'z', 'q']
+    assert np.isclose(abundances['b'], 1.0)
+    assert np.isclose(abundances['a'], 1 / 3)
+
+
+def test_get_element_abundances_counts_each_list_once():
+    abundances = find_elements.get_element_abundances([['a', 'a', 'a'], ['a']])
+    assert np.isclose(abundances['a'], 1.0)

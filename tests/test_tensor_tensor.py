@@ -7,6 +7,9 @@ import pandas as pd
 import pytest
 
 import cell2cell as c2c
+from cell2cell.analysis.tensor_downstream import (compute_gini_coefficients,
+                                                 flatten_factor_ccc_networks,
+                                                 get_factor_specific_ccc_networks)
 
 
 EXPECTED_LABELS = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
@@ -285,3 +288,69 @@ def test_interactions_to_tensor_rejects_unknown_experiment(toy_rnaseq, toy_ppi):
     with pytest.raises(ValueError):
         c2c.tensor.interactions_to_tensor(interactions=[space], experiment='nonsense',
                                           context_names=['a'], verbose=False)
+
+
+# ---------------------------------------------------------------------------------
+# Natural ordering of factor names
+#
+# The factor names were sorted lexicographically, so decompositions with 10 or more
+# factors were returned as Factor 1, Factor 10, Factor 11, Factor 2, ...
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.slow
+def test_factor_order_is_natural_beyond_nine_factors(interaction_tensor):
+    interaction_tensor.compute_tensor_factorization(rank=12, random_state=0)
+    expected = ['Factor {}'.format(i) for i in range(1, 13)]
+
+    networks = get_factor_specific_ccc_networks(interaction_tensor)
+    assert list(networks.keys()) == expected
+
+    ginis = compute_gini_coefficients(interaction_tensor)
+    assert list(ginis['Factor']) == expected
+
+    flat = flatten_factor_ccc_networks(networks)
+    assert list(flat.columns) == expected
+
+
+# ---------------------------------------------------------------------------------
+# Element order of the built tensor -- deliberate behaviours
+#
+# Guards against a future "fix" that would break them.
+# ---------------------------------------------------------------------------------
+
+def test_build_context_ccc_tensor_preserves_order_when_cells_match(toy_ppi):
+    '''When every context has the same cells, the first matrix's order is preserved
+    -- natural sorting is only applied when the sets differ.
+    '''
+    base = c2c.datasets.generate_toy_rnaseq()
+    unsorted_cells = ['C5', 'C1', 'C3', 'C2', 'C4']
+    matrices = [base[unsorted_cells], base[unsorted_cells] * 2.]
+
+    tensor = c2c.tensor.InteractionTensor(rnaseq_matrices=matrices, ppi_data=toy_ppi,
+                                          context_names=['a', 'b'], how='inner',
+                                          complex_sep=None, verbose=False)
+    assert list(tensor.order_names[2]) == unsorted_cells
+
+
+def test_build_context_ccc_tensor_sorts_naturally_when_cells_differ(toy_ppi):
+    base = c2c.datasets.generate_toy_rnaseq()
+    renamed = base.rename(columns={'C3': 'C10', 'C4': 'C20', 'C5': 'C3'})
+    renamed = renamed[['C20', 'C1', 'C10', 'C3', 'C2']]
+    matrices = [renamed.drop(columns=['C20']), renamed.drop(columns=['C1'])]
+
+    tensor = c2c.tensor.InteractionTensor(rnaseq_matrices=matrices, ppi_data=toy_ppi,
+                                          context_names=['a', 'b'], how='outer',
+                                          outer_fraction=0.0, complex_sep=None,
+                                          verbose=False)
+    cells = list(tensor.order_names[2])
+    assert cells == ['C1', 'C2', 'C3', 'C10', 'C20']
+    assert cells != sorted(cells)
+
+
+def test_context_names_are_never_sorted(toy_contexts, toy_ppi):
+    '''context_names is supplied by the user and must be preserved verbatim.'''
+    names = ['Context-10', 'Context-2', 'Context-1', 'Context-3']
+    tensor = c2c.tensor.InteractionTensor(rnaseq_matrices=list(toy_contexts.values()),
+                                          ppi_data=toy_ppi, context_names=names,
+                                          how='inner', complex_sep=None, verbose=False)
+    assert list(tensor.order_names[0]) == names

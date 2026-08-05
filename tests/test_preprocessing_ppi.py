@@ -280,3 +280,25 @@ def test_ppi_functions_do_not_modify_input(toy_ppi):
     ppi_module.filter_ppi_by_proteins(toy_ppi, ['Protein-A'], interaction_columns=COLUMNS)
     ppi_module.bidirectional_ppi_for_cci(toy_ppi, COLUMNS, verbose=False)
     pd.testing.assert_frame_equal(toy_ppi, before)
+
+
+# ---------------------------------------------------------------------------------
+# Deliberate behaviour -- guards against a future "fix" that would break it
+# ---------------------------------------------------------------------------------
+
+def test_remove_ppi_bidirectionality_keeps_using_lexicographic_order():
+    '''This lexicographic sort decides WHICH direction of a bidirectional PPI is
+    dropped. Replacing it with a natural sort would silently change which rows
+    survive, so the output is pinned here.
+    '''
+    ppi = pd.DataFrame({'A': ['G1', 'G2', 'G3', 'G2', 'G10', 'G2'],
+                        'B': ['G2', 'G1', 'G4', 'G3', 'G2', 'G10']})
+    result = ppi_module.remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+
+    pairs = set(zip(result['A'], result['B']))
+    # Of each bidirectional pair only one direction is kept
+    assert ('G1', 'G2') in pairs and ('G2', 'G1') not in pairs
+    assert ('G10', 'G2') in pairs and ('G2', 'G10') not in pairs
+    # Unidirectional interactions are untouched
+    assert ('G3', 'G4') in pairs
+    assert result.shape[0] == 4

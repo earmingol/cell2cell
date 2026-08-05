@@ -244,3 +244,36 @@ def test_dist_filter_liana_does_not_modify_input(toy_liana, celltype_distances):
     before = toy_liana.copy()
     filtering.dist_filter_liana(toy_liana, celltype_distances, max_dist=20.)
     pd.testing.assert_frame_equal(toy_liana, before)
+
+
+# ---------------------------------------------------------------------------------
+# add_sliding_window_info_to_adata crashed on pandas >= 2
+#
+# The barcodes of each window were passed to .loc as a set, which newer versions of
+# pandas reject with "Passing a set as an indexer is not supported".
+# ---------------------------------------------------------------------------------
+
+def test_add_sliding_window_info_to_adata_accepts_window_mapping(toy_spatial_adata):
+    window_mapping = c2c.spatial.create_sliding_windows(toy_spatial_adata,
+                                                        window_size=20., stride=7.)
+    assert isinstance(next(iter(window_mapping.values())), set)
+
+    c2c.spatial.add_sliding_window_info_to_adata(toy_spatial_adata, window_mapping)
+
+    window_columns = [c for c in toy_spatial_adata.obs.columns if c.startswith('window_')]
+    assert len(window_columns) == len(window_mapping)
+    # Every cell assigned to a window must be flagged with 1.0
+    for window, barcodes in window_mapping.items():
+        flagged = toy_spatial_adata.obs.loc[list(barcodes), window]
+        assert (flagged == 1.0).all()
+
+
+def test_sliding_window_columns_are_naturally_ordered(toy_spatial_adata):
+    '''With more than 10 windows per axis, window_10_* must not precede window_2_*.'''
+    window_mapping = c2c.spatial.create_sliding_windows(toy_spatial_adata,
+                                                        window_size=10., stride=5.)
+    c2c.spatial.add_sliding_window_info_to_adata(toy_spatial_adata, window_mapping)
+
+    columns = [c for c in toy_spatial_adata.obs.columns if c.startswith('window_')]
+    assert any(c.startswith('window_10_') for c in columns)
+    assert columns != sorted(columns)       # natural order differs from alphabetical
