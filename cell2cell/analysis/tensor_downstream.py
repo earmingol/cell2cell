@@ -3,6 +3,8 @@
 import numpy as np
 import pandas as pd
 
+from natsort import natsorted
+
 from cell2cell.stats import gini_coefficient
 
 
@@ -97,7 +99,7 @@ def get_factor_specific_ccc_networks(result, sender_label='Sender Cells', receiv
     else:
         raise ValueError('result is not of a valid type. It must be an InteractionTensor or a dict.')
 
-    factors = sorted(list(set(result[sender_label].columns) & set(result[receiver_label].columns)))
+    factors = natsorted(set(result[sender_label].columns) & set(result[receiver_label].columns))
 
     networks = dict()
     for f in factors:
@@ -113,7 +115,7 @@ def flatten_factor_ccc_networks(networks, orderby='senders'):
     '''
     Flattens all adjacency matrices in the factor-specific
     cell-cell communication networks. It generates a matrix
-    where rows are factors and columns are cell-cell pairs.
+    where rows are cell-cell pairs and columns are factors.
 
     Parameters
     ----------
@@ -131,11 +133,19 @@ def flatten_factor_ccc_networks(networks, orderby='senders'):
     Returns
     -------
     flatten_networks : pandas.DataFrame
-        A dataframe wherein rows contains a factor-specific network. Columns are
-        the directed cell-cell pairs.
+        A dataframe wherein each column contains a factor-specific network. Rows are
+        the directed cell-cell pairs, named as '<sender> --> <receiver>'. Cells keep
+        the order they have in the tensor dimensions.
     '''
-    senders = sorted(set.intersection(*[set(v.index) for v in networks.values()]))
-    receivers = sorted(set.intersection(*[set(v.columns) for v in networks.values()]))
+    net_list = list(networks.values())
+    common_senders = set.intersection(*[set(v.index) for v in net_list])
+    common_receivers = set.intersection(*[set(v.columns) for v in net_list])
+
+    # Keep the order of the elements in the tensor dimensions instead of sorting them.
+    # Sorting the names here without reordering the data assigns loadings to the wrong
+    # cell-cell pair whenever the tensor elements are not alphabetically sorted.
+    senders = [s for s in net_list[0].index if s in common_senders]
+    receivers = [r for r in net_list[0].columns if r in common_receivers]
 
     if orderby == 'senders':
         cell_pairs = [s + ' --> ' + r for s in senders for r in receivers]
@@ -146,7 +156,10 @@ def flatten_factor_ccc_networks(networks, orderby='senders'):
     else:
         raise ValueError("`orderby` must be either 'senders' or 'receivers'.")
 
-    data = np.asarray([v.values.flatten(flatten_order) for v in networks.values()]).T
+    # Reindexing guarantees that every network is flattened in the same order the
+    # cell-cell pair names were built from.
+    data = np.asarray([v.reindex(index=senders, columns=receivers).values.flatten(flatten_order)
+                       for v in net_list]).T
     flatten_networks = pd.DataFrame(data=data,
                                     index=cell_pairs,
                                     columns=list(networks.keys())
@@ -191,7 +204,7 @@ def compute_gini_coefficients(result, sender_label='Sender Cells', receiver_labe
     else:
         raise ValueError('result is not of a valid type. It must be an InteractionTensor or a dict.')
 
-    factors = sorted(list(set(result[sender_label].columns) & set(result[receiver_label].columns)))
+    factors = natsorted(set(result[sender_label].columns) & set(result[receiver_label].columns))
 
     ginis = []
     for f in factors:
@@ -276,7 +289,7 @@ def get_lr_by_cell_pairs(result, lr_label, sender_label, receiver_label, order_c
     assert receiver_label in result.keys(), 'The specified dimension ' + receiver_label + ' is not present in the `result` input'
 
     # Sort factors
-    sorted_factors = sorted(result[lr_label].columns, key=lambda x: int(x.split(' ')[1]))
+    sorted_factors = natsorted(result[lr_label].columns)
 
     # Get CCI network per factor
     networks = get_factor_specific_ccc_networks(result=result,
