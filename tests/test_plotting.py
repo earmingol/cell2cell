@@ -233,6 +233,28 @@ def test_generate_dot_plot():
     assert fig is not None
 
 
+def test_generate_dot_plot_sizes_the_dots_by_significance():
+    '''Dot sizes come from a -log10 transform of the p-values, which used to be computed
+    with the `applymap` method that pandas 3.0 removed. The other dot plot tests only
+    assert that a figure comes back, so this one checks the dots that were drawn.'''
+    index = ['LR-1', 'LR-2']
+    columns = ['C1 --> C2', 'C1 --> C3']
+    pvals = pd.DataFrame([[0.01, 0.2], [0.3, 0.001]], index=index, columns=columns)
+    scores = pd.DataFrame([[1.0, 0.5], [0.2, 0.9]], index=index, columns=columns)
+    fig = c2c.plotting.generate_dot_plot(pval_df=pvals, score_df=scores, significance=1.0)
+
+    # Every dot is scattered individually, row by row, on the main (second) subplot
+    main_ax = fig.axes[1]
+    sizes = np.array([collection.get_sizes()[0] for collection in main_ax.collections])
+    assert len(sizes) == pvals.size
+
+    # A more significant interaction must get a strictly bigger dot
+    flat_pvals = pvals.values.ravel()
+    assert sizes.argmax() == flat_pvals.argmin()
+    by_significance = np.argsort(flat_pvals)
+    assert list(sizes[by_significance]) == sorted(sizes, reverse=True)
+
+
 @pytest.mark.slow
 def test_dot_plot(toy_single_cells, toy_ppi):
     rnaseq, metadata = toy_single_cells

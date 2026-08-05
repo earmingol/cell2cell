@@ -107,9 +107,12 @@ def scale(a, weights=None, with_mean=True, with_std=True, ddof=0, copy=True):
     Wherever std equals 0, it is replaced by 1 in order to avoid
     division by zero.
     """
-    if copy:
-        a = a.copy()
     a = np.asarray(a, dtype=np.float64)
+    # `a` is standardized in place below. Copying it beforehand is not only what `copy`
+    # asks for, but also a requirement when the array is not writable, which is the case
+    # for the one behind `DataFrame.values` under the copy-on-write of pandas >= 3.0.
+    if copy or not a.flags.writeable:
+        a = a.copy()
     avg, std = mean_and_std(a, axis=0, weights=weights, with_mean=with_mean,
                             with_std=with_std, ddof=ddof)
     if with_mean:
@@ -218,7 +221,7 @@ def _e_matrix_inplace(distance_matrix):
     distance_matrix : 2D array_like
         Distance matrix.
     """
-    distance_matrix = distance_matrix.astype(np.float)
+    distance_matrix = distance_matrix.astype(float)
 
     for i in np.arange(len(distance_matrix)):
         distance_matrix[i] = (distance_matrix[i] * distance_matrix[i]) / -2
@@ -238,7 +241,7 @@ def _f_matrix_inplace(e_matrix):
     e_matrix : 2D array_like
         A matrix representing the "E matrix" as described above.
     """
-    e_matrix = e_matrix.astype(np.float)
+    e_matrix = e_matrix.astype(float)
 
     row_means = np.zeros(len(e_matrix), dtype=float)
     col_means = np.zeros(len(e_matrix), dtype=float)

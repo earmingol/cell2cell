@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from cell2cell.preprocessing import zero_diagonal
 from cell2cell.utils import networks, parallel_computing
 
 
@@ -17,9 +18,7 @@ from cell2cell.utils import networks, parallel_computing
 @pytest.fixture
 def adjacency(toy_distance):
     '''A weighted adjacency matrix derived from the toy distances.'''
-    similarity = 1 - toy_distance / toy_distance.values.max()
-    np.fill_diagonal(similarity.values, 0.0)
-    return similarity
+    return zero_diagonal(1 - toy_distance / toy_distance.values.max())
 
 
 def test_generate_network_from_adjacency_networkx(adjacency):

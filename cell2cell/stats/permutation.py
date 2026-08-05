@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import cell2cell.core.interaction_space as ispace
-from cell2cell.preprocessing import shuffle_rows_in_df
+from cell2cell.preprocessing import shuffle_rows_in_df, zero_diagonal
 
 from natsort import natsorted
 from sklearn.utils import shuffle
@@ -199,7 +199,9 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
         if genes is None:
             # `interaction_columns` is a tuple, which pandas would treat as a single
             # column name, so it is converted into a list before selecting them.
-            genes = list(np.unique(ppi_data_[list(interaction_columns)].values.flatten()))
+            # An object dtype is requested because the values are protein names, which
+            # pandas >= 3.0 returns as an extension array that has no `.ravel()`.
+            genes = list(np.unique(ppi_data_[list(interaction_columns)].to_numpy(dtype=object).ravel()))
         else:
             # Sorted to make the permutation reproducible for a given random_state
             genes = natsorted(set(genes))
@@ -208,7 +210,7 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
         ppi_data_[prot_b] = ppi_data_[prot_b].apply(lambda x: mapper[x])
     elif permuted_column == 'first':
         if genes is None:
-            genes = list(np.unique(ppi_data_[prot_a].values.flatten()))
+            genes = list(np.unique(ppi_data_[prot_a].to_numpy(dtype=object)))
         else:
             # Sorted to make the permutation reproducible for a given random_state
             genes = natsorted(set(genes))
@@ -216,7 +218,7 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
         ppi_data_[prot_a] = ppi_data_[prot_a].apply(lambda x: mapper[x])
     elif permuted_column == 'second':
         if genes is None:
-            genes = list(np.unique(ppi_data_[prot_b].values.flatten()))
+            genes = list(np.unique(ppi_data_[prot_b].to_numpy(dtype=object)))
         else:
             # Sorted to make the permutation reproducible for a given random_state
             genes = natsorted(set(genes))
@@ -376,9 +378,8 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
         # Keep scores
         cci = interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
         cci_diag = np.diag(cci).copy()
-        np.fill_diagonal(cci.values, 0.0)
 
-        iter_scores = scipy.spatial.distance.squareform(cci)
+        iter_scores = scipy.spatial.distance.squareform(zero_diagonal(cci))
         iter_scores = np.reshape(iter_scores, (len(iter_scores), 1)).T
 
         iter_diag = np.reshape(cci_diag, (len(cci_diag), 1)).T
@@ -405,9 +406,8 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
     # Keep scores
     base_cci = base_interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
     base_cci_diag = np.diag(base_cci).copy()
-    np.fill_diagonal(base_cci.values, 0.0)
 
-    base_scores = scipy.spatial.distance.squareform(base_cci)
+    base_scores = scipy.spatial.distance.squareform(zero_diagonal(base_cci))
 
     # P-values
     pvals = np.zeros((scores.shape[1], 1))

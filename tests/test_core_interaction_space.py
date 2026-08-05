@@ -91,6 +91,18 @@ def test_distance_matrix_is_a_valid_distance(interaction_space):
     assert np.allclose(distance.values, distance.values.T)
 
 
+def test_distance_matrix_keeps_the_cell_labels(interaction_space):
+    '''The diagonal is zeroed by rebuilding the frame, so the labels must be carried over
+    and stay aligned with the CCI matrix they are derived from.'''
+    distance = interaction_space.distance_matrix
+    cci = interaction_space.interaction_elements['cci_matrix']
+    assert list(distance.index) == list(cci.index)
+    assert list(distance.columns) == list(cci.columns)
+    # Off-diagonal entries are the plain complement of the bray_curtis scores
+    off_diagonal = ~np.eye(cci.shape[0], dtype=bool)
+    assert np.allclose(distance.values[off_diagonal], 1 - cci.values[off_diagonal])
+
+
 def test_communication_matrix_columns_use_the_semicolon_separator(interaction_space):
     communication = interaction_space.interaction_elements['communication_matrix']
     for column in communication.columns:

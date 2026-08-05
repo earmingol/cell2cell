@@ -73,6 +73,50 @@ def test_check_ordination_accepts_a_pcoa_result(toy_distance):
     assert checked is not None
 
 
+def test_pcoa_centers_the_matrix_in_place_on_request(toy_distance):
+    '''`inplace=True` is documented but used to be dead code: it went through
+    `.astype(np.float)`, an alias numpy removed in 1.24. Once repaired, the path needs a
+    writable array, which `DataFrame.values` is not under the copy-on-write of pandas 3.'''
+    inplace = c2c.external.pcoa(toy_distance, inplace=True)
+    default = c2c.external.pcoa(toy_distance, inplace=False)
+    assert np.allclose(inplace['eigvals'].values, default['eigvals'].values)
+    assert np.allclose(np.abs(inplace['samples'].values),
+                       np.abs(default['samples'].values))
+
+
+def test_pcoa_does_not_modify_its_input(toy_distance):
+    before = toy_distance.copy()
+    c2c.external.pcoa(toy_distance, inplace=True)
+    pd.testing.assert_frame_equal(toy_distance, before)
+
+
+def test_scale_accepts_a_dataframe():
+    '''`scale` standardizes its argument in place. It used to copy before converting to an
+    array, so a dataframe was copied as a dataframe and the conversion then handed back
+    the read-only buffer that pandas >= 3.0 exposes. Arrays were never affected.'''
+    from cell2cell.external.pcoa_utils import scale
+    frame = pd.DataFrame([[1., 2.], [3., 4.], [5., 7.]], columns=['x', 'y'])
+    result = scale(frame)
+    assert np.allclose(result.mean(axis=0), 0.0)
+    assert np.allclose(result.std(axis=0), 1.0)
+
+
+def test_scale_does_not_modify_its_input():
+    from cell2cell.external.pcoa_utils import scale
+    array = np.array([[1., 2.], [3., 4.], [5., 7.]])
+    before = array.copy()
+    scale(array)
+    assert np.allclose(array, before)
+
+
+def test_pcoa_biplot_accepts_a_read_only_frame(read_only_frame, toy_distance, toy_rnaseq):
+    distance = read_only_frame(toy_distance, labels=list(toy_distance.index))
+    ordination = c2c.external.pcoa(distance)
+    features = toy_rnaseq.T
+    result = c2c.external.pcoa_biplot(ordination, features)
+    assert list(result['features'].index) == list(features.columns)
+
+
 # ---------------------------------------------------------------------------------
 # umap
 # ---------------------------------------------------------------------------------

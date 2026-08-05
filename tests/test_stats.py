@@ -209,6 +209,23 @@ def test_random_switching_ppi_labels_does_not_modify_input(toy_ppi):
     pd.testing.assert_frame_equal(toy_ppi, before)
 
 
+@pytest.mark.parametrize('permuted_column', ['both', 'first', 'second'])
+def test_random_switching_ppi_labels_with_the_string_dtype(toy_ppi, permuted_column):
+    '''The gene names used to be collected with `.values.flatten()`. pandas >= 3.0 makes
+    `str` the default dtype, so the values of a single column are an extension array,
+    which has no `.flatten()`. Casting to "string" reproduces that on older pandas.'''
+    ppi_data = toy_ppi.copy()
+    ppi_data[['A', 'B']] = ppi_data[['A', 'B']].astype('string')
+    result = permutation.random_switching_ppi_labels(ppi_data, random_state=0,
+                                                     permuted_column=permuted_column)
+    assert result.shape == ppi_data.shape
+    assert list(result.columns) == list(ppi_data.columns)
+    # Labels are swapped among themselves, so no new name can appear
+    known_genes = set(toy_ppi['A']).union(toy_ppi['B'])
+    for column in ('A', 'B'):
+        assert set(result[column]).issubset(known_genes)
+
+
 # ---------------------------------------------------------------------------------
 # run_label_permutation
 # ---------------------------------------------------------------------------------

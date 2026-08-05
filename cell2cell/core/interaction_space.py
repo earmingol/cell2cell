@@ -2,7 +2,8 @@
 
 from __future__ import absolute_import
 
-from cell2cell.preprocessing import integrate_data, cutoffs, get_genes_from_complexes, add_complexes_to_expression
+from cell2cell.preprocessing import (integrate_data, cutoffs, get_genes_from_complexes, add_complexes_to_expression,
+                                     zero_diagonal)
 from cell2cell.core import cell, cci_scores, communication_scores
 
 import itertools
@@ -519,7 +520,8 @@ class InteractionSpace():
             # Regularized distance
             mean = np.nanmean(self.interaction_elements['cci_matrix'])
             self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'] + mean).apply(lambda x: 1 - x)
-        np.fill_diagonal(self.distance_matrix.values, 0.0)  # Make diagonal zero (delete autocrine-interactions)
+        # Make diagonal zero (delete autocrine-interactions)
+        self.distance_matrix = zero_diagonal(self.distance_matrix)
 
     def pair_communication_score(self, cell1, cell2, communication_score='expression_thresholding',
                                  use_ppi_score=False, verbose=True):

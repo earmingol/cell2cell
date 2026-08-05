@@ -207,6 +207,23 @@ def factorized_prebuilt_tensor(prebuilt_tensor):
 # ---------------------------------------------------------------------------------
 
 @pytest.fixture
+def read_only_frame():
+    '''Builds a dataframe whose `.values` array cannot be written to.
+
+    pandas >= 3.0 enforces copy-on-write, so `DataFrame.values` always returns a
+    read-only array and any function mutating it in place raises "underlying array is
+    read-only". Wrapping an array that is already read-only reproduces that on older
+    pandas too, so the tests using this fixture guard the behaviour on every version.
+    '''
+    def build(values, labels=None):
+        array = np.array(values, dtype=float)
+        array.setflags(write=False)
+        if labels is None:
+            return pd.DataFrame(array)
+        return pd.DataFrame(array, index=labels, columns=labels)
+    return build
+
+@pytest.fixture
 def go_terms_graph():
     '''A small gene-ontology hierarchy as a networkx.DiGraph.
 

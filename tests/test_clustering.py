@@ -3,6 +3,7 @@
 '''Tests for cell2cell.clustering'''
 
 import numpy as np
+import pandas as pd
 import pytest
 from scipy.spatial.distance import squareform
 
@@ -54,6 +55,29 @@ def test_compute_linkage_is_deterministic(toy_distance):
     assert np.allclose(first, second)
 
 
+def test_compute_linkage_accepts_a_read_only_frame(read_only_frame, toy_distance):
+    '''compute_linkage zeroes the diagonal in place, which used to be done on the array
+    behind `DataFrame.values`. That array is read-only under the copy-on-write of
+    pandas >= 3.0. Only the ndarray branch of the function used to copy it.'''
+    frame = read_only_frame(toy_distance, labels=list(toy_distance.index))
+    linkage = clustering.compute_linkage(frame, method='ward')
+    assert np.allclose(linkage, clustering.compute_linkage(toy_distance, method='ward'))
+
+
+def test_compute_linkage_accepts_a_read_only_array(toy_distance):
+    array = np.array(toy_distance, dtype=float)
+    array.setflags(write=False)
+    linkage = clustering.compute_linkage(array, method='ward')
+    assert np.allclose(linkage, clustering.compute_linkage(toy_distance, method='ward'))
+
+
+def test_compute_linkage_does_not_modify_its_input(toy_distance):
+    similarity = 1 - toy_distance / toy_distance.values.max()
+    before = similarity.copy()
+    clustering.compute_linkage(similarity, method='average')
+    pd.testing.assert_frame_equal(similarity, before)
+
+
 def test_get_clusters_from_linkage_maxclust(toy_distance):
     linkage = clustering.compute_linkage(toy_distance, method='ward')
     clusters = clustering.get_clusters_from_linkage(linkage, threshold=2,
@@ -84,7 +108,6 @@ def test_get_clusters_from_linkage_every_element_appears_once(toy_distance):
 
 def test_clustering_pipeline_end_to_end(toy_rnaseq):
     distance = clustering.compute_distance(toy_rnaseq, axis=1)
-    import pandas as pd
     frame = pd.DataFrame(distance, index=toy_rnaseq.columns, columns=toy_rnaseq.columns)
     linkage = clustering.compute_linkage(frame, method='ward')
     clusters = clustering.get_clusters_from_linkage(linkage, threshold=2,

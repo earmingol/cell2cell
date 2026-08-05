@@ -28,6 +28,17 @@ def test_check_presence_in_dataframe_returns_nothing_when_absent(toy_ppi):
     assert manipulate.check_presence_in_dataframe(toy_ppi, ['Nope'], columns=['A']) == []
 
 
+@pytest.mark.parametrize('dtype', [object, 'string'])
+def test_check_presence_in_dataframe_accepts_a_single_column_name(toy_ppi, dtype):
+    '''The documented argument is a list, but a bare column name is normalized instead of
+    being handed to pandas as-is, which would return a Series. Both the object and the
+    "string" dtype are covered, since pandas >= 3.0 makes the latter the default.'''
+    ppi_data = toy_ppi.copy()
+    ppi_data[['A', 'B']] = ppi_data[['A', 'B']].astype(dtype)
+    found = manipulate.check_presence_in_dataframe(ppi_data, ['Protein-A'], columns='A')
+    assert found == ['Protein-A']
+
+
 # ---------------------------------------------------------------------------------
 # Shuffling
 # ---------------------------------------------------------------------------------
@@ -126,3 +137,59 @@ def test_convert_to_distance_matrix_zeroes_the_diagonal(toy_distance):
     result = manipulate.convert_to_distance_matrix(similarity)
     assert np.allclose(np.diag(result.values), 0.0)
     assert result.shape == toy_distance.shape
+
+
+# ---------------------------------------------------------------------------------
+# zero_diagonal
+# ---------------------------------------------------------------------------------
+
+def test_zero_diagonal_zeroes_the_diagonal_and_keeps_the_rest(toy_distance):
+    similarity = 1 - toy_distance / toy_distance.values.max()
+    result = manipulate.zero_diagonal(similarity)
+    assert np.allclose(np.diag(result.values), 0.0)
+    # Off-diagonal values are untouched
+    off_diagonal = ~np.eye(similarity.shape[0], dtype=bool)
+    assert np.allclose(result.values[off_diagonal], similarity.values[off_diagonal])
+
+
+def test_zero_diagonal_keeps_the_labels(toy_distance):
+    result = manipulate.zero_diagonal(toy_distance)
+    assert list(result.index) == list(toy_distance.index)
+    assert list(result.columns) == list(toy_distance.columns)
+
+
+def test_zero_diagonal_does_not_modify_its_input(toy_distance):
+    similarity = 1 - toy_distance / toy_distance.values.max()
+    before = similarity.copy()
+    manipulate.zero_diagonal(similarity)
+    pd.testing.assert_frame_equal(similarity, before)
+
+
+# ---------------------------------------------------------------------------------
+# Dataframes whose `.values` array is read-only
+#
+# pandas >= 3.0 enforces copy-on-write, so `DataFrame.values` returns a read-only array
+# and `np.fill_diagonal`/`np.random.shuffle` on it raise "underlying array is read-only".
+# A `df.copy()` does not help, since the copy's `.values` is read-only as well.
+# ---------------------------------------------------------------------------------
+
+def test_zero_diagonal_accepts_a_read_only_frame(read_only_frame, toy_distance):
+    similarity = read_only_frame(1 - toy_distance / toy_distance.values.max(),
+                                 labels=list(toy_distance.index))
+    result = manipulate.zero_diagonal(similarity)
+    assert np.allclose(np.diag(result.values), 0.0)
+
+
+def test_convert_to_distance_matrix_accepts_a_read_only_frame(read_only_frame, toy_distance):
+    similarity = read_only_frame(1 - toy_distance / toy_distance.values.max(),
+                                 labels=list(toy_distance.index))
+    with pytest.warns(UserWarning):
+        result = manipulate.convert_to_distance_matrix(similarity)
+    assert np.allclose(np.diag(result.values), 0.0)
+
+
+def test_shuffle_dataframe_accepts_a_read_only_frame(read_only_frame, toy_rnaseq):
+    frame = read_only_frame(toy_rnaseq)
+    result = manipulate.shuffle_dataframe(frame, random_state=0)
+    assert result.shape == frame.shape
+    assert sorted(result.values.flatten()) == sorted(frame.values.flatten())

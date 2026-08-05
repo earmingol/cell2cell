@@ -87,8 +87,10 @@ def pcoa(distance_matrix, method="eigh", number_of_dimensions=0,
     """
     distance_matrix = convert_to_distance_matrix(distance_matrix)
 
-    # Center distance matrix, a requirement for PCoA here
-    matrix_data = center_distance_matrix(distance_matrix.values, inplace=inplace)
+    # Center distance matrix, a requirement for PCoA here. `np.array` always copies, so
+    # the `inplace` option gets a writable array, unlike `DataFrame.values` under the
+    # copy-on-write of pandas >= 3.0.
+    matrix_data = center_distance_matrix(np.array(distance_matrix, dtype=float), inplace=inplace)
 
     # If no dimension specified, by default will compute all eigenvectors
     # and eigenvalues
