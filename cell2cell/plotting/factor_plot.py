@@ -144,13 +144,18 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
         order = group_order
 
         # Plot the boxes
+        # `hue` repeats `x` because seaborn 0.14 removes the option of passing a palette
+        # without one. The boxes are not dodged, since the two are redundant, and the
+        # legend is dropped because the x axis already labels the groups.
         ax = sns.boxplot(x=x,
                          y=y,
                          data=df,
                          order=order,
                          whis=[0, 100],
                          width=.6,
+                         hue=x,
                          palette=cmap,
+                         legend=False,
                          boxprops=dict(alpha=.5),
                          ax=ax
                          )

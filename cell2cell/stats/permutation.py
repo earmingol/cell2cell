@@ -143,7 +143,10 @@ def pvalue_from_dist(obs_value, dist, label='', consider_size=False, comparison=
                 label_ = label + ' - p-val: <{:g}'.format(float('{:.1g}'.format(1. / len(dist))))
             else:
                 label_ = label + ' - p-val: {0:.2E}'.format(pval)
-        fig = sns.distplot(dist, hist=True, kde=True, norm_hist=False, rug=False, label=label_)
+        # `sns.distplot` is deprecated and removed in seaborn 0.14. It normalized the
+        # histogram to a density whenever a KDE was drawn, regardless of `norm_hist`,
+        # so `stat='density'` reproduces what it did here.
+        fig = sns.histplot(dist, kde=True, stat='density', label=label_)
         fig.axvline(x=obs_value, color=fig.get_lines()[-1].get_c(), ls='--')
 
         fig.tick_params(axis='both', which='major', labelsize=16)
