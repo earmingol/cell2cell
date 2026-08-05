@@ -1,0 +1,75 @@
+# Versions the CI job resolved on Python 3.12, pinned so a new release of a
+# dependency cannot turn a build red without a commit to this repository.
+#
+# This constrains CI only. setup.py stays open, so nothing here limits what a
+# user installing cell2cell gets.
+#
+# To move to newer dependencies, regenerate on Python 3.12 and commit the diff:
+#   python -m venv /tmp/c && /tmp/c/bin/pip install -e '.[test]'
+#   /tmp/c/bin/pip freeze --exclude-editable > ci/constraints-py3.12.txt
+# then re-add this header. Review the diff and run the suite before pushing.
+anndata==0.13.2
+annotated-types==0.8.0
+array-api-compat==1.15.0
+certifi==2026.7.22
+charset-normalizer==3.4.9
+contourpy==1.3.3
+coverage==7.15.3
+cycler==0.12.1
+donfig==0.8.1.post1
+et_xmlfile==2.0.0
+fast-array-utils==1.5
+fonttools==4.63.0
+google-crc32c==1.8.0
+gseapy==1.3.1
+h5py==3.16.0
+idna==3.18
+iniconfig==2.3.0
+joblib==1.5.3
+kiwisolver==1.5.0
+kneed==0.8.6
+legacy-api-wrap==1.5
+llvmlite==0.48.0
+matplotlib==3.11.1
+narwhals==2.24.0
+natsort==8.4.0
+networkx==3.6.1
+numba==0.66.0
+numcodecs==0.16.5
+numpy==2.4.6
+openpyxl==3.1.5
+packaging==26.3
+pandas==3.0.5
+patsy==1.0.2
+pillow==12.3.0
+pluggy==1.6.0
+pydantic_core==2.46.4
+pydantic-settings==2.14.2
+pydantic==2.13.4
+Pygments==2.20.0
+pynndescent==0.6.0
+pyparsing==3.3.2
+pytest-cov==7.1.0
+pytest==9.1.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+PyYAML==6.0.3
+requests==2.34.2
+scanpy==1.12.3
+scikit-learn==1.9.0
+scipy==1.18.0
+scverse-misc==0.1.3
+seaborn==0.13.2
+session-info2==0.4.2
+six==1.17.0
+statannotations==0.7.2
+statsmodels==0.14.6
+tensorly==0.9.0
+threadpoolctl==3.6.0
+tqdm==4.70.0
+typing_extensions==4.16.0
+typing-inspection==0.4.2
+umap-learn==0.5.12
+urllib3==2.7.0
+xlrd==2.0.2
+zarr==3.3.0

@@ -4,6 +4,11 @@ on:
   push:
     branches: [master, main, new_version]
   pull_request:
+  # Runs the unpinned job below, so a new release of a dependency is found on a
+  # schedule instead of on an unrelated push.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,8 +30,38 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: pip
     - name: Install dependencies
+      # Constrained so that a dependency release cannot turn this red without a commit
+      # here. The pins only apply to CI; setup.py stays open for anyone installing the
+      # package. See ci/constraints-py*.txt for how to move them forward.
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[test] -c ci/constraints-py${{ matrix.python-version }}.txt
+    - name: Run tests
+      run: pytest -v --cov=cell2cell --cov-report=term-missing
+
+  latest-dependencies:
+    # The same suite with nothing pinned, to find out when the ecosystem moves ahead of
+    # the constraints. A failure here means a dependency needs attention, not that the
+    # commit is broken, which is why it does not run on pushes or pull requests.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: pip
+    - name: Install the newest dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e .[test]
+        pip list
     - name: Run tests
-      run: pytest -v --cov=cell2cell --cov-report=term-missing
+      run: pytest -v
