@@ -5,6 +5,8 @@ from __future__ import absolute_import
 import numpy as np
 import pandas as pd
 
+from natsort import natsorted
+
 
 ### Pre-process RNAseq datasets
 def drop_empty_genes(rnaseq_data):
@@ -280,14 +282,14 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
         df = rnaseq_data
     else:
         df = rnaseq_data.T
-    df.index = [mapper[c] for c in df.index]
-    df.index.name = 'celltype'
-    df.reset_index(inplace=True)
 
-    agg_df = pd.DataFrame(index=df.columns).drop('celltype')
+    # Grouping by an external list of cell types, instead of replacing the index of
+    # `df` and adding a column to it, avoids modifying the dataframe passed by the user.
+    celltypes = [mapper[c] for c in df.index]
 
-    for celltype, ct_df in df.groupby('celltype'):
-        ct_df = ct_df.drop('celltype', axis=1)
+    agg_df = pd.DataFrame(index=df.columns)
+
+    for celltype, ct_df in df.groupby(celltypes):
         if method == 'average':
             agg = ct_df.mean()
         elif method == 'nn_cell_fraction':
@@ -295,5 +297,9 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
         elif method == 'trimean':
             agg = pd.Series(_trimean(ct_df.values, axis=0), index=ct_df.columns)
         agg_df[celltype] = agg
+
+    # Naturally sorted to avoid a lexicographic order of the cell types (e.g. to obtain
+    # 'CT-1', 'CT-2', 'CT-10' instead of 'CT-1', 'CT-10', 'CT-2')
+    agg_df = agg_df[natsorted(agg_df.columns)]
     return agg_df
 
