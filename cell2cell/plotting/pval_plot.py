@@ -212,8 +212,9 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     norm = mpl.colors.Normalize(vmin=-1. * max_abs, vmax=max_abs)
     max_size = mpl.colors.Normalize(vmin=0., vmax=3)
 
-    # Colormap
-    cmap = mpl.cm.get_cmap(cmap)
+    # Colormap. `matplotlib.cm.get_cmap` was removed in matplotlib 3.11, and the pyplot
+    # function is the one used elsewhere in this subpackage. It also takes a Colormap.
+    cmap = plt.get_cmap(cmap)
 
     # Create figure with proper height ratios
     # Use height_ratios based on actual inches rather than arbitrary numbers
