@@ -104,6 +104,7 @@ setup(name='cell2cell',
                         'scanpy',
                         'gseapy >= 1.0.3'
                         ],
+      extras_require={'test': ['pytest', 'pytest-cov']},
       classifiers=classifiers,
       entry_points={},
       package_data={},

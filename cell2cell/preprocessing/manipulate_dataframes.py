@@ -3,6 +3,8 @@
 from __future__ import absolute_import
 
 import random
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -33,7 +35,9 @@ def check_presence_in_dataframe(df, elements, columns=None):
     '''
     if columns is None:
         columns = list(df.columns)
-    df_elements = pd.Series(np.unique(df[columns].values.flatten()))
+    # `pd.unique` does not sort the values, so it also works when the considered
+    # columns contain a mix of data types (e.g. gene names and scores).
+    df_elements = pd.Series(pd.unique(df[columns].values.ravel()))
     df_elements = df_elements.loc[df_elements.isin(elements)].values
     found_elements = list(df_elements)
     return found_elements
@@ -221,7 +225,8 @@ def convert_to_distance_matrix(df):
     if check_symmetry(df):
         df_ = df.copy()
         if np.trace(df_.values,) != 0.0:
-            raise Warning("Diagonal elements are not zero. Automatically replaced by zeros")
+            # Warned instead of raised, so the diagonal is actually replaced below
+            warnings.warn("Diagonal elements are not zero. Automatically replaced by zeros")
         np.fill_diagonal(df_.values, 0.0)
     else:
         raise ValueError('The DataFrame is not symmetric')

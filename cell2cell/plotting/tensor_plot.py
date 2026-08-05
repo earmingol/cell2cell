@@ -469,7 +469,8 @@ def reorder_dimension_elements(factors, reorder_elements, metadata=None):
     assert all((len(set(factors[key].index).difference(set(reorder_elements[key]))) == 0) for key in reorder_elements.keys()), "All elements of each dimension included should be present"
 
     reordered_factors = factors.copy()
-    new_metadata = metadata.copy()
+    # `metadata` is optional, so it is only copied when it was actually provided
+    new_metadata = metadata.copy() if metadata is not None else None
 
     i = 0
     for k, df in reordered_factors.items():
@@ -596,7 +597,7 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), y
         raise ValueError("Specify a correct ci. Either '95%' or 'std'")
 
     plt.fill_between(x, mean - coeff * std, mean + coeff * std, color='steelblue', alpha=.2,
-                     label='$\pm$ 1 std')
+                     label=r'$\pm$ 1 std')
 
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.xlabel('Rank', fontsize=int(1.2 * fontsize))

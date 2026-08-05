@@ -84,7 +84,9 @@ def scale_expression_by_sum(rnaseq_data, axis=0, sum_value=1e6):
         cell-types/tissues/samples and rows are genes.
     '''
     data = rnaseq_data.values
-    data = sum_value * np.divide(data, np.nansum(data, axis=axis))
+    # `keepdims` is needed so the sums broadcast back along the specified axis.
+    # Without it, normalizing across columns (axis=1) raises a broadcasting error.
+    data = sum_value * np.divide(data, np.nansum(data, axis=axis, keepdims=True))
     scaled_data = pd.DataFrame(data, index=rnaseq_data.index, columns=rnaseq_data.columns)
     return scaled_data
 

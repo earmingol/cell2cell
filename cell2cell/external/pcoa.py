@@ -357,7 +357,9 @@ def pcoa_biplot(ordination, y):
         raise ValueError('The eigenvectors and the descriptors must describe '
                          'the same samples.')
 
-    eigvals = ordination['eigvals']
+    # Converted to a numpy array because using np.power() with the `where` argument
+    # on a pandas Series recurses through pandas' ufunc handling.
+    eigvals = np.asarray(ordination['eigvals'])
     coordinates = ordination['samples']
     N = coordinates.shape[0]
 
@@ -373,8 +375,11 @@ def pcoa_biplot(ordination, y):
     #
     # Only get the power of non-zero values, otherwise this will raise a
     # divide by zero warning. There shouldn't be negative eigenvalues(?)
-    Uproj = np.sqrt(N - 1) * spc.dot(np.diag(np.power(eigvals, -0.5,
-                                                      where=eigvals > 0)))
+    # `out` is needed so the entries excluded by `where` are zero instead of
+    # whatever was left in the uninitialized output array.
+    inverse_sqrt = np.power(eigvals, -0.5, where=eigvals > 0,
+                            out=np.zeros_like(eigvals, dtype=float))
+    Uproj = np.sqrt(N - 1) * spc.dot(np.diag(inverse_sqrt))
 
     ordination['features'] = pd.DataFrame(data=Uproj,
                                        index=y.columns.copy(),

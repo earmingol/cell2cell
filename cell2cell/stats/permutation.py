@@ -197,7 +197,9 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
     prot_b = interaction_columns[1]
     if permuted_column == 'both':
         if genes is None:
-            genes = list(np.unique(ppi_data_[interaction_columns].values.flatten()))
+            # `interaction_columns` is a tuple, which pandas would treat as a single
+            # column name, so it is converted into a list before selecting them.
+            genes = list(np.unique(ppi_data_[list(interaction_columns)].values.flatten()))
         else:
             # Sorted to make the permutation reproducible for a given random_state
             genes = natsorted(set(genes))

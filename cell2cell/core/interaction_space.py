@@ -512,7 +512,7 @@ class InteractionSpace():
         #                                                        )
 
         # Generate distance matrix
-        if ~(cci_score in ['count', 'icellnet']):
+        if cci_score not in ['count', 'icellnet']:
             self.distance_matrix = self.interaction_elements['cci_matrix'].apply(lambda x: 1 - x)
         else:
             #self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'].max().max()).apply(lambda x: 1 - x)
