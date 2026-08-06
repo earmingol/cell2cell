@@ -277,3 +277,43 @@ def test_random_switching_ppi_labels_default_is_reproducible(toy_ppi):
     first = permutation.random_switching_ppi_labels(toy_ppi, random_state=3)
     second = permutation.random_switching_ppi_labels(toy_ppi, random_state=3)
     pd.testing.assert_frame_equal(first, second)
+
+
+# ---------------------------------------------------------------------------------
+# run_label_permutation compared scores it never computed
+#
+# `interaction_elements['cci_matrix']` is only filled by
+# `InteractionSpace.compute_pairwise_cci_scores`, which this function never called.
+# It read the zeros the interaction space is initialized with, for both the
+# permuted and the observed spaces, so every p-value was the same constant and the
+# expression data had no effect on the result at all.
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.slow
+def test_run_label_permutation_pvalues_are_not_all_equal(toy_rnaseq, toy_ppi, analysis_setup,
+                                                         cutoff_setup):
+    result = permutation.run_label_permutation(rnaseq_data=toy_rnaseq, ppi_data=toy_ppi,
+                                               genes=list(toy_rnaseq.index),
+                                               analysis_setup=analysis_setup,
+                                               cutoff_setup=cutoff_setup,
+                                               permutations=10, verbose=False)
+    # Comparing an all-zeros observed matrix against an all-zeros null gives one
+    # constant for every cell pair
+    assert np.unique(result.values).size > 1
+
+
+@pytest.mark.slow
+def test_run_label_permutation_depends_on_the_expression_values(toy_rnaseq, toy_ppi,
+                                                                analysis_setup, cutoff_setup):
+    '''The p-values must change when the expression matrix does. They did not, because
+    the compared scores came from a matrix that was never filled.'''
+    scrambled = pd.DataFrame(np.random.default_rng(0).random(toy_rnaseq.shape) * toy_rnaseq.values.max(),
+                             index=toy_rnaseq.index, columns=toy_rnaseq.columns)
+
+    kwargs = dict(ppi_data=toy_ppi, genes=list(toy_rnaseq.index),
+                  analysis_setup=analysis_setup, cutoff_setup=cutoff_setup,
+                  permutations=10, verbose=False)
+    observed = permutation.run_label_permutation(rnaseq_data=toy_rnaseq, **kwargs)
+    randomized = permutation.run_label_permutation(rnaseq_data=scrambled, **kwargs)
+
+    assert not np.allclose(observed.values, randomized.values)

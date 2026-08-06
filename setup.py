@@ -92,9 +92,7 @@ setup(name='cell2cell',
                         'openpyxl >= 2.6.2',
                         'networkx >= 2.3',
                         'matplotlib >= 3.2.0',
-                        # 0.13 added the `legend` option of the categorical plots, needed
-                        # to pass a palette without the legend that a `hue` brings along
-                        'seaborn >= 0.13.0',
+                        'seaborn >= 0.11.0',
                         'scikit-learn',
                         'umap-learn',
                         'natsort',

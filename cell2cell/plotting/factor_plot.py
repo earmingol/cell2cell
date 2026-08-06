@@ -145,8 +145,9 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
 
         # Plot the boxes
         # `hue` repeats `x` because seaborn 0.14 removes the option of passing a palette
-        # without one. The boxes are not dodged, since the two are redundant, and the
-        # legend is dropped because the x axis already labels the groups.
+        # without one. `dodge=False` keeps one box per group instead of splitting them,
+        # which is what makes this identical to passing the palette on its own. It is
+        # preferred over the `legend` argument, which only exists from seaborn 0.13.
         ax = sns.boxplot(x=x,
                          y=y,
                          data=df,
@@ -155,10 +156,13 @@ def context_boxplot(context_loadings, metadict, included_factors=None, group_ord
                          width=.6,
                          hue=x,
                          palette=cmap,
-                         legend=False,
+                         dodge=False,
                          boxprops=dict(alpha=.5),
                          ax=ax
                          )
+        # The x axis already labels the groups, so the legend the hue brings is redundant
+        if ax.get_legend() is not None:
+            ax.get_legend().remove()
 
         # Plot the dots
         sns.stripplot(x=x,

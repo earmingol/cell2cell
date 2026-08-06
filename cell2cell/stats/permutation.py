@@ -378,6 +378,10 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
                                                     cci_type=analysis_setup['cci_type'],
                                                     verbose=verbose)
 
+        # The CCI matrix is only filled by this method. Without it, the scores below are the
+        # zeros the interaction space is initialized with.
+        interaction_space.compute_pairwise_cci_scores(verbose=verbose)
+
         # Keep scores
         cci = interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
         cci_diag = np.diag(cci).copy()
@@ -405,6 +409,8 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
                                                      cci_score=analysis_setup['cci_score'],
                                                      cci_type=analysis_setup['cci_type'],
                                                      verbose=verbose)
+
+    base_interaction_space.compute_pairwise_cci_scores(verbose=verbose)
 
     # Keep scores
     base_cci = base_interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
