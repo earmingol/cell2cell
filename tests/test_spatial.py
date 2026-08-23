@@ -277,3 +277,131 @@ def test_sliding_window_columns_are_naturally_ordered(toy_spatial_adata):
     columns = [c for c in toy_spatial_adata.obs.columns if c.startswith('window_')]
     assert any(c.startswith('window_10_') for c in columns)
     assert columns != sorted(columns)       # natural order differs from alphabetical
+
+
+# ---------------------------------------------------------------------------------
+# distances from single-cell coordinates in an AnnData object
+# ---------------------------------------------------------------------------------
+
+def test_celltype_pair_distance_median():
+    df1 = pd.DataFrame({'X': [0.0, 0.0], 'Y': [0.0, 0.0]})
+    df2 = pd.DataFrame({'X': [1.0, 3.0], 'Y': [0.0, 0.0]})
+    # distances are 1, 3, 1, 3
+    assert np.isclose(distances.celltype_pair_distance(df1, df2, method='median'), 2.0)
+
+
+def test_get_spatial_coordinates(toy_spatial_adata):
+    coords = distances.get_spatial_coordinates(toy_spatial_adata)
+    assert coords.shape == (toy_spatial_adata.n_obs, 2)
+    assert list(coords.columns) == ['X', 'Y']
+    assert list(coords.index) == list(toy_spatial_adata.obs_names)
+    np.testing.assert_allclose(coords.values, toy_spatial_adata.obsm['spatial'])
+
+
+def test_get_spatial_coordinates_custom_key(toy_spatial_adata):
+    toy_spatial_adata.obsm['X_spatial'] = toy_spatial_adata.obsm['spatial']
+    coords = distances.get_spatial_coordinates(toy_spatial_adata, spatial_key='X_spatial')
+    np.testing.assert_allclose(coords.values, toy_spatial_adata.obsm['spatial'])
+
+
+def test_get_spatial_coordinates_missing_key(toy_spatial_adata):
+    with pytest.raises(KeyError):
+        distances.get_spatial_coordinates(toy_spatial_adata, spatial_key='not_there')
+
+
+def test_get_spatial_coordinates_custom_names(toy_spatial_adata):
+    coords = distances.get_spatial_coordinates(toy_spatial_adata, coord_names=['row', 'col'])
+    assert list(coords.columns) == ['row', 'col']
+
+
+def test_celltype_centroids(toy_spatial_adata):
+    centroids = distances.celltype_centroids(toy_spatial_adata, group_col='celltype')
+    coords = distances.get_spatial_coordinates(toy_spatial_adata)
+    expected = coords.groupby(np.asarray(toy_spatial_adata.obs['celltype'].values)).mean()
+    np.testing.assert_allclose(centroids.values, expected.loc[centroids.index].values)
+
+
+def test_celltype_centroids_are_naturally_sorted():
+    rng = np.random.default_rng(0)
+    n = 60
+    labels = ['CT-{}'.format(i % 12 + 1) for i in range(n)]
+    df = pd.DataFrame({'X': rng.random(n), 'Y': rng.random(n), 'celltype': labels})
+    centroids = distances.celltype_centroids(df, group_col='celltype')
+    assert list(centroids.index) == ['CT-{}'.format(i) for i in range(1, 13)]
+
+
+def test_celltype_centroids_median_differs_from_mean():
+    df = pd.DataFrame({'X': [0.0, 0.0, 100.0], 'Y': [0.0, 0.0, 0.0],
+                       'celltype': ['A', 'A', 'A']})
+    mean = distances.celltype_centroids(df, group_col='celltype', method='mean')
+    median = distances.celltype_centroids(df, group_col='celltype', method='median')
+    assert np.isclose(mean.loc['A', 'X'], 100.0 / 3)
+    assert np.isclose(median.loc['A', 'X'], 0.0)
+
+
+def test_celltype_centroid_distances_is_a_distance_matrix(toy_spatial_adata):
+    result = distances.celltype_centroid_distances(toy_spatial_adata, group_col='celltype')
+    assert list(result.index) == list(result.columns)
+    assert np.allclose(np.diag(result.values), 0.0)
+    np.testing.assert_allclose(result.values, result.values.T)
+
+
+def test_celltype_centroid_distances_known_geometry():
+    df = pd.DataFrame({'X': [0.0, 0.0, 3.0, 3.0], 'Y': [0.0, 0.0, 4.0, 4.0],
+                       'celltype': ['A', 'A', 'B', 'B']})
+    result = distances.celltype_centroid_distances(df, group_col='celltype')
+    assert np.isclose(result.loc['A', 'B'], 5.0)
+
+
+@pytest.mark.parametrize('method', ['centroid', 'min', 'max', 'mean', 'median'])
+def test_celltype_distances_methods(toy_spatial_adata, method):
+    result = distances.celltype_distances(toy_spatial_adata, group_col='celltype',
+                                          method=method)
+    assert np.allclose(np.diag(result.values), 0.0)
+    np.testing.assert_allclose(result.values, result.values.T)
+    assert (result.values >= 0).all()
+
+
+def test_celltype_distances_min_is_at_most_centroid():
+    '''The closest two cells of two types cannot be further apart than their centroids.'''
+    rng = np.random.default_rng(0)
+    n = 40
+    df = pd.DataFrame({'X': rng.random(n) * 10, 'Y': rng.random(n) * 10,
+                       'celltype': ['A'] * (n // 2) + ['B'] * (n // 2)})
+    closest = distances.celltype_distances(df, group_col='celltype', method='min')
+    centroid = distances.celltype_distances(df, group_col='celltype', method='centroid')
+    assert closest.loc['A', 'B'] <= centroid.loc['A', 'B'] + 1e-9
+
+
+def test_celltype_distances_accepts_a_dataframe(toy_spatial_adata):
+    coords = distances.get_spatial_coordinates(toy_spatial_adata)
+    coords['celltype'] = np.asarray(toy_spatial_adata.obs['celltype'].values)
+    from_df = distances.celltype_distances(coords, group_col='celltype')
+    from_adata = distances.celltype_distances(toy_spatial_adata, group_col='celltype')
+    np.testing.assert_allclose(from_df.values, from_adata.values)
+
+
+def test_celltype_distances_custom_spatial_key(toy_spatial_adata):
+    toy_spatial_adata.obsm['my_coords'] = toy_spatial_adata.obsm['spatial']
+    custom = distances.celltype_distances(toy_spatial_adata, group_col='celltype',
+                                          spatial_key='my_coords')
+    default = distances.celltype_distances(toy_spatial_adata, group_col='celltype')
+    np.testing.assert_allclose(custom.values, default.values)
+
+
+def test_celltype_distances_manhattan_differs_from_euclidean():
+    df = pd.DataFrame({'X': [0.0, 3.0], 'Y': [0.0, 4.0], 'celltype': ['A', 'B']})
+    euclidean = distances.celltype_distances(df, group_col='celltype', distance='euclidean')
+    manhattan = distances.celltype_distances(df, group_col='celltype', distance='manhattan')
+    assert np.isclose(euclidean.loc['A', 'B'], 5.0)
+    assert np.isclose(manhattan.loc['A', 'B'], 7.0)
+
+
+def test_celltype_distances_rejects_unknown_group_col(toy_spatial_adata):
+    with pytest.raises(KeyError):
+        distances.celltype_distances(toy_spatial_adata, group_col='not_a_column')
+
+
+def test_celltype_distances_rejects_bad_input():
+    with pytest.raises(TypeError):
+        distances.celltype_distances([1, 2, 3], group_col='celltype')

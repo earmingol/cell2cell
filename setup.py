@@ -104,7 +104,10 @@ setup(name='cell2cell',
                         'scanpy',
                         'gseapy >= 1.0.3'
                         ],
-      extras_require={'test': ['pytest', 'pytest-cov']},
+      extras_require={'test': ['pytest', 'pytest-cov', 'pygad'],
+                      # Only needed by cell2cell.analysis.optimize_lr_pairs
+                      'ga': ['pygad'],
+                      },
       classifiers=classifiers,
       entry_points={},
       package_data={},
