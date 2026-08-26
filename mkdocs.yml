@@ -50,6 +50,8 @@ nav:
       - tutorials/Toy-Example-BulkPipeline.ipynb
       - tutorials/Toy-Example-SingleCellPipeline.ipynb
       - tutorials/Genetic-Algorithm-LR-Selection.ipynb
+      - tutorials/Celegans-Spatial-Code.ipynb
+      - tutorials/Custom-Objective-Functions.ipynb
   - "Tensor-cell2cell Tutorials":
     - tutorials/ASD/01-Tensor-Factorization-ASD.ipynb
     - tutorials/ASD/02-Factor-Specific-ASD.ipynb
