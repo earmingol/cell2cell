@@ -21,6 +21,7 @@ from cell2cell.core.prepared_scorer import (PreparedCCIScorer, LINEAR_CCI_SCORES
                                             UNBOUNDED_CCI_SCORES)
 from cell2cell.preprocessing.ppi import (bidirectional_ppi_for_cci, bidirectional_index,
                                          remove_ppi_bidirectionality)
+from cell2cell.analysis.genetic_algorithm.objectives import CorrelationObjective
 from cell2cell.analysis.genetic_algorithm.consensus import (lr_selection_frequency,
                                                             lr_cooccurrence,
                                                             consensus_from_cooccurrence,
@@ -59,9 +60,32 @@ def _correlation(distance_vector, reference_vector, method='spearman'):
     return abs(np.nan_to_num(corr))
 
 
-def _optimize_once(rnaseq_data, ppi_data, reference_distances, cutoff_setup, analysis_setup,
+def _resolve_objective(objective, rnaseq_data, reference_distances, cutoff_setup,
+                       analysis_setup, **kwargs):
+    '''Returns the objective factory to use, building the default when none is given.'''
+    supplied = [rnaseq_data, reference_distances, cutoff_setup, analysis_setup]
+    if objective is not None:
+        if any(argument is not None for argument in supplied):
+            raise ValueError(
+                'Pass either `objective` or the data it would be built from '
+                '(`rnaseq_data`, `reference_distances`, `cutoff_setup`, `analysis_setup`), '
+                'not both -- otherwise it is ambiguous which one is in effect.')
+        return objective
+    if any(argument is None for argument in supplied):
+        raise ValueError(
+            'Without an `objective`, all of `rnaseq_data`, `reference_distances`, '
+            '`cutoff_setup` and `analysis_setup` are required.')
+    return CorrelationObjective(rnaseq_data=rnaseq_data,
+                                reference_distances=reference_distances,
+                                cutoff_setup=cutoff_setup,
+                                analysis_setup=analysis_setup,
+                                **kwargs)
+
+
+def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
+                    cutoff_setup=None, analysis_setup=None, objective=None,
                     included_cells=None, population_size=200, generations=200, runs=None,
-                    inc_percentage=0.025, max_runs=100, correlation='spearman',
+                    inc_percentage=0.025, max_runs=100, correlation='spearman', signed=False,
                     mutation_probability=0.05, keep_elitism=1, random_state=None,
                     interaction_columns=('A', 'B'), complex_sep=None, complex_agg_method='min',
                     fast=True, validate_fast=True, max_memory_mb=512, deduplicate=True,
@@ -206,30 +230,25 @@ def _optimize_once(rnaseq_data, ppi_data, reference_distances, cutoff_setup, ana
     '''
     pygad = _check_if_pygad()
 
-    if analysis_setup['cci_type'] != 'undirected':
-        raise NotImplementedError("Only 'undirected' interactions are supported, because the "
-                                "objective compares condensed symmetric distance matrices.")
-
-    reference_distances = _as_symmetric(reference_distances)
-
-    # Cells shared by the expression data and the reference distances
-    if included_cells is None:
-        included_cells = sorted(set(rnaseq_data.columns) & set(reference_distances.columns))
-    included_cells = list(included_cells)
-    if len(included_cells) < 3:
-        raise ValueError('At least three cells are needed to correlate distances')
-
-    reference_vector = scipy.spatial.distance.squareform(
-        np.asarray(reference_distances.loc[included_cells, included_cells].values, dtype=float),
-        checks=False)
+    if ppi_data is None:
+        raise ValueError('`ppi_data` is required')
+    objective = _resolve_objective(objective, rnaseq_data, reference_distances,
+                                   cutoff_setup, analysis_setup,
+                                   included_cells=included_cells,
+                                   correlation=correlation, signed=signed, fast=fast,
+                                   validate_fast=validate_fast,
+                                   max_memory_mb=max_memory_mb,
+                                   interaction_columns=interaction_columns,
+                                   complex_sep=complex_sep,
+                                   complex_agg_method=complex_agg_method,
+                                   verbose=verbose)
 
     if deduplicate:
         # Required for the pair-to-bidirectional-row mapping to be well defined; see
-        # `_bidirectional_index`. Also what the reference analysis effectively had,
-        # since its LR list held each interaction once.
+        # `preprocessing.ppi.bidirectional_index`.
         ppi_data = remove_ppi_bidirectionality(ppi_data=ppi_data,
-                                             interaction_columns=interaction_columns,
-                                             verbose=verbose)
+                                               interaction_columns=interaction_columns,
+                                               verbose=verbose)
         ppi_data = ppi_data.drop_duplicates(subset=list(interaction_columns))
         ppi_data = ppi_data.reset_index(drop=True)
 
@@ -255,78 +274,10 @@ def _optimize_once(rnaseq_data, ppi_data, reference_distances, cutoff_setup, ana
         if n_ppi == 0:
             break
 
-        bi_ppi_data = bidirectional_ppi_for_cci(ppi_data=theta_ppi_data,
-                                              interaction_columns=interaction_columns,
-                                              verbose=verbose)
-        interaction_space = InteractionSpace(rnaseq_data=rnaseq_data[included_cells],
-                                           ppi_data=bi_ppi_data,
-                                           gene_cutoffs=cutoff_setup,
-                                           communication_score=analysis_setup['communication_score'],
-                                           cci_score=analysis_setup['cci_score'],
-                                           cci_type=analysis_setup['cci_type'],
-                                           complex_sep=complex_sep,
-                                           complex_agg_method=complex_agg_method,
-                                           interaction_columns=interaction_columns,
-                                           verbose=verbose)
+        bound = objective(theta_ppi_data)
 
-        # Position in `theta_ppi_data` that each bidirectional row comes from, so a
-        # candidate solution can be expanded to the weights the scorer expects
-        source = _bidirectional_index(theta_ppi_data,
-                                    interaction_columns=interaction_columns,
-                                    verbose=verbose)
-
-        space_cells = list(interaction_space.interaction_elements['cell_names'])
-        take = [space_cells.index(c) for c in included_cells]
-
-        def reference_objective(theta):
-            weights = np.asarray(theta, dtype=float)[source]
-            distances = _reference_distance_matrix(interaction_space, weights, included_cells)
-            vector = scipy.spatial.distance.squareform(np.asarray(distances.values, dtype=float),
-                                                     checks=False)
-            return _correlation(vector, reference_vector, method=correlation)
-
-        use_fast = fast
-        if use_fast:
-            try:
-                scorer = PreparedCCIScorer(interaction_space,
-                                         cci_score=analysis_setup['cci_score'],
-                                         max_memory_mb=max_memory_mb)
-            except NotImplementedError:
-                if verbose:
-                    print('Falling back to the reference objective for this CCI score')
-                use_fast = False
-
-        if use_fast and scorer._has_nans and analysis_setup['cci_score'] == 'count':
-            # `count` treats a NaN product as active, which the substitution above
-            # does not reproduce. Only this score is affected.
-            use_fast = False
-
-        if use_fast:
-            def batch_objective(THETA):
-                W = np.asarray(THETA, dtype=float)[:, source]
-                distances = scorer.distance_batch(W)[:, take][:, :, take]
-                out = np.empty(len(W))
-                for n, d in enumerate(distances):
-                    vector = scipy.spatial.distance.squareform(d, checks=False)
-                    out[n] = _correlation(vector, reference_vector, method=correlation)
-                return out
-
-            if validate_fast:
-                rng = np.random.default_rng(random_state)
-                probes = rng.integers(0, 2, size=(2, n_ppi)).astype(float)
-                fast_values = batch_objective(probes)
-                ref_values = np.array([reference_objective(p) for p in probes])
-                if not np.allclose(fast_values, ref_values, rtol=1e-9, atol=1e-9):
-                    raise RuntimeError(
-                      'The vectorized objective disagrees with the reference one '
-                      '({} vs {}). Please report this, and use fast=False meanwhile.'
-                      .format(fast_values, ref_values))
-
-            def fitness_func(ga_instance, solution, solution_idx):
-                return float(batch_objective(np.atleast_2d(solution))[0])
-        else:
-            def fitness_func(ga_instance, solution, solution_idx):
-                return float(reference_objective(solution))
+        def fitness_func(ga_instance, solution, solution_idx):
+            return float(bound(np.atleast_2d(solution))[0])
 
         ga = pygad.GA(num_generations=generations,
                     num_parents_mating=max(2, population_size // 2),
@@ -344,14 +295,13 @@ def _optimize_once(rnaseq_data, ppi_data, reference_distances, cutoff_setup, ana
                     random_seed=random_state if random_state is None else random_state + run,
                     suppress_warnings=True,
                     )
-        if use_fast:
-            # Evaluate the whole generation with one matrix product
-            ga.fitness_batch_size = population_size
+        # Evaluate the whole generation at once where the objective allows it
+        ga.fitness_batch_size = population_size
 
-            def batch_fitness(ga_instance, solutions, solutions_indices):
-                return list(batch_objective(np.atleast_2d(solutions)))
+        def batch_fitness(ga_instance, solutions, solutions_indices):
+            return list(bound(np.atleast_2d(solutions)))
 
-            ga.fitness_func = batch_fitness
+        ga.fitness_func = batch_fitness
 
         ga.run()
 
@@ -393,7 +343,8 @@ def _optimize_once(rnaseq_data, ppi_data, reference_distances, cutoff_setup, ana
     results['best_ppi_data'] = ppi_data.loc[best_mask].reset_index(drop=True)
     return results
 
-def optimize_lr_pairs(rnaseq_data, ppi_data, reference_distances, cutoff_setup, analysis_setup,
+def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
+                      cutoff_setup=None, analysis_setup=None, objective=None,
                       executions=1, random_state=None, consensus_method='cooccurrence',
                       n_clusters=2, cluster_selection='cooccurrence', min_frequency=0.0,
                       frequency_percentile=90, verbose=False, **kwargs):
@@ -521,7 +472,8 @@ def optimize_lr_pairs(rnaseq_data, ppi_data, reference_distances, cutoff_setup, 
 
     common = dict(rnaseq_data=rnaseq_data, ppi_data=ppi_data,
                   reference_distances=reference_distances, cutoff_setup=cutoff_setup,
-                  analysis_setup=analysis_setup, verbose=verbose, **kwargs)
+                  analysis_setup=analysis_setup, objective=objective,
+                  verbose=verbose, **kwargs)
 
     if executions == 1:
         return _optimize_once(random_state=random_state, **common)

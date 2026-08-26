@@ -21,6 +21,10 @@ from cell2cell.core.prepared_scorer import (PreparedCCIScorer, LINEAR_CCI_SCORES
                                             UNBOUNDED_CCI_SCORES)
 from cell2cell.preprocessing.ppi import bidirectional_index
 
+from cell2cell.analysis.genetic_algorithm.base import (CombinedObjective, COMBINERS)
+from cell2cell.analysis.genetic_algorithm.objectives import (CorrelationObjective,
+                                                             correlation_fitness,
+                                                             _as_symmetric)
 from cell2cell.analysis.genetic_algorithm.consensus import (lr_selection_frequency,
                                                             lr_cooccurrence,
                                                             consensus_from_cooccurrence,
@@ -28,4 +32,4 @@ from cell2cell.analysis.genetic_algorithm.consensus import (lr_selection_frequen
 from cell2cell.analysis.genetic_algorithm.search import (optimize_lr_pairs, _optimize_once,
                                                          _check_if_pygad, _correlation,
                                                          _reference_distance_matrix,
-                                                         _bidirectional_index, _as_symmetric)
+                                                         _bidirectional_index)

@@ -453,3 +453,191 @@ def test_optimize_lr_pairs_rejects_bad_consensus_method(ga_inputs, setups):
             cutoff_setup=cutoff_setup, analysis_setup=analysis_setup,
             executions=2, consensus_method='nope', population_size=8,
             generations=2, runs=1, random_state=1)
+
+
+# ---------------------------------------------------------------------------------
+# Pluggable objectives
+# ---------------------------------------------------------------------------------
+
+@pytest.fixture
+def objective_factory(ga_inputs, setups):
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    return c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq, reference_distances=reference,
+                                             cutoff_setup=cutoff_setup,
+                                             analysis_setup=analysis_setup)
+
+
+def _second_dataset(seed, n_cells=10):
+    from sklearn.metrics.pairwise import euclidean_distances
+    genes = ['G{}'.format(i) for i in range(150)]
+    rnaseq = c2c.datasets.generate_random_rnaseq(size=n_cells, row_names=genes,
+                                                 random_state=seed, verbose=False)
+    coords = np.random.default_rng(seed).random((n_cells, 2)) * 100
+    reference = pd.DataFrame(euclidean_distances(coords, coords),
+                             index=rnaseq.columns, columns=rnaseq.columns)
+    return rnaseq, reference
+
+
+def test_correlation_fitness_default_is_absolute():
+    assert np.isclose(c2c.analysis.correlation_fitness([1, 2, 3], [3, 2, 1]), 1.0)
+
+
+def test_correlation_fitness_signed_keeps_the_sign():
+    assert np.isclose(c2c.analysis.correlation_fitness([1, 2, 3], [3, 2, 1], signed=True), -1.0)
+
+
+def test_correlation_fitness_nan_becomes_zero():
+    assert c2c.analysis.correlation_fitness([1, 1, 1], [1, 2, 3]) == 0.0
+
+
+@pytest.mark.slow
+def test_explicit_objective_matches_the_default(ga_inputs, setups, objective_factory):
+    '''Passing the default objective explicitly must change nothing.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    kwargs = dict(ppi_data=ppi, population_size=16, generations=5, runs=1, random_state=7)
+
+    implicit = c2c.analysis.optimize_lr_pairs(rnaseq_data=rnaseq, reference_distances=reference,
+                                              cutoff_setup=cutoff_setup,
+                                              analysis_setup=analysis_setup, **kwargs)
+    explicit = c2c.analysis.optimize_lr_pairs(objective=objective_factory, **kwargs)
+    assert implicit['run1']['ppi_data'] == explicit['run1']['ppi_data']
+    assert np.isclose(implicit['run1']['obj_fn'], explicit['run1']['obj_fn'])
+
+
+@pytest.mark.slow
+def test_combined_objective_over_duplicates_equals_one(ga_inputs, setups, objective_factory):
+    '''Combining a dataset with itself must reduce to the single-dataset case.'''
+    _, ppi, _ = ga_inputs
+    kwargs = dict(ppi_data=ppi, population_size=16, generations=5, runs=1, random_state=7)
+    single = c2c.analysis.optimize_lr_pairs(objective=objective_factory, **kwargs)
+    doubled = c2c.analysis.optimize_lr_pairs(
+        objective=c2c.analysis.CombinedObjective([objective_factory, objective_factory]),
+        **kwargs)
+    assert single['run1']['ppi_data'] == doubled['run1']['ppi_data']
+
+
+@pytest.mark.slow
+def test_combined_objective_over_several_datasets(ga_inputs, setups):
+    _, ppi, _ = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    factories = [c2c.analysis.CorrelationObjective(rnaseq_data=r, reference_distances=d,
+                                                   cutoff_setup=cutoff_setup,
+                                                   analysis_setup=analysis_setup)
+                 for r, d in (_second_dataset(0), _second_dataset(1), _second_dataset(2))]
+    results = c2c.analysis.optimize_lr_pairs(
+        ppi_data=ppi, objective=c2c.analysis.CombinedObjective(factories),
+        population_size=16, generations=5, runs=1, random_state=7)
+    assert 0.0 <= results['best_obj_fn'] <= 1.0
+    assert len(results['run1']['ppi_data']) == len(ppi)
+
+
+def test_combined_objective_components_and_penalty(ga_inputs, setups):
+    '''The penalty must subtract exactly sd_penalty * population SD of the components.'''
+    _, ppi, _ = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    pool = remove_ppi_bidirectionality(ppi, interaction_columns=('A', 'B'), verbose=False)
+    pool = pool.drop_duplicates(subset=['A', 'B']).reset_index(drop=True)
+    factories = [c2c.analysis.CorrelationObjective(rnaseq_data=r, reference_distances=d,
+                                                   cutoff_setup=cutoff_setup,
+                                                   analysis_setup=analysis_setup)
+                 for r, d in (_second_dataset(0), _second_dataset(1), _second_dataset(2))]
+
+    plain = c2c.analysis.CombinedObjective(factories)(pool)
+    penalised = c2c.analysis.CombinedObjective(factories, sd_penalty=0.5)(pool)
+
+    masks = np.random.default_rng(0).integers(0, 2, size=(3, len(pool))).astype(float)
+    components = plain.evaluate_components(masks)
+    assert components.shape == (3, 3)
+    np.testing.assert_allclose(plain(masks), components.mean(axis=0), rtol=1e-12)
+    np.testing.assert_allclose(penalised(masks),
+                               components.mean(axis=0) - 0.5 * components.std(axis=0, ddof=0),
+                               rtol=1e-12)
+
+
+def test_combined_objective_single_dataset_has_zero_penalty(ga_inputs, setups, objective_factory):
+    '''With one dataset the SD is 0, so the penalty cannot change anything.'''
+    _, ppi, _ = ga_inputs
+    pool = remove_ppi_bidirectionality(ppi, interaction_columns=('A', 'B'), verbose=False)
+    pool = pool.drop_duplicates(subset=['A', 'B']).reset_index(drop=True)
+    masks = np.random.default_rng(0).integers(0, 2, size=(3, len(pool))).astype(float)
+    plain = c2c.analysis.CombinedObjective([objective_factory])(pool)
+    heavy = c2c.analysis.CombinedObjective([objective_factory], sd_penalty=10.0)(pool)
+    np.testing.assert_allclose(plain(masks), heavy(masks), rtol=1e-12)
+
+
+@pytest.mark.parametrize('combine,expected', [('mean', 2.0), ('median', 2.0),
+                                              ('min', 1.0), ('max', 3.0)])
+def test_combined_objective_combiners(combine, expected):
+    class Fixed:
+        def __init__(self, value): self.value = value
+        def __call__(self, pool): return lambda masks: np.full(len(np.atleast_2d(masks)), self.value)
+
+    objective = c2c.analysis.CombinedObjective([Fixed(1.0), Fixed(2.0), Fixed(3.0)],
+                                               combine=combine)(pd.DataFrame({'A': ['a']}))
+    assert np.isclose(objective(np.zeros((1, 1)))[0], expected)
+
+
+def test_combined_objective_accepts_a_callable_combiner():
+    class Fixed:
+        def __init__(self, value): self.value = value
+        def __call__(self, pool): return lambda masks: np.full(len(np.atleast_2d(masks)), self.value)
+
+    objective = c2c.analysis.CombinedObjective(
+        [Fixed(1.0), Fixed(3.0)],
+        combine=lambda values, weights=None: values.sum(axis=0))(pd.DataFrame({'A': ['a']}))
+    assert np.isclose(objective(np.zeros((1, 1)))[0], 4.0)
+
+
+def test_combined_objective_validates_its_arguments(objective_factory):
+    with pytest.raises(ValueError):
+        c2c.analysis.CombinedObjective([])
+    with pytest.raises(ValueError):
+        c2c.analysis.CombinedObjective([objective_factory], sd_penalty=-1.0)
+    with pytest.raises(ValueError):
+        c2c.analysis.CombinedObjective([objective_factory], combine='not_a_combiner')
+    with pytest.raises(ValueError):
+        c2c.analysis.CombinedObjective([objective_factory], weights=[1.0, 2.0])
+
+
+def test_optimize_lr_pairs_rejects_objective_and_data_together(ga_inputs, setups,
+                                                               objective_factory):
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    with pytest.raises(ValueError, match='not both'):
+        c2c.analysis.optimize_lr_pairs(rnaseq_data=rnaseq, ppi_data=ppi,
+                                       reference_distances=reference,
+                                       cutoff_setup=cutoff_setup,
+                                       analysis_setup=analysis_setup,
+                                       objective=objective_factory,
+                                       population_size=8, generations=2, runs=1)
+
+
+def test_optimize_lr_pairs_requires_objective_or_data(ga_inputs):
+    _, ppi, _ = ga_inputs
+    with pytest.raises(ValueError, match='required'):
+        c2c.analysis.optimize_lr_pairs(ppi_data=ppi, population_size=8, generations=2, runs=1)
+
+
+@pytest.mark.slow
+def test_custom_objective_can_penalise_size(ga_inputs, setups, objective_factory):
+    '''A custom objective wrapping the default -- the documented extension pattern.'''
+    _, ppi, _ = ga_inputs
+
+    class SparsityPenalised:
+        def __init__(self, inner, penalty): self.inner, self.penalty = inner, penalty
+        def __call__(self, pool):
+            bound = self.inner(pool)
+            def objective(masks):
+                masks = np.atleast_2d(np.asarray(masks, dtype=float))
+                return bound(masks) - self.penalty * masks.sum(axis=1) / masks.shape[1]
+            return objective
+
+    plain = c2c.analysis.optimize_lr_pairs(ppi_data=ppi, objective=objective_factory,
+                                           population_size=16, generations=6, runs=1,
+                                           random_state=3)
+    sparse = c2c.analysis.optimize_lr_pairs(
+        ppi_data=ppi, objective=SparsityPenalised(objective_factory, penalty=1.0),
+        population_size=16, generations=6, runs=1, random_state=3)
+    assert sparse['run1']['n_selected'] < plain['run1']['n_selected']
