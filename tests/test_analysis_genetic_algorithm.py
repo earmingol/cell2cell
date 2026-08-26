@@ -9,7 +9,9 @@ import pytest
 import cell2cell as c2c
 from cell2cell.analysis import genetic_algorithm as ga
 from cell2cell.core.interaction_space import InteractionSpace
-from cell2cell.preprocessing.ppi import bidirectional_ppi_for_cci, remove_ppi_bidirectionality
+from cell2cell.preprocessing.ppi import (bidirectional_ppi_for_cci,
+                                         bidirectional_ppi_with_index,
+                                         remove_ppi_bidirectionality)
 
 pygad = pytest.importorskip('pygad')
 
@@ -183,12 +185,45 @@ def test_bidirectional_index_length_is_independent_of_the_weights(toy_ppi):
         assert len(bi) == len(source)
 
 
-def test_bidirectional_index_rejects_reciprocal_pairs(toy_ppi):
-    '''`toy_ppi` holds A-B and B-A, which makes the mapping weight-dependent.'''
+def test_bidirectional_index_handles_reciprocal_pairs(toy_ppi):
+    '''`toy_ppi` holds A-B and B-A. Provenance is recorded while the table is built,
+    so it is well defined regardless -- it never has to be inferred from the scores.'''
     assert len(toy_ppi) > len(remove_ppi_bidirectionality(
         toy_ppi, interaction_columns=('A', 'B'), verbose=False))
-    with pytest.raises(ValueError, match='depends on the weights'):
-        ga._bidirectional_index(toy_ppi, verbose=False)
+    table, origin = bidirectional_ppi_with_index(toy_ppi, verbose=False)
+    assert len(origin) == len(table)
+    assert set(origin).issubset(set(range(len(toy_ppi))))
+
+
+def test_bidirectional_table_matches_the_original_builder(toy_ppi, toy_ppi_complex):
+    '''The constructed table must equal what `bidirectional_ppi_for_cci` returns.'''
+    for ppi in (toy_ppi, toy_ppi_complex):
+        ppi = ppi.copy()
+        if 'score' not in ppi.columns:
+            ppi = ppi.assign(score=1.0)
+        expected = bidirectional_ppi_for_cci(ppi, verbose=False)
+        got, _ = bidirectional_ppi_with_index(ppi, verbose=False)
+        pd.testing.assert_frame_equal(got[['A', 'B']].reset_index(drop=True),
+                                      expected[['A', 'B']].reset_index(drop=True))
+
+
+def test_bidirectional_index_expands_a_per_pair_vector(toy_ppi):
+    '''Each bidirectional row takes the value of the interaction it came from.'''
+    table, origin = bidirectional_ppi_with_index(toy_ppi, verbose=False)
+    theta = np.arange(len(toy_ppi), dtype=float) + 1.0
+    expanded = theta[origin]
+    for row, value in zip(table[['A', 'B']].values, expanded):
+        source = toy_ppi.iloc[int(np.where(theta == value)[0][0])]
+        assert set(row) == set(source[['A', 'B']].values)
+
+
+def test_self_interactions_are_not_counted_twice(toy_ppi):
+    '''Doubling a self-interaction would weight that protein pairing double.'''
+    table, origin = bidirectional_ppi_with_index(toy_ppi, verbose=False)
+    self_rows = toy_ppi[toy_ppi['A'] == toy_ppi['B']]
+    assert len(self_rows) > 0
+    for position in self_rows.index:
+        assert (origin == position).sum() == 1     # once, not twice
 
 
 def test_optimize_lr_pairs_deduplicates_by_default(ga_inputs, setups):
@@ -655,6 +690,12 @@ def test_selection_masks_align_with_the_pool(ga_inputs, setups):
 
     masks = np.asarray(results['selection_masks'])
     assert masks.shape[1] == len(results['pool'])
+    # a single-execution result carries the pool too, so the two are consistent
+    single = c2c.analysis.optimize_lr_pairs(
+        rnaseq_data=rnaseq, ppi_data=ppi, reference_distances=reference,
+        cutoff_setup=cutoff_setup, analysis_setup=analysis_setup,
+        population_size=12, generations=4, runs=1, random_state=1)
+    assert len(single['run1']['ppi_data']) == len(single['pool'])
     # column j of the masks is row j of the pool
     np.testing.assert_allclose(masks.mean(axis=0),
                                results['selection_frequency'].sort_index()['frequency'].values)

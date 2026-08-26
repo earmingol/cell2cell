@@ -696,49 +696,86 @@ def get_one_group_to_other_ppi(ppi_data, proteins_a, proteins_b, interaction_col
     return new_ppi_data
 
 
-def bidirectional_index(ppi_data, interaction_columns=('A', 'B'), verbose=False):
+def bidirectional_ppi_with_index(ppi_data, interaction_columns=('A', 'B'), verbose=False):
     '''
-    Maps every row of the bidirectional PPI table back to the row of `ppi_data`
-    it came from.
+    Builds the bidirectional PPI table and records where each of its rows came from.
 
-    `bidirectional_ppi_for_cci` duplicates every interaction with its partners
-    swapped and then drops duplicates, which collapses self-interactions back to a
-    single copy. Rather than reimplementing that, this runs it once on a table
-    whose score column holds each row's position, and reads the positions back.
+    The table is doubled because the undirected CCI scores consider ligands and
+    receptors of **both** interacting cells, so an interaction has to be available in
+    either direction. Self-interactions are the exception: a protein pairing with
+    itself yields the same directed row twice, and keeping both would count it
+    double, so duplicates are dropped.
+
+    Unlike calling `bidirectional_ppi_for_cci` and working out the correspondence
+    afterwards, the provenance here is exact **by construction**, so it does not
+    depend on the values in the score column and is well defined for any input.
+
+    Parameters
+    ----------
+    ppi_data : pandas.DataFrame
+        List of protein-protein interactions (or ligand-receptor pairs).
+
+    interaction_columns : tuple, default=('A', 'B')
+        Columns holding the two partners.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
 
     Returns
     -------
-    source : numpy.ndarray
-        For each row of the bidirectional table, the index of the row of
-        `ppi_data` it originates from.
-    '''
-    probe = ppi_data.copy()
-    probe['score'] = np.arange(len(probe), dtype=float)
-    bi_probe = bidirectional_ppi_for_cci(ppi_data=probe,
-                                         interaction_columns=interaction_columns,
-                                         verbose=verbose)
-    source = bi_probe['score'].values.astype(int)
+    bi_ppi_data : pandas.DataFrame
+        The bidirectional table, identical to what `bidirectional_ppi_for_cci`
+        returns for the same input.
 
-    # `drop_duplicates` acts on (A, B, score), so if the table still contains a pair
-    # and its reciprocal, two rows that differ only by score stop being duplicates and
-    # the bidirectional table changes length with the weights. The mapping is then not
-    # well defined -- and neither is assigning that column to a fixed interaction space.
-    # The interaction space is built from the all-ones table, so that one has to
-    # match too, not just an arbitrary binary vector.
-    rng = np.random.default_rng(0)
-    probes = [np.ones(len(ppi_data)),
-              (np.arange(len(ppi_data)) % 2).astype(float),
-              rng.integers(0, 2, size=len(ppi_data)).astype(float)]
-    lengths = {len(bidirectional_ppi_for_cci(ppi_data=ppi_data.assign(score=p),
-                                             interaction_columns=interaction_columns,
-                                             verbose=verbose))
-               for p in probes}
-    if lengths != {len(source)}:
-        raise ValueError(
-            'The number of bidirectional interactions depends on the weights, so a '
-            'ligand-receptor pair cannot be mapped onto a fixed set of rows. This '
-            'happens when `ppi_data` holds a pair and its reciprocal as separate rows, '
-            'or the exact same pair more than once. Deduplicate it first -- '
-            'cell2cell.preprocessing.remove_ppi_bidirectionality() followed by '
-            'drop_duplicates() on the interaction columns.')
-    return source
+    origin : numpy.ndarray
+        For each row of `bi_ppi_data`, the position in `ppi_data` it came from. Use
+        it to expand a per-interaction vector -- a candidate selection, a weight, a
+        permutation -- to the rows the interaction space expects.
+    '''
+    if verbose:
+        print("Making bidirectional PPI for CCI.")
+    prot_a, prot_b = interaction_columns
+
+    swapped = ppi_data.copy()
+    swapped[prot_a] = ppi_data[prot_b].values
+    swapped[prot_b] = ppi_data[prot_a].values
+
+    stacked = pd.concat([ppi_data, swapped], ignore_index=True)
+    origin = np.concatenate([np.arange(len(ppi_data)), np.arange(len(ppi_data))])
+
+    # A self-interaction appears identically in both halves; keeping one copy is what
+    # stops it being counted twice
+    keep = ~stacked.duplicated(subset=list(interaction_columns), keep='first').values
+    if verbose:
+        print("Removing duplicates in bidirectional PPI network.")
+    return stacked.loc[keep].reset_index(drop=True), origin[keep]
+
+
+def bidirectional_index(ppi_data, interaction_columns=('A', 'B'), verbose=False):
+    '''
+    Position in `ppi_data` that each row of its bidirectional table comes from.
+
+    Convenience wrapper over `bidirectional_ppi_with_index` for callers that already
+    hold the bidirectional table and only need the mapping -- for instance to expand
+    a candidate selection of ligand-receptor pairs into the per-row weights an
+    interaction space built on that table expects.
+
+    Parameters
+    ----------
+    ppi_data : pandas.DataFrame
+        List of protein-protein interactions (or ligand-receptor pairs).
+
+    interaction_columns : tuple, default=('A', 'B')
+        Columns holding the two partners.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    Returns
+    -------
+    origin : numpy.ndarray
+        One entry per row of the bidirectional table.
+    '''
+    return bidirectional_ppi_with_index(ppi_data,
+                                        interaction_columns=interaction_columns,
+                                        verbose=verbose)[1]

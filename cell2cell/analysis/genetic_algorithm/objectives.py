@@ -16,7 +16,7 @@ import scipy.stats
 
 from cell2cell.core.interaction_space import InteractionSpace
 from cell2cell.core.prepared_scorer import PreparedCCIScorer
-from cell2cell.preprocessing.ppi import bidirectional_ppi_for_cci, bidirectional_index
+from cell2cell.preprocessing.ppi import bidirectional_ppi_with_index
 
 
 def correlation_fitness(distance_vector, reference_vector, method='spearman', signed=False):
@@ -189,9 +189,10 @@ class _BoundCorrelationObjective:
         verbose = parent.verbose
         setup = parent.analysis_setup
 
-        bi_ppi_data = bidirectional_ppi_for_cci(ppi_data=pool,
-                                                interaction_columns=parent.interaction_columns,
-                                                verbose=verbose)
+        # The table and the provenance come from one call, so a candidate selection can
+        # be expanded to per-row weights with no inference about how the doubling went.
+        bi_ppi_data, self.source = bidirectional_ppi_with_index(
+            ppi_data=pool, interaction_columns=parent.interaction_columns, verbose=verbose)
         self.interaction_space = InteractionSpace(
             rnaseq_data=parent.rnaseq_data[parent.included_cells],
             ppi_data=bi_ppi_data,
@@ -204,11 +205,6 @@ class _BoundCorrelationObjective:
             interaction_columns=parent.interaction_columns,
             verbose=verbose)
 
-        # Position in the pool that each bidirectional row comes from, so a candidate
-        # can be expanded to the weights the scorer expects
-        self.source = bidirectional_index(pool,
-                                          interaction_columns=parent.interaction_columns,
-                                          verbose=verbose)
         space_cells = list(self.interaction_space.interaction_elements['cell_names'])
         self.take = [space_cells.index(c) for c in parent.included_cells]
 

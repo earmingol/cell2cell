@@ -167,14 +167,14 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
 
     deduplicate : boolean, default=True
         Whether to collapse each interaction and its reciprocal into a single row
-        with `remove_ppi_bidirectionality` before the search. This is required for
-        a pair to map onto a fixed set of bidirectional rows: `bidirectional_ppi_for_cci`
-        drops duplicates on (A, B, score), so if both directions are present as
-        separate rows, the number of bidirectional rows depends on the candidate
-        solution. Pairs loaded with `cell2cell.io.load_ppi` are already deduplicated
-        by `preprocess_ppi_data`, so this is a no-op for them; it matters when the
-        table comes from somewhere else. Turn it off only if the input is already
-        deduplicated -- the ambiguous case is rejected either way.
+        with `remove_ppi_bidirectionality` before the search.
+
+        The undirected CCI scores need the interactions in both directions, so the
+        table is doubled internally. An interaction the input already lists in both
+        directions would then appear twice over, and be weighted twice as heavily as
+        the rest for no reason. Collapsing them first avoids that. Pairs loaded with
+        `cell2cell.io.load_ppi` are already deduplicated by `preprocess_ppi_data`, so
+        this is a no-op for them.
         Note that the returned masks are then indexed against the deduplicated
         table, which is also what 'best_ppi_data' contains.
 
@@ -187,14 +187,15 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         Dictionary with one entry per run, keyed 'run1', 'run2', ..., each with:
 
         - 'obj_fn' : the objective function of the best individual.
-        - 'ppi_data' : list of 0/1, one per row of the original `ppi_data`,
-          indicating the pairs selected in that run.
+        - 'ppi_data' : list of 0/1, one per row of `results['pool']`, indicating
+          the pairs selected in that run.
         - 'drop_fraction' : fraction of the pairs available to that run that were
           dropped.
         - 'n_selected' : number of pairs selected.
 
-        The dictionary also holds 'best_run', 'best_obj_fn' and 'best_ppi_data',
-        the last being a copy of `ppi_data` restricted to the selected pairs.
+        The dictionary also holds 'best_run', 'best_obj_fn', 'best_ppi_data' (a copy
+        of the pool restricted to the selected pairs) and 'pool', the deduplicated
+        pairs the masks are indexed against.
 
     Examples
     --------
@@ -226,8 +227,9 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
                                    verbose=verbose)
 
     if deduplicate:
-        # Required for the pair-to-bidirectional-row mapping to be well defined; see
-        # `preprocessing.ppi.bidirectional_index`.
+        # Not a mechanical requirement -- the mapping onto bidirectional rows is exact
+        # for any input. This is about not counting an interaction twice when the table
+        # lists it in both directions, which the doubling would then triple.
         ppi_data = remove_ppi_bidirectionality(ppi_data=ppi_data,
                                                interaction_columns=interaction_columns,
                                                verbose=verbose)
@@ -320,6 +322,9 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
 
     best_key = max(results, key=lambda k: results[k]['obj_fn'])
     best_mask = np.asarray(results[best_key]['ppi_data'], dtype=bool)
+    # The frame the masks are indexed against, so a mask can be mapped back onto
+    # pair annotations. Also present on the multi-execution result.
+    results['pool'] = ppi_data
     results['best_run'] = best_key
     results['best_obj_fn'] = results[best_key]['obj_fn']
     results['best_ppi_data'] = ppi_data.loc[best_mask].reset_index(drop=True)
