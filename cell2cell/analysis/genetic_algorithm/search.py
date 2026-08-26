@@ -421,10 +421,15 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
         these are added:
 
         - 'executions' : the full result of each execution, keyed 'execution1', ...
+        - 'pool' : the deduplicated pairs the masks are indexed against. **Columns of
+          'selection_masks' follow this order**, so this is what to use when mapping
+          a mask back onto pair annotations.
         - 'selection_masks' : binary array of shape (executions, LR pairs), the mask
           each execution converged to.
-        - 'selection_frequency' : dataframe of the pairs with the fraction of
-          executions that selected each one.
+        - 'selection_frequency' : the pairs with the fraction of executions that
+          selected each one, **sorted by frequency** for reading. Its index is the
+          position in 'pool', so `.sort_index()` realigns it with 'selection_masks';
+          pairing it positionally with the masks as returned would misalign them.
         - 'cooccurrence' : Jaccard co-occurrence between pairs across executions.
         - 'consensus_ppi_data' : the consensus selection -- with the default method,
           the pairs of the co-occurrence cluster whose members are most consistently
@@ -495,7 +500,10 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
     results = dict(all_executions[best_key])
     results['executions'] = all_executions
     results['best_execution'] = best_key
+    results['pool'] = pool
     results['selection_masks'] = masks
+    # Sorted for reading, but the pool index is kept so it can be realigned with
+    # `selection_masks` -- whose columns follow `pool` order -- via `.sort_index()`
     results['selection_frequency'] = frequency.sort_values('frequency', ascending=False)
     results['cooccurrence'] = cooccurrence
 

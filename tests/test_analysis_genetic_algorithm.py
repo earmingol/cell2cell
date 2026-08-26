@@ -641,3 +641,24 @@ def test_custom_objective_can_penalise_size(ga_inputs, setups, objective_factory
         ppi_data=ppi, objective=SparsityPenalised(objective_factory, penalty=1.0),
         population_size=16, generations=6, runs=1, random_state=3)
     assert sparse['run1']['n_selected'] < plain['run1']['n_selected']
+
+
+@pytest.mark.slow
+def test_selection_masks_align_with_the_pool(ga_inputs, setups):
+    '''`selection_frequency` is sorted, so only `pool` is safe to pair with the masks.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    results = c2c.analysis.optimize_lr_pairs(
+        rnaseq_data=rnaseq, ppi_data=ppi, reference_distances=reference,
+        cutoff_setup=cutoff_setup, analysis_setup=analysis_setup,
+        executions=4, population_size=12, generations=4, runs=1, random_state=1)
+
+    masks = np.asarray(results['selection_masks'])
+    assert masks.shape[1] == len(results['pool'])
+    # column j of the masks is row j of the pool
+    np.testing.assert_allclose(masks.mean(axis=0),
+                               results['selection_frequency'].sort_index()['frequency'].values)
+    # and the frequency frame keeps the pool index, so it can be realigned
+    realigned = results['selection_frequency'].sort_index()
+    pd.testing.assert_frame_equal(realigned[['A', 'B']].reset_index(drop=True),
+                                  results['pool'][['A', 'B']].reset_index(drop=True))
