@@ -8,7 +8,7 @@ from cell2cell.preprocessing.integrate_data import (get_thresholded_rnaseq, get_
 from cell2cell.preprocessing.manipulate_dataframes import (check_presence_in_dataframe, shuffle_cols_in_df, shuffle_rows_in_df,
                                                            shuffle_dataframe, subsample_dataframe, check_symmetry,
                                                            convert_to_distance_matrix, zero_diagonal)
-from cell2cell.preprocessing.ppi import (bidirectional_ppi_for_cci, filter_ppi_by_proteins, filter_ppi_network,
+from cell2cell.preprocessing.ppi import (bidirectional_ppi_for_cci, bidirectional_index, filter_ppi_by_proteins, filter_ppi_network,
                                          get_all_to_all_ppi, get_filtered_ppi_network, get_one_group_to_other_ppi,
                                          remove_ppi_bidirectionality, simplify_ppi, filter_complex_ppi_by_proteins,
                                          get_genes_from_complexes, preprocess_ppi_data)
