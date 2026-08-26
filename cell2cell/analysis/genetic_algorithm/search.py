@@ -42,24 +42,6 @@ def _check_if_pygad() -> ModuleType:
     return pygad
 
 
-def _reference_distance_matrix(interaction_space, ppi_score, cells):
-    '''Distance matrix through the unmodified `InteractionSpace` code path.'''
-    interaction_space.ppi_data['score'] = np.asarray(ppi_score, dtype=float)
-    interaction_space.interaction_elements['ppi_score'] = interaction_space.ppi_data['score'].values
-    interaction_space.compute_pairwise_cci_scores(use_ppi_score=True, verbose=False)
-    return interaction_space.distance_matrix.loc[cells, cells]
-
-
-def _correlation(distance_vector, reference_vector, method='spearman'):
-    if method == 'spearman':
-        corr = scipy.stats.spearmanr(distance_vector, reference_vector)[0]
-    elif method == 'pearson':
-        corr = scipy.stats.pearsonr(distance_vector, reference_vector)[0]
-    else:
-        raise ValueError("`method` must be either 'spearman' or 'pearson'")
-    return abs(np.nan_to_num(corr))
-
-
 def _resolve_objective(objective, rnaseq_data, reference_distances, cutoff_setup,
                        analysis_setup, **kwargs):
     '''Returns the objective factory to use, building the default when none is given.'''
@@ -547,21 +529,3 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
     else:
         raise ValueError("`consensus_method` must be either 'cooccurrence' or 'frequency'")
     return results
-
-
-def _as_symmetric(matrix):
-    '''
-    Validates a reference distance matrix and makes it exactly symmetric.
-
-    `check_symmetry` compares with exact equality, which a matrix produced by a
-    distance function often fails by a few ULP. Rather than rejecting those, they
-    are averaged with their transpose; genuinely asymmetric input still raises.
-    '''
-    values = np.asarray(matrix.values, dtype=float)
-    if values.shape[0] != values.shape[1]:
-        raise ValueError('`reference_distances` must be a square matrix')
-    if list(matrix.index) != list(matrix.columns):
-        raise ValueError('`reference_distances` must have the same cells as rows and columns')
-    if not np.allclose(values, values.T, rtol=1e-8, atol=1e-8, equal_nan=True):
-        raise ValueError('`reference_distances` must be a symmetric matrix')
-    return pd.DataFrame((values + values.T) / 2.0, index=matrix.index, columns=matrix.columns)
