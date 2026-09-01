@@ -2,6 +2,10 @@
 
 '''Tests for cell2cell.analysis.genetic_algorithm'''
 
+import json
+import pathlib
+import urllib.request
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -1106,3 +1110,170 @@ def test_selection_masks_align_with_the_pool(ga_inputs, setups):
     realigned = results['selection_frequency'].sort_index()
     pd.testing.assert_frame_equal(realigned[['A', 'B']].reset_index(drop=True),
                                   results['pool'][['A', 'B']].reset_index(drop=True))
+
+
+# ---------------------------------------------------------------------------------
+# Against the published C. elegans analysis
+#
+# The 100 genetic-algorithm executions of Armingol et al. (2022) are stored in
+# LewisLabUCSD/Celegans-cell2cell, in the same shape this module returns. They pin the
+# port against the analysis it reproduces: the same selection has to score the same
+# fitness, and the same 100 selections have to give the same consensus list.
+# `tests/data/make_celegans_ga_fixture.py` regenerates the fixture.
+# ---------------------------------------------------------------------------------
+
+CELEGANS_BASE = ('https://raw.githubusercontent.com/LewisLabUCSD/'
+                 'Celegans-cell2cell/master/data/')
+CELEGANS_COLUMNS = ('Ligand_symbol', 'Receptor_symbol')
+
+
+@pytest.fixture(scope='module')
+def published_executions():
+    path = pathlib.Path(__file__).parent / 'data' / 'celegans_ga_consensus.npz'
+    with np.load(path, allow_pickle=False) as data:
+        return {key: data[key] for key in data.files}
+
+
+@pytest.mark.parametrize('select', ['smallest', 'cooccurrence'])
+def test_consensus_reproduces_the_published_lr_list(published_executions, select):
+    '''The 100 published selections must give back the 37 pairs the paper reports.'''
+    fixture = published_executions
+    masks = fixture['masks'].astype(int)
+    pairs = list(zip(fixture['ligands'], fixture['receptors']))
+    labels = ['{}^{}^{}'.format(a, b, position) for position, (a, b) in enumerate(pairs)]
+
+    frequency = c2c.analysis.lr_selection_frequency(masks)
+    cooccurrence = c2c.analysis.lr_cooccurrence(masks, labels=labels)
+    selected, _, _ = c2c.analysis.consensus_from_cooccurrence(
+        cooccurrence, n_clusters=2, select=select, frequency=frequency, min_frequency=0.0)
+
+    chosen = set(selected)
+    got = {frozenset(pair) for label, pair in zip(labels, pairs) if label in chosen}
+    expected = {frozenset(pair) for pair in zip(fixture['paper_ligands'],
+                                                fixture['paper_receptors'])}
+    assert got == expected
+
+
+def test_published_masks_match_the_pool_they_are_indexed_against(published_executions):
+    '''A positional mask only means anything against the ordering it was built on.'''
+    fixture = published_executions
+    assert fixture['masks'].shape == (100, len(fixture['ligands']))
+    assert set(np.unique(fixture['masks'])) <= {0, 1}
+    assert fixture['masks'].sum(axis=1).min() > 0
+
+
+@pytest.mark.network
+def test_the_two_paths_agree_on_the_published_data():
+    '''The vectorized scorer must equal the reference path on the paper's own data.
+
+    The stored `obj_fn` values are deliberately *not* the target here, and the reason
+    is worth recording. Transcribing the original `optimal_ppi_score` from
+    `code/genetic_algorithm.py` of the reference repository and running it on these
+    same masks gives, over 20 runs of 5 executions, **exactly** what this objective
+    gives -- to 1e-12, through both the reference and the vectorized path, with the
+    bidirectional table the same 489 rows in both. The same 20 runs disagree with the
+    `obj_fn` stored beside the mask 16 times. So the two implementations compute the
+    same function of a selection, and it is the stored files that pair a mask with an
+    objective belonging to a different selection: the original recomputed the fitness
+    of `ga.bestIndividual()` but wrote the mask out of a chained slice of
+    `theta_ppi_data`, having mutated that column on every candidate it evaluated.
+
+    What the published data can pin here is that the two code paths agree on it, an
+    equivalence otherwise only checked on synthetic fixtures. The published *result*,
+    the 37 selected pairs, is pinned by
+    `test_consensus_reproduces_the_published_lr_list`, which needs no expression data
+    and does not depend on the stored objectives at all.
+    '''
+    rnaseq = c2c.io.load_rnaseq(rnaseq_file=CELEGANS_BASE + 'RNA-Seq/Celegans_RNASeqData_Cell.xlsx',
+                                gene_column='symbol', drop_nangenes=True,
+                                log_transformation=False, format='auto', verbose=False)
+    curated = c2c.io.load_table(CELEGANS_BASE + 'PPI-Networks/Celegans-Curated-LR-pairs.xlsx',
+                                format='auto', verbose=False)
+    curated = remove_ppi_bidirectionality(curated, CELEGANS_COLUMNS, verbose=False)
+    pool = c2c.preprocessing.preprocess_ppi_data(
+        ppi_data=curated, interaction_columns=CELEGANS_COLUMNS,
+        rnaseq_genes=list(rnaseq.index), upper_letter_comparison=False, verbose=False)
+    distances = pd.read_csv(CELEGANS_BASE + 'Digital-3D-Map/Celegans_Physical_Distances_Min.csv',
+                            index_col=0)
+
+    listing = json.loads(urllib.request.urlopen(
+        'https://api.github.com/repos/LewisLabUCSD/Celegans-cell2cell/contents/'
+        'data/GA-Bray-Curtis').read())
+    executions = [json.loads(urllib.request.urlopen(
+        CELEGANS_BASE + 'GA-Bray-Curtis/' + entry['name']).read())
+        for entry in sorted(listing, key=lambda e: e['name'])[:2]]
+
+    setup = {'communication_score': 'expression_thresholding', 'cci_score': 'bray_curtis',
+             'cci_type': 'undirected'}
+    cutoffs = {'type': 'constant_value', 'parameter': 10}     # 10 TPM, as published
+    vectorized = c2c.analysis.CorrelationObjective(
+        rnaseq_data=rnaseq, reference_distances=distances, cutoff_setup=cutoffs,
+        analysis_setup=setup, fast=True, validate_fast=False)(pool)
+    reference = c2c.analysis.CorrelationObjective(
+        rnaseq_data=rnaseq, reference_distances=distances, cutoff_setup=cutoffs,
+        analysis_setup=setup, fast=False, validate_fast=False)(pool)
+
+    for execution in executions:
+        for run in sorted(execution, key=lambda k: int(k[3:])):
+            mask = np.asarray(execution[run]['ppi_data'], dtype=float)
+            assert len(mask) == len(pool)
+            fast_value = vectorized(mask[None, :])[0]
+            assert np.isclose(fast_value, reference.reference_value(mask), rtol=0, atol=1e-9)
+            assert 0.0 <= fast_value <= 1.0
+
+
+# ---------------------------------------------------------------------------------
+# The pyevolve-equivalent knobs
+# ---------------------------------------------------------------------------------
+
+def test_flip_mutation_inverts_genes():
+    '''`pygad`'s random mutation re-draws a gene; this one has to invert it.'''
+    class _Instance:
+        mutation_probability = 1.0
+
+    offspring = np.array([[0, 1, 0, 1], [1, 1, 0, 0]])
+    flipped = ga.search._flip_mutation(offspring.copy(), _Instance())
+    np.testing.assert_array_equal(flipped, 1 - offspring)
+
+    _Instance.mutation_probability = 0.0
+    untouched = ga.search._flip_mutation(offspring.copy(), _Instance())
+    np.testing.assert_array_equal(untouched, offspring)
+
+
+def test_flip_mutation_rate_is_the_probability_asked_for(ga_inputs):
+    '''Half the mutations of a re-draw are no-ops on a binary genome; none of these are.'''
+    class _Instance:
+        mutation_probability = 0.25
+
+    rng = np.random.default_rng(0)
+    offspring = rng.integers(0, 2, size=(200, 100))
+    changed = (ga.search._flip_mutation(offspring.copy(), _Instance()) != offspring).mean()
+    assert 0.2 < changed < 0.3
+
+
+def test_the_ga_receives_the_pyevolve_equivalent_parameters(ga_inputs, monkeypatch):
+    '''The exposed knobs have to reach `pygad`, not just sit in the signature.'''
+    import inspect
+    _, ppi, _ = ga_inputs
+    seen = {}
+
+    # Single-point crossover is left to `pygad`, and the equivalence with pyevolve's
+    # own default rests on it staying that way. Read before the patch below replaces
+    # the class with one whose signature is (*args, **kwargs).
+    assert inspect.signature(pygad.GA.__init__).parameters['crossover_type'].default \
+        == 'single_point'
+
+    # A subclass, so `pygad`'s own reads of its class attributes keep working
+    class Spy(pygad.GA):
+        def __init__(self, *args, **kwargs):
+            seen.update(kwargs)
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(pygad, 'GA', Spy)
+    c2c.analysis.optimize_lr_pairs(ppi_data=ppi, objective=_RecordingObjective(),
+                                   population_size=8, generations=2, runs=1,
+                                   mutation_probability=0.02, crossover_probability=0.9,
+                                   tournament_size=2, random_state=1)
+    assert seen['mutation_probability'] == 0.02
+    assert seen['crossover_probability'] == 0.9
+    assert seen['K_tournament'] == 2
