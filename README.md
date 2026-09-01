@@ -2,6 +2,7 @@
 [![PyPI Version][pb]][pypi]
 [![Documentation Status](https://readthedocs.org/projects/cell2cell/badge/?version=latest)](https://cell2cell.readthedocs.io/en/latest/?badge=latest)
 [![Downloads](https://pepy.tech/badge/cell2cell/month)](https://pepy.tech/project/cell2cell)
+[![codecov](https://codecov.io/gh/earmingol/cell2cell/branch/master/graph/badge.svg)](https://codecov.io/gh/earmingol/cell2cell)
 
 
 [pb]: https://badge.fury.io/py/cell2cell.svg
