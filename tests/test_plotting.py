@@ -76,6 +76,20 @@ def test_clustermap_cci_without_metadata(bulk_interactions):
     assert grid is not None
 
 
+def test_clustermap_cci_labels_the_axes_only_when_directed(bulk_interactions):
+    '''Sender/receiver labels are meaningless on a symmetric matrix.
+
+    The guard was `if ~symmetric`, which on a Python bool is the integer -2 and so
+    always true. It only worked while `check_symmetry` happened to return np.bool_.
+    '''
+    undirected = c2c.plotting.clustermap_cci(bulk_interactions)
+    assert undirected.ax_heatmap.get_xlabel() == ''
+
+    directed = bulk_interactions.interaction_space.distance_matrix.copy()
+    directed.iloc[0, 1] = directed.iloc[1, 0] + 1.0
+    assert c2c.plotting.clustermap_cci(directed).ax_heatmap.get_xlabel() == 'Receiver cells'
+
+
 def test_clustermap_ccc(bulk_interactions, toy_metadata):
     grid = c2c.plotting.clustermap_ccc(bulk_interactions, metadata=toy_metadata,
                                        sample_col='#SampleID', group_col='Groups')

@@ -225,8 +225,9 @@ class _BoundCorrelationObjective:
         # doubled, so one row would have to belong to both candidates at once.
         prot_a, prot_b = parent.interaction_columns
         pairs = list(zip(pool[prot_a], pool[prot_b]))
+        pair_set = set(pairs)
         reciprocal = [position for position, (a, b) in enumerate(pairs)
-                      if a != b and (b, a) in set(pairs)]
+                      if a != b and (b, a) in pair_set]
         if reciprocal:
             raise ValueError(
                 'The pool lists both directions of the same interaction (rows {}), '

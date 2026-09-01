@@ -242,8 +242,9 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         differ somewhere -- rows that repeat exactly cannot be selected independently
         and are rejected.
 
-        Note that the returned masks are then indexed against the deduplicated
-        table, which is also what 'best_ppi_data' contains.
+        The returned masks are indexed against `results['pool']`, which is the
+        deduplicated table when this is True and the list as supplied when it is
+        False. 'best_ppi_data' is that same table restricted to the selected rows.
 
     duplicates : str, default='highest'
         Which row to keep for a pair listed more than once, when `deduplicate` is
@@ -266,8 +267,9 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         - 'n_selected' : number of pairs selected.
 
         The dictionary also holds 'best_run', 'best_obj_fn', 'best_ppi_data' (a copy
-        of the pool restricted to the selected pairs) and 'pool', the deduplicated
-        pairs the masks are indexed against.
+        of the pool restricted to the selected pairs) and 'pool', the pairs the masks
+        are indexed against: deduplicated with `deduplicate=True`, the list as
+        supplied otherwise.
 
     Examples
     --------
@@ -506,7 +508,8 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
         these are added:
 
         - 'executions' : the full result of each execution, keyed 'execution1', ...
-        - 'pool' : the deduplicated pairs the masks are indexed against. **Columns of
+        - 'pool' : the pairs the masks are indexed against, deduplicated with
+          `deduplicate=True` and the list as supplied otherwise. **Columns of
           'selection_masks' follow this order**, so this is what to use when mapping
           a mask back onto pair annotations.
         - 'selection_masks' : binary array of shape (executions, LR pairs), the mask

@@ -90,7 +90,7 @@ def compute_linkage(distance_matrix, method='ward', optimal_ordering=True):
     # can be zeroed below. The array behind `DataFrame.values` is read-only under the
     # copy-on-write of pandas >= 3.0.
     data = np.array(distance_matrix, dtype=float)
-    if ~(data.transpose() == data).all():
+    if not (data.transpose() == data).all():
         raise ValueError('The matrix is not symmetric')
 
     np.fill_diagonal(data, 0.0)
