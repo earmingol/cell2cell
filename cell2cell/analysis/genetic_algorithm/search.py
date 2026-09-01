@@ -333,7 +333,7 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
     ...                                                          'cci_score': 'bray_curtis',
     ...                                                          'cci_type': 'undirected'},
     ...                                          random_state=888)
-    >>> selected = results['best_ppi_data']
+    >>> selected = results['final_ppi_data']   # what the elimination converged to
     '''
     pygad = _check_if_pygad()
 

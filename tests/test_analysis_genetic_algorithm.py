@@ -1174,9 +1174,12 @@ def test_the_two_paths_agree_on_the_published_data():
     bidirectional table the same 489 rows in both. The same 20 runs disagree with the
     `obj_fn` stored beside the mask 16 times. So the two implementations compute the
     same function of a selection, and it is the stored files that pair a mask with an
-    objective belonging to a different selection: the original recomputed the fitness
-    of `ga.bestIndividual()` but wrote the mask out of a chained slice of
-    `theta_ppi_data`, having mutated that column on every candidate it evaluated.
+    objective belonging to a different selection. Which step of the original produced
+    that pairing is not established here -- the objective and the mask are written two
+    lines apart from the same `ga.bestIndividual()`, through a column that every
+    candidate evaluation reassigns and a merge whose behaviour has changed across
+    pandas versions -- and it does not need to be, since neither implementation
+    disagrees about what a given selection scores.
 
     What the published data can pin here is that the two code paths agree on it, an
     equivalence otherwise only checked on synthetic fixtures. The published *result*,
