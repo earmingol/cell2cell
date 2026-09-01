@@ -37,7 +37,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .[test] -c ci/constraints-py${{ matrix.python-version }}.txt
     - name: Run tests
-      run: pytest -v --cov=cell2cell --cov-report=term-missing
+      run: pytest -v --cov=cell2cell --cov-report=term-missing --cov-report=xml
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
+        flags: py${{ matrix.python-version }}
 
   latest-dependencies:
     # The same suite with nothing pinned, to find out when the ecosystem moves ahead of
