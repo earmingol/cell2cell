@@ -74,15 +74,6 @@ def _as_symmetric(matrix):
         raise ValueError('`reference_distances` must have the same cells as rows and columns')
     if not np.allclose(values, values.T, rtol=1e-8, atol=1e-8, equal_nan=True):
         raise ValueError('`reference_distances` must be a symmetric matrix')
-    off_diagonal = ~np.eye(values.shape[0], dtype=bool)
-    if np.isnan(values[off_diagonal]).any():
-        # Every correlation against a reference holding NaN is NaN, which
-        # `correlation_fitness` turns into 0.0 -- so the search would run to completion
-        # on a fitness that carries no information about any candidate.
-        raise ValueError('`reference_distances` has missing values off the diagonal. '
-                         'These are the pairs of cells whose distance was never '
-                         'computed, so restrict the cells, or compute every pair '
-                         'instead of passing `pairs` to the distance function.')
     return pd.DataFrame((values + values.T) / 2.0, index=matrix.index, columns=matrix.columns)
 
 
@@ -189,6 +180,18 @@ class CorrelationObjective:
             np.asarray(reference_distances.loc[included_cells, included_cells].values,
                        dtype=float), checks=False)
 
+        # Checked on the cells actually used, and after `included_cells` has been
+        # applied, so restricting the cells is a way out of it. Condensed form holds
+        # the off-diagonal only. Every correlation against a reference holding NaN is
+        # NaN, which `correlation_fitness` turns into 0.0 -- the search would then run
+        # to completion on a fitness that says nothing about any candidate.
+        if np.isnan(self.reference_vector).any():
+            raise ValueError('`reference_distances` has missing values off the diagonal '
+                             'among the cells being used. These are pairs of cells whose '
+                             'distance was never computed: restrict the cells with '
+                             '`included_cells`, or compute every pair instead of passing '
+                             '`pairs` to the distance function.')
+
     def __call__(self, pool):
         return _BoundCorrelationObjective(self, pool)
 
@@ -217,6 +220,19 @@ class _BoundCorrelationObjective:
                 'Rows {} of the pool repeat an earlier row exactly, so they cannot be '
                 'selected independently. Deduplicate the pairs before searching, or '
                 'leave `deduplicate=True`.'.format(list(missing[:5])))
+
+        # An interaction and its reverse produce the same two rows once the table is
+        # doubled, so one row would have to belong to both candidates at once.
+        prot_a, prot_b = parent.interaction_columns
+        pairs = list(zip(pool[prot_a], pool[prot_b]))
+        reciprocal = [position for position, (a, b) in enumerate(pairs)
+                      if a != b and (b, a) in set(pairs)]
+        if reciprocal:
+            raise ValueError(
+                'The pool lists both directions of the same interaction (rows {}), '
+                'which cannot be selected independently once the table is made '
+                'bidirectional. Leave `deduplicate=True`, or collapse them with '
+                '`remove_ppi_bidirectionality`.'.format(reciprocal[:5]))
         self.interaction_space = InteractionSpace(
             rnaseq_data=parent.rnaseq_data[parent.included_cells],
             ppi_data=bi_ppi_data,

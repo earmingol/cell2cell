@@ -59,10 +59,15 @@ def test_remove_ppi_bidirectionality_keeps_a_one_way_interaction_between_paired_
     assert len(pairs) == 3
 
 
-def test_remove_ppi_bidirectionality_keeps_the_first_orientation():
-    ppi = pd.DataFrame({'A': ['G2', 'G1'], 'B': ['G1', 'G2']})
-    result = ppi_module.remove_ppi_bidirectionality(ppi, COLUMNS, verbose=False)
-    assert list(zip(result['A'], result['B'])) == [('G2', 'G1')]
+def test_remove_ppi_bidirectionality_keeps_the_lexicographic_orientation():
+    '''Which orientation survives decides which partner is the ligand, so it is pinned.
+
+    Independent of the order the two directions appear in, as it was before.
+    '''
+    for frame in (pd.DataFrame({'A': ['G2', 'G1'], 'B': ['G1', 'G2']}),
+                  pd.DataFrame({'A': ['G1', 'G2'], 'B': ['G2', 'G1']})):
+        result = ppi_module.remove_ppi_bidirectionality(frame, COLUMNS, verbose=False)
+        assert list(zip(result['A'], result['B'])) == [('G1', 'G2')]
 
 
 def test_remove_ppi_bidirectionality_keeps_repeated_rows():

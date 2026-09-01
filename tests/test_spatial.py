@@ -92,6 +92,17 @@ def test_pairwise_celltype_distances_leaves_uncomputed_pairs_missing(toy_coordin
     assert np.allclose(np.diag(result.values), 0.0)
 
 
+@pytest.mark.parametrize('method', ['min', 'max', 'mean', 'median'])
+def test_pairwise_celltype_distances_keeps_a_zero_diagonal_for_explicit_self_pairs(
+        toy_coordinates, method):
+    '''A group is at distance zero from itself, not at the spread of its own cells.'''
+    result = distances.pairwise_celltype_distances(toy_coordinates, group_col='celltype',
+                                                   method=method,
+                                                   pairs=[('CT-1', 'CT-1'),
+                                                          ('CT-1', 'CT-2')])
+    assert result.loc['CT-1', 'CT-1'] == 0.0
+
+
 def test_pairwise_celltype_distances_is_naturally_sorted():
     '''Every method must agree on the order of rows and columns.'''
     coordinates = pd.DataFrame({

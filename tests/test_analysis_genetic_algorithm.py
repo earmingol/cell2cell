@@ -626,6 +626,92 @@ def test_deduplicated_pool_can_keep_the_lowest_weight(ga_inputs):
     assert searched.loc[repeated, 'score'].tolist() == [0.4]
 
 
+def test_returned_mask_selects_the_repeated_row_the_search_chose(ga_inputs):
+    '''The mask reports positions, so one copy of a repeated pair can be dropped.
+
+    Rebuilding it from the (A, B) names marks both copies whenever either is chosen,
+    which contradicts the number of pairs the search reports selecting.
+    '''
+    _, ppi, _ = ga_inputs
+    pool = pd.concat([ppi.assign(score=1.0), ppi.iloc[[0]].assign(score=0.5)],
+                     ignore_index=True)
+
+    class _PicksTheFirstCopy:
+        '''Selects every pair except the repeated copy at the end of the pool.'''
+        def __call__(self, candidate_pool):
+            wanted = np.ones(len(candidate_pool))
+            wanted[-1] = 0.0
+            return lambda masks: -np.abs(np.atleast_2d(masks) - wanted).sum(axis=1)
+
+    results = c2c.analysis.optimize_lr_pairs(ppi_data=pool, objective=_PicksTheFirstCopy(),
+                                             deduplicate=False, population_size=30,
+                                             generations=40, runs=1, random_state=4)
+    mask = results['run1']['ppi_data']
+    assert sum(mask) == results['run1']['n_selected']
+    assert len(results['best_ppi_data']) == results['run1']['n_selected']
+
+
+def test_cooccurrence_labels_stay_unique_for_a_repeated_pair(ga_inputs):
+    '''Duplicate names would make the co-occurrence matrix ambiguous to index.'''
+    _, ppi, _ = ga_inputs
+    pool = pd.concat([ppi.assign(score=1.0), ppi.iloc[[0]].assign(score=0.5)],
+                     ignore_index=True)
+    results = c2c.analysis.optimize_lr_pairs(ppi_data=pool, objective=_RecordingObjective(),
+                                             deduplicate=False, executions=3,
+                                             population_size=8, generations=2, runs=1,
+                                             random_state=4)
+    labels = list(results['cooccurrence'].index)
+    assert len(set(labels)) == len(labels) == len(pool)
+
+
+def test_a_pool_holding_both_directions_is_refused(ga_inputs, setups):
+    '''Doubling the table makes the two candidates share rows, so neither is separable.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    reversed_first = ppi.iloc[[0]].rename(columns={'A': 'B', 'B': 'A'})[['A', 'B']]
+    pool = pd.concat([ppi, reversed_first], ignore_index=True)
+    factory = c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq,
+                                                reference_distances=reference,
+                                                cutoff_setup=cutoff_setup,
+                                                analysis_setup=analysis_setup)
+    with pytest.raises(ValueError, match='both directions'):
+        factory(pool)
+
+
+@pytest.mark.parametrize('bad', [np.inf, -np.inf])
+def test_optimize_lr_pairs_rejects_infinite_weights(ga_inputs, bad):
+    '''An infinite weight reaches the CCI scores as inf, or as NaN through inf/inf.'''
+    _, ppi, _ = ga_inputs
+    weighted = _weighted(ppi)
+    weighted.loc[weighted.index[0], 'score'] = bad
+    with pytest.raises(ValueError):
+        c2c.analysis.optimize_lr_pairs(ppi_data=weighted, objective=_RecordingObjective(),
+                                       population_size=8, generations=2, runs=1)
+
+
+def test_reference_may_hold_missing_values_outside_the_cells_used(ga_inputs, setups):
+    '''`included_cells` is the way out the error message offers, so it has to work.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    partial = reference.copy()
+    excluded = list(reference.columns[-2:])
+    partial.loc[excluded[0], excluded[1]] = np.nan
+    partial.loc[excluded[1], excluded[0]] = np.nan
+
+    kept = [c for c in reference.columns if c not in excluded]
+    factory = c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq,
+                                                reference_distances=partial,
+                                                cutoff_setup=cutoff_setup,
+                                                analysis_setup=analysis_setup,
+                                                included_cells=kept)
+    assert np.isfinite(factory.reference_vector).all()
+
+    with pytest.raises(ValueError, match='missing values off the diagonal'):
+        c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq, reference_distances=partial,
+                                          cutoff_setup=cutoff_setup,
+                                          analysis_setup=analysis_setup)
+
+
 def test_pool_rows_that_repeat_exactly_are_refused(ga_inputs, setups):
     '''An exact duplicate cannot be selected on its own, so it is an error, not a no-op.'''
     rnaseq, ppi, reference = ga_inputs

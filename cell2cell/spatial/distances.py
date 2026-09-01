@@ -101,6 +101,10 @@ def pairwise_celltype_distances(df, group_col, coord_cols=['X', 'Y'],
         pairs = list(itertools.combinations(groups, 2))
 
     for pair in pairs:
+        if pair[0] == pair[1]:
+            # A group is at distance zero from itself, whatever the spread of its own
+            # cells, which is what 'max' or 'mean' would measure here
+            continue
         dist = celltype_pair_distance(df_.loc[df[group_col] == pair[0]], df_.loc[df[group_col] == pair[1]],
                                       method=method,
                                       distance=distance

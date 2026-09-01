@@ -222,7 +222,8 @@ def remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=True):
     unidirectional_ppi : pandas.DataFrame
         List of protein-protein interactions without duplicated interactions
         in both directions (if ProtA-ProtB and ProtB-ProtA interactions are
-        present, only the one that appears first is kept). A one-way interaction
+        present, the lexicographically sorted orientation is the one kept, so
+        'ProtA-ProtB' survives and 'ProtB-ProtA' is dropped). A one-way interaction
         whose reverse is absent is kept, and so is a self-interaction.
     '''
     if verbose:
@@ -234,17 +235,16 @@ def remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=True):
     # some reciprocal interaction and then removing all combinations among them, as this
     # used to do, also deletes one-way interactions between two such proteins even when
     # their reverse was never in the table.
-    seen = set()
-    drop = np.zeros(len(ppi_data), dtype=bool)
-    for position, (partner_a, partner_b) in enumerate(zip(ppi_data[header_interactorA],
-                                                          ppi_data[header_interactorB])):
-        # A self-interaction is its own reverse, and dropping it would lose the pair
-        if partner_a != partner_b and (partner_b, partner_a) in seen:
-            drop[position] = True
-        else:
-            seen.add((partner_a, partner_b))
+    #
+    # Which of the two orientations survives is the lexicographic one, as it has always
+    # been -- it decides which partner ends up as the ligand, so results carry over.
+    pairs = set(zip(ppi_data[header_interactorA], ppi_data[header_interactorB]))
+    drop = np.array([partner_a > partner_b and (partner_b, partner_a) in pairs
+                     for partner_a, partner_b in zip(ppi_data[header_interactorA],
+                                                     ppi_data[header_interactorB])],
+                    dtype=bool)
 
-    unidirectional_ppi = ppi_data.loc[~drop]
+    unidirectional_ppi = ppi_data.loc[~drop] if len(ppi_data) else ppi_data.copy()
     unidirectional_ppi = unidirectional_ppi.reset_index(drop=True)
     return unidirectional_ppi
 

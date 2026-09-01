@@ -85,9 +85,11 @@ def _validate_ppi_score(ppi_data):
     except (TypeError, ValueError):
         raise ValueError("The 'score' column of `ppi_data` must be numeric, since it "
                          'is the weight of each interaction.')
-    if np.isnan(values).any():
-        raise ValueError("The 'score' column of `ppi_data` has missing values. It is "
-                         'the weight of each interaction, so every row needs one.')
+    if not np.isfinite(values).all():
+        # Infinities propagate into the CCI scores as inf, or as NaN through inf/inf
+        raise ValueError("The 'score' column of `ppi_data` has values that are not "
+                         'finite. It is the weight of each interaction, so every row '
+                         'needs a real number.')
     if (values < 0.0).any():
         raise ValueError("The 'score' column of `ppi_data` has negative weights, which "
                          'the CCI scores are not defined for.')
@@ -310,6 +312,10 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
     # that an input weight is never mistaken for a selection. Every pair is available
     # to the first run.
     selection = np.ones(len(theta_ppi_data), dtype=bool)
+    # Row of `ppi_data` each surviving candidate is, so a selection maps back by
+    # position. Two rows can list the same pair when `deduplicate` is False, and they
+    # are then separate candidates -- recovering them by their names would select both.
+    positions = np.arange(len(theta_ppi_data))
 
     prot_a, prot_b = interaction_columns
     results = dict()
@@ -325,6 +331,7 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
 
         # Each run searches only among the pairs the previous run kept
         theta_ppi_data = theta_ppi_data.loc[selection].reset_index(drop=True)
+        positions = positions[selection]
         n_ppi = len(theta_ppi_data)
         if n_ppi == 0:
             break
@@ -366,11 +373,10 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         selection = best.astype(bool)
         drop_fraction = 1.0 - best.sum() / len(best)
 
-        # Map the selection back onto the rows of the original ppi_data
-        selected = theta_ppi_data.loc[selection, [prot_a, prot_b]]
-        selected_pairs = set(map(tuple, selected.values))
-        mask = [1 if tuple(row) in selected_pairs else 0
-                for row in ppi_data[[prot_a, prot_b]].values]
+        # Map the selection back onto the rows of the original ppi_data, by position
+        mask = np.zeros(len(ppi_data), dtype=int)
+        mask[positions[selection]] = 1
+        mask = mask.tolist()
 
         results['run{}'.format(run)] = {'obj_fn': float(best_fitness),
                                       'ppi_data': mask,
@@ -568,7 +574,11 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
                   .format(i + 1, result['best_obj_fn'], sum(result[last]['ppi_data'])))
 
     masks = np.asarray(masks, dtype=int)
-    labels = ['{}^{}'.format(a, b) for a, b in pool[[prot_a, prot_b]].values]
+    # The position is part of the label so that two rows listing the same pair, which
+    # `deduplicate=False` allows, stay distinguishable: the co-occurrence matrix is
+    # indexed by these, and duplicated names would make it ambiguous.
+    labels = ['{}^{}^{}'.format(a, b, position) for position, (a, b)
+              in enumerate(pool[[prot_a, prot_b]].values)]
 
     frequency = pd.DataFrame({prot_a: pool[prot_a].values, prot_b: pool[prot_b].values,
                               'frequency': lr_selection_frequency(masks)})
@@ -599,7 +609,8 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
                 cooccurrence, n_clusters=n_clusters, select=cluster_selection,
                 frequency=frequency['frequency'].values, min_frequency=min_frequency)
             chosen = set(selected)
-            results['consensus_ppi_data'] = pool.loc[[l in chosen for l in labels]].reset_index(drop=True)
+            keep = np.array([label in chosen for label in labels])
+            results['consensus_ppi_data'] = pool.loc[keep].reset_index(drop=True)
             results['consensus_clusters'] = clusters
             results['consensus_cluster_scores'] = scores
             if verbose:
