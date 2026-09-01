@@ -118,6 +118,35 @@ def test_prepared_scorer_unbatched_path_matches(ga_inputs):
                                rtol=1e-12, atol=1e-12)
 
 
+def test_prepared_scorer_unbatched_count_counts_instead_of_summing(ga_inputs):
+    '''`count` must not depend on whether the outer products fitted in memory.
+
+    With continuous expression the products are not 0/1, so adding them up instead of
+    counting the non-zero ones gives a different, and much larger, answer.
+    '''
+    rnaseq, ppi, _ = ga_inputs
+    bi_ppi = bidirectional_ppi_for_cci(ppi, verbose=False)
+    space = InteractionSpace(rnaseq_data=rnaseq, ppi_data=bi_ppi,
+                             gene_cutoffs={'type': 'constant_value', 'parameter': 10},
+                             communication_score='expression_product',
+                             cci_score='count', cci_type='undirected', verbose=False)
+    batched = ga.PreparedCCIScorer(space, cci_score='count', max_memory_mb=1e9)
+    unbatched = ga.PreparedCCIScorer(space, cci_score='count', max_memory_mb=0)
+    assert batched.batched and not unbatched.batched
+
+    source = ga._bidirectional_index(ppi, verbose=False)
+    weights = np.random.default_rng(4).integers(0, 2, size=len(ppi)).astype(float)[source]
+
+    space.ppi_data['score'] = weights
+    space.compute_pairwise_cci_scores(use_ppi_score=True, verbose=False)
+    expected = space.interaction_elements['cci_matrix'].values.astype(float)
+
+    np.testing.assert_allclose(batched.score_batch(weights[None, :])[0], expected,
+                               rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(unbatched.score_batch(weights[None, :])[0], expected,
+                               rtol=1e-12, atol=1e-12)
+
+
 def test_prepared_scorer_symmetric_for_undirected(ga_inputs):
     rnaseq, ppi, _ = ga_inputs
     bi_ppi = bidirectional_ppi_for_cci(ppi, verbose=False)
@@ -142,15 +171,20 @@ def test_prepared_scorer_rejects_unsupported_score(ga_inputs):
         ga.PreparedCCIScorer(space, cci_score='cosine')
 
 
-def test_prepared_scorer_count_rejects_non_binary_weights(ga_inputs):
-    '''`count` counts non-zero products, so it is only linear in binary weights.'''
+@pytest.mark.parametrize('max_memory_mb', [512, 0])
+def test_prepared_scorer_count_rejects_non_binary_weights(ga_inputs, max_memory_mb):
+    '''`count` counts non-zero products, so it is only linear in binary weights.
+
+    Parametrized over the memory budget because the rejection has to be the same on
+    the batched and the per-vector path.
+    '''
     rnaseq, ppi, _ = ga_inputs
     bi_ppi = bidirectional_ppi_for_cci(ppi, verbose=False)
     space = InteractionSpace(rnaseq_data=rnaseq, ppi_data=bi_ppi,
                              gene_cutoffs={'type': 'constant_value', 'parameter': 10},
                              communication_score='expression_thresholding',
                              cci_score='count', cci_type='undirected', verbose=False)
-    scorer = ga.PreparedCCIScorer(space)
+    scorer = ga.PreparedCCIScorer(space, max_memory_mb=max_memory_mb)
     with pytest.raises(ValueError):
         scorer.score_batch(np.full((1, scorer.n_ppi), 0.5))
 
@@ -193,6 +227,24 @@ def test_bidirectional_index_handles_reciprocal_pairs(toy_ppi):
     table, origin = bidirectional_ppi_with_index(toy_ppi, verbose=False)
     assert len(origin) == len(table)
     assert set(origin).issubset(set(range(len(toy_ppi))))
+
+
+def test_bidirectional_table_keeps_repeated_pairs_with_different_metadata():
+    '''Two rows for the same partners are two interactions, not one.
+
+    They differ only outside the interacting columns -- a score, an annotation -- so
+    deduplicating on those columns alone would drop one of them and leave its
+    position absent from `origin`, making it unselectable.
+    '''
+    ppi = pd.DataFrame({'A': ['a', 'a', 'c'], 'B': ['b', 'b', 'd'],
+                        'score': [0.5, 1.0, 1.0],
+                        'source': ['curated', 'predicted', 'curated']})
+    table, origin = bidirectional_ppi_with_index(ppi, verbose=False)
+
+    expected = bidirectional_ppi_for_cci(ppi, verbose=False)
+    pd.testing.assert_frame_equal(table, expected)
+    assert set(origin) == set(range(len(ppi)))
+    np.testing.assert_array_equal(table['score'].values, ppi['score'].values[origin])
 
 
 def test_bidirectional_table_matches_the_original_builder(toy_ppi, toy_ppi_complex):
@@ -333,6 +385,271 @@ def test_optimize_lr_pairs_rejects_asymmetric_reference(ga_inputs, setups):
                                        cutoff_setup=cutoff_setup,
                                        analysis_setup=analysis_setup,
                                        population_size=8, generations=2, runs=1)
+
+
+# ---------------------------------------------------------------------------------
+# Automatic stopping
+# ---------------------------------------------------------------------------------
+
+class _ScriptedObjective:
+    '''Objective factory whose fitness is a fixed value per run, ignoring the mask.
+
+    Lets the stopping rule be exercised on an exact sequence of objective values,
+    including the negative and zero ones a signed correlation or a custom objective
+    can produce.
+    '''
+
+    def __init__(self, values):
+        self.values = list(values)
+        self.runs = 0
+
+    def __call__(self, pool):
+        value = float(self.values[min(self.runs, len(self.values) - 1)])
+        self.runs += 1
+
+        def objective(masks):
+            masks = np.atleast_2d(np.asarray(masks, dtype=float))
+            return np.full(len(masks), value)
+
+        return objective
+
+
+@pytest.mark.parametrize('best,previous,expected', [
+    (0.55, 0.50, 0.1),          # the positive case, unchanged
+    (-0.40, -0.50, 0.2),        # an improvement, even though both are negative
+    (-0.60, -0.50, -0.2),       # a worsening
+    (0.50, 0.0, 0.5 / 1e-12),   # no division by zero
+    (0.0, 0.0, 0.0),
+])
+def test_relative_improvement(best, previous, expected):
+    assert np.isclose(ga.search._relative_improvement(best, previous), expected)
+
+
+def test_runs_continue_while_a_negative_objective_improves(ga_inputs):
+    '''-0.50 to -0.40 is a 20% improvement, not a stall.'''
+    _, ppi, _ = ga_inputs
+    scripted = _ScriptedObjective([-0.50, -0.40, -0.399])
+    results = c2c.analysis.optimize_lr_pairs(ppi_data=ppi, objective=scripted,
+                                             population_size=8, generations=2,
+                                             runs=None, inc_percentage=0.025,
+                                             random_state=11)
+    assert 'run3' in results
+    assert np.isclose(results['run1']['obj_fn'], -0.50)
+    assert np.isclose(results['run2']['obj_fn'], -0.40)
+
+
+def test_an_objective_of_zero_stops_rather_than_dividing_by_it(ga_inputs):
+    '''A run scoring exactly zero used to be divided by.
+
+    The division gave NaN, which compares false against the threshold, so the search
+    carried on running instead of recognizing that nothing had improved.
+    '''
+    _, ppi, _ = ga_inputs
+    results = c2c.analysis.optimize_lr_pairs(ppi_data=ppi,
+                                             objective=_ScriptedObjective([0.0]),
+                                             population_size=8, generations=2,
+                                             runs=None, inc_percentage=0.025,
+                                             random_state=11)
+    assert 'run2' in results and 'run3' not in results
+    assert results['best_obj_fn'] == 0.0
+
+
+# ---------------------------------------------------------------------------------
+# An interaction weight is not a selection
+# ---------------------------------------------------------------------------------
+
+class _RecordingObjective:
+    '''Objective factory that remembers every pool it is handed.
+
+    Its fitness depends only on the mask, which is all the search requires, so the
+    pools can be inspected without running a real objective.
+    '''
+
+    def __init__(self):
+        self.pools = []
+
+    def __call__(self, pool):
+        self.pools.append(pool.copy())
+        n_pool = len(pool)
+
+        def objective(masks):
+            masks = np.atleast_2d(np.asarray(masks, dtype=float))
+            return masks.sum(axis=1) / n_pool
+
+        return objective
+
+
+def _weighted(ppi):
+    '''The same pairs, carrying interaction weights other than one.'''
+    return ppi.assign(score=np.resize([0.5, 0.8, 2.0, 1.0], len(ppi)).astype(float))
+
+
+def test_optimize_lr_pairs_searches_every_weighted_pair(ga_inputs):
+    '''A weight is not a selection, so no pair may be dropped before the search.'''
+    _, ppi, _ = ga_inputs
+    weighted = _weighted(ppi)
+    assert (weighted['score'] != 1.0).sum() > 0
+
+    recorder = _RecordingObjective()
+    results = c2c.analysis.optimize_lr_pairs(ppi_data=weighted, objective=recorder,
+                                             population_size=8, generations=2, runs=1,
+                                             random_state=3)
+    assert len(recorder.pools[0]) == len(results['pool'])
+    assert len(results['run1']['ppi_data']) == len(results['pool'])
+
+
+def test_optimize_lr_pairs_preserves_the_input_weights(ga_inputs):
+    '''The search must not write its solution over the interaction weights.'''
+    _, ppi, _ = ga_inputs
+    weighted = _weighted(ppi)
+    expected = {(a, b): s for a, b, s in weighted[['A', 'B', 'score']].values}
+
+    results = c2c.analysis.optimize_lr_pairs(ppi_data=weighted,
+                                             objective=_RecordingObjective(),
+                                             population_size=8, generations=2, runs=2,
+                                             random_state=3)
+    for frame in (results['pool'], results['best_ppi_data']):
+        for a, b, score in frame[['A', 'B', 'score']].values:
+            assert score == expected[(a, b)]
+
+
+@pytest.mark.parametrize('bad', [np.nan, -1.0])
+def test_optimize_lr_pairs_rejects_unusable_weights(ga_inputs, bad):
+    _, ppi, _ = ga_inputs
+    weighted = _weighted(ppi)
+    weighted.loc[weighted.index[0], 'score'] = bad
+    with pytest.raises(ValueError):
+        c2c.analysis.optimize_lr_pairs(ppi_data=weighted, objective=_RecordingObjective(),
+                                       population_size=8, generations=2, runs=1)
+
+
+def test_zero_weight_equals_not_being_selected(ga_inputs, setups):
+    '''The weight scales what an interaction contributes; zero contributes nothing.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    factory = c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq,
+                                                reference_distances=reference,
+                                                cutoff_setup=cutoff_setup,
+                                                analysis_setup=analysis_setup)
+    scores = np.ones(len(ppi))
+    scores[3] = 0.0
+    zero_weighted = factory(ppi.assign(score=scores))
+    unit_weighted = factory(ppi.assign(score=1.0))
+
+    everything = np.ones((1, len(ppi)))
+    without_that_pair = everything.copy()
+    without_that_pair[0, 3] = 0.0
+
+    np.testing.assert_allclose(zero_weighted(everything),
+                               unit_weighted(without_that_pair),
+                               rtol=1e-12, atol=1e-12)
+
+
+def test_unit_weights_are_the_same_as_no_weight_column(ga_inputs, setups):
+    '''Weights of one must leave existing behaviour untouched.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    factory = c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq,
+                                                reference_distances=reference,
+                                                cutoff_setup=cutoff_setup,
+                                                analysis_setup=analysis_setup)
+    masks = np.random.default_rng(6).integers(0, 2, size=(3, len(ppi))).astype(float)
+    with_ones = factory(ppi.assign(score=1.0))(masks)
+    without = factory(ppi.drop(columns='score', errors='ignore'))(masks)
+    np.testing.assert_allclose(with_ones, without, rtol=1e-12, atol=1e-12)
+
+
+def test_weighted_pool_agrees_between_the_fast_and_reference_paths(ga_inputs, setups):
+    '''`validate_fast` compares both paths, so this fails if only one applies weights.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    factory = c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq,
+                                                reference_distances=reference,
+                                                cutoff_setup=cutoff_setup,
+                                                analysis_setup=analysis_setup,
+                                                validate_fast=True)
+    bound = factory(_weighted(ppi))          # raises if the two disagree
+    masks = np.random.default_rng(7).integers(0, 2, size=(2, len(ppi))).astype(float)
+
+    # Compared on the distances rather than the fitness: the fitness is a rank
+    # correlation, and near-ties make ranks flip on differences of a few ULP
+    fast = bound._distance_vectors(masks)
+    reference_vectors = np.array([bound.reference_distance_vector(m) for m in masks])
+    np.testing.assert_allclose(fast, reference_vectors, rtol=1e-9, atol=1e-9)
+
+
+def test_repeated_pair_with_its_own_weight_is_selectable(ga_inputs, setups):
+    '''With deduplicate=False a repeated pair stays, and each copy needs its own gene.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    pool = pd.concat([ppi.assign(score=1.0), ppi.iloc[[0]].assign(score=0.5)],
+                     ignore_index=True)
+    factory = c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq,
+                                                reference_distances=reference,
+                                                cutoff_setup=cutoff_setup,
+                                                analysis_setup=analysis_setup)
+    bound = factory(pool)                     # both copies must be representable
+
+    masks = np.ones((2, len(pool)))
+    masks[1, -1] = 0.0                        # drop the repeated copy only
+    vectors = bound._distance_vectors(masks)
+    assert not np.allclose(vectors[0], vectors[1])
+
+
+def test_deduplicated_pool_keeps_the_highest_weight_of_a_repeated_pair(ga_inputs):
+    '''A pair listed twice is one interaction, and by default keeps its largest weight.'''
+    _, ppi, _ = ga_inputs
+    pool = pd.concat([ppi.assign(score=0.4), ppi.iloc[[0]].assign(score=0.9)],
+                     ignore_index=True)
+
+    recorder = _RecordingObjective()
+    results = c2c.analysis.optimize_lr_pairs(ppi_data=pool, objective=recorder,
+                                             population_size=8, generations=2, runs=1,
+                                             random_state=3)
+    searched = recorder.pools[0]
+    assert len(searched) == len(ppi)                      # the repeat is collapsed
+    repeated = (searched['A'] == ppi.iloc[0]['A']) & (searched['B'] == ppi.iloc[0]['B'])
+    assert searched.loc[repeated, 'score'].tolist() == [0.9]
+    assert len(results['pool']) == len(ppi)
+
+
+def test_deduplicated_pool_can_keep_the_lowest_weight(ga_inputs):
+    _, ppi, _ = ga_inputs
+    pool = pd.concat([ppi.assign(score=0.4), ppi.iloc[[0]].assign(score=0.9)],
+                     ignore_index=True)
+
+    recorder = _RecordingObjective()
+    c2c.analysis.optimize_lr_pairs(ppi_data=pool, objective=recorder, duplicates='lowest',
+                                   population_size=8, generations=2, runs=1, random_state=3)
+    searched = recorder.pools[0]
+    repeated = (searched['A'] == ppi.iloc[0]['A']) & (searched['B'] == ppi.iloc[0]['B'])
+    assert searched.loc[repeated, 'score'].tolist() == [0.4]
+
+
+def test_pool_rows_that_repeat_exactly_are_refused(ga_inputs, setups):
+    '''An exact duplicate cannot be selected on its own, so it is an error, not a no-op.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    pool = pd.concat([ppi, ppi.iloc[[0]]], ignore_index=True)
+    factory = c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq,
+                                                reference_distances=reference,
+                                                cutoff_setup=cutoff_setup,
+                                                analysis_setup=analysis_setup)
+    with pytest.raises(ValueError, match='repeat an earlier row'):
+        factory(pool)
+
+
+def test_weighted_pool_works_with_the_count_score(ga_inputs):
+    '''`count` only asks whether an interaction is active, so weights must not trip it.'''
+    rnaseq, ppi, reference = ga_inputs
+    factory = c2c.analysis.CorrelationObjective(
+        rnaseq_data=rnaseq, reference_distances=reference,
+        cutoff_setup={'type': 'constant_value', 'parameter': 10},
+        analysis_setup={'communication_score': 'expression_thresholding',
+                        'cci_score': 'count', 'cci_type': 'undirected'})
+    bound = factory(_weighted(ppi))
+    values = bound(np.ones((1, len(ppi))))
+    assert np.isfinite(values).all()
 
 
 # ---------------------------------------------------------------------------------

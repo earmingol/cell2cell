@@ -80,16 +80,22 @@ def pairwise_celltype_distances(df, group_col, coord_cols=['X', 'Y'],
     -------
     distances : pandas.DataFrame
         The pairwise distances between groups based on the specified group column.
-        In this dataframe rows and columns are the cell groups used to compute distances.
+        In this dataframe rows and columns are the cell groups used to compute
+        distances, naturally sorted, so 'CT-2' comes before 'CT-10'. The diagonal is
+        zero. An entry is NaN when it was not computed, which happens for the pairs
+        `pairs` leaves out -- a zero there would read as two cell groups occupying the
+        same position.
     '''
     # TODO: Adapt code below to receive AnnData or MuData objects
     # df_ = pd.DataFrame(adata.obsm['spatial'], index=adata.obs_names, columns=['X', 'Y'])
     # df = adata.obs[[group_col]]
     df_ = df[coord_cols]
-    groups = df[group_col].unique()
-    distances = pd.DataFrame(np.zeros((len(groups), len(groups))),
-                             index=groups,
-                             columns=groups)
+    groups = natsorted(df[group_col].unique())
+    # Filled before the dataframe is built: `DataFrame.values` is not writable on
+    # pandas 3, so the diagonal cannot be set in place afterwards
+    matrix = np.full((len(groups), len(groups)), np.nan)
+    np.fill_diagonal(matrix, 0.0)
+    distances = pd.DataFrame(matrix, index=groups, columns=groups)
 
     if pairs is None:
         pairs = list(itertools.combinations(groups, 2))

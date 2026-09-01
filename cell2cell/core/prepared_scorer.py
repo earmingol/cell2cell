@@ -104,6 +104,13 @@ class PreparedCCIScorer:
         self._A2 = self.A * self.A
         self._B2 = self.B * self.B
 
+        # 'count' asks whether a product is non-zero, not how large it is, and
+        # `[w * A * B != 0]` factorizes into the three indicators. Keeping them lets
+        # the per-vector path count as well, rather than adding the products up.
+        if self.cci_score == 'count':
+            self._A_nonzero = (self.A != 0).astype(float)
+            self._B_nonzero = (self.B != 0).astype(float)
+
         # Outer product of every ligand-receptor pair, flattened over the two cell
         # axes so the contraction over PPIs is a plain matrix product.
         outer_mb = self.n_ppi * self.n_cells * self.n_cells * 8 / 1e6
@@ -125,6 +132,11 @@ class PreparedCCIScorer:
         SB = W @ self._B2
         if self.batched:
             N = (W @ self._P).reshape(-1, self.n_cells, self.n_cells)
+        elif self.cci_score == 'count':
+            # Same indicators as the batched `_P`, so the result does not depend on
+            # whether the outer products happened to fit in `max_memory_mb`
+            A, B = self._A_nonzero, self._B_nonzero
+            N = np.stack([(A * (w != 0)[:, None]).T @ B for w in W])
         else:
             N = np.stack([(self.A * w[:, None]).T @ self.B for w in W])
         return N, SA, SB
@@ -169,7 +181,9 @@ class PreparedCCIScorer:
             raise ValueError('Expected weight vectors of length {}, got {}'
                              .format(self.n_ppi, W.shape[1]))
 
-        if self.batched and self.cci_score == 'count' and not np.isin(W, (0.0, 1.0)).all():
+        # Checked on both paths, so the same weights are accepted or rejected whatever
+        # `max_memory_mb` decided
+        if self.cci_score == 'count' and not np.isin(W, (0.0, 1.0)).all():
             raise ValueError("The 'count' score is only vectorized for binary weights, "
                              "because it counts non-zero products rather than adding them.")
 

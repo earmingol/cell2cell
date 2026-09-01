@@ -20,7 +20,7 @@ from cell2cell.core.interaction_space import InteractionSpace
 from cell2cell.core.prepared_scorer import (PreparedCCIScorer, LINEAR_CCI_SCORES,
                                             UNBOUNDED_CCI_SCORES)
 from cell2cell.preprocessing.ppi import (bidirectional_ppi_for_cci, bidirectional_index,
-                                         remove_ppi_bidirectionality)
+                                         remove_ppi_bidirectionality, deduplicate_ppi_pairs)
 from cell2cell.analysis.genetic_algorithm.objectives import CorrelationObjective
 from cell2cell.analysis.genetic_algorithm.consensus import (lr_selection_frequency,
                                                             lr_cooccurrence,
@@ -37,9 +37,60 @@ def _check_if_pygad() -> ModuleType:
 
     except Exception:
         raise ImportError('pygad is not installed. Please install it with: '
-                          'pip install pygad'
+                          "pip install 'pygad>=3.0.0'"
                           )
     return pygad
+
+
+def _deduplicate_pool(ppi_data, interaction_columns, duplicates='highest', verbose=False):
+    '''One row per interaction: reciprocals collapsed, then pairs listed more than once.
+
+    Both searches reduce the pool the same way, so the masks of a single search and
+    those of several executions are indexed against the same table.
+    '''
+    ppi_data = remove_ppi_bidirectionality(ppi_data=ppi_data,
+                                           interaction_columns=interaction_columns,
+                                           verbose=verbose)
+    return deduplicate_ppi_pairs(ppi_data, interaction_columns=interaction_columns,
+                                 keep=duplicates, verbose=False)
+
+
+_EPS = 1e-12
+
+
+def _relative_improvement(best, previous):
+    '''How much `best` improves on `previous`, relative to its magnitude.
+
+    Dividing by `previous` itself would flip the sign of the comparison whenever the
+    objective is negative -- an improvement from -0.50 to -0.40 would read as -0.20
+    and look like a stall -- and would divide by zero when a run scores exactly 0.
+    Objectives are only required to be "higher is better", so neither case is
+    unusual: a signed correlation and a custom objective can both be negative.
+    '''
+    return (best - previous) / max(abs(previous), _EPS)
+
+
+def _validate_ppi_score(ppi_data):
+    '''Rejects interaction weights the objectives cannot make sense of.
+
+    The 'score' column is the weight of each interaction, and is left untouched by
+    the search -- the candidate selection is kept separately. Weights that are
+    missing or negative have no meaning in the CCI scores, so they are refused here
+    rather than propagating into a fitness value.
+    '''
+    if 'score' not in ppi_data.columns:
+        return
+    try:
+        values = np.asarray(ppi_data['score'].values, dtype=float)
+    except (TypeError, ValueError):
+        raise ValueError("The 'score' column of `ppi_data` must be numeric, since it "
+                         'is the weight of each interaction.')
+    if np.isnan(values).any():
+        raise ValueError("The 'score' column of `ppi_data` has missing values. It is "
+                         'the weight of each interaction, so every row needs one.')
+    if (values < 0.0).any():
+        raise ValueError("The 'score' column of `ppi_data` has negative weights, which "
+                         'the CCI scores are not defined for.')
 
 
 def _resolve_objective(objective, rnaseq_data, reference_distances, cutoff_setup,
@@ -71,6 +122,7 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
                     mutation_probability=0.05, keep_elitism=1, random_state=None,
                     interaction_columns=('A', 'B'), complex_sep=None, complex_agg_method='min',
                     fast=True, validate_fast=True, max_memory_mb=512, deduplicate=True,
+                    duplicates='highest',
                     verbose=False):
     '''
     Selects the subset of ligand-receptor pairs whose cell-cell interaction scores
@@ -91,7 +143,10 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         Gene expression matrix, with genes as rows and cells as columns.
 
     ppi_data : pandas.DataFrame
-        List of ligand-receptor pairs. A 'score' column is added if missing.
+        List of ligand-receptor pairs. A 'score' column, if present, is the weight of
+        each interaction: it is preserved on output and multiplied into the weights a
+        candidate selection produces, so a pair contributes its own weight when
+        selected and nothing when not. Missing means every pair weighs 1.
 
     reference_distances : pandas.DataFrame
         Square, symmetric matrix of reference distances between cells, for example
@@ -122,8 +177,10 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         `max_runs` is reached.
 
     inc_percentage : float, default=0.025
-        Minimum relative improvement of the objective for another run to start.
-        Only used when `runs` is None.
+        Minimum relative improvement of the objective for another run to start,
+        measured against the **magnitude** of the previous run's objective, so that a
+        negative or zero objective is handled the same way a positive one is. Only
+        used when `runs` is None.
 
     max_runs : int, default=100
         Upper bound on the number of runs when `runs` is None.
@@ -166,17 +223,30 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         Memory budget for the precomputed ligand-receptor outer products.
 
     deduplicate : boolean, default=True
-        Whether to collapse each interaction and its reciprocal into a single row
-        with `remove_ppi_bidirectionality` before the search.
+        Whether to reduce the list to one row per interaction before the search, with
+        `remove_ppi_bidirectionality` followed by `deduplicate_ppi_pairs`.
 
         The undirected CCI scores need the interactions in both directions, so the
         table is doubled internally. An interaction the input already lists in both
         directions would then appear twice over, and be weighted twice as heavily as
-        the rest for no reason. Collapsing them first avoids that. Pairs loaded with
-        `cell2cell.io.load_ppi` are already deduplicated by `preprocess_ppi_data`, so
-        this is a no-op for them.
+        the rest for no reason. A pair simply listed twice would do the same, and
+        would take up two positions of the candidate set while being one interaction.
+        Collapsing them first avoids both. Pairs loaded with `cell2cell.io.load_ppi`
+        are already deduplicated by `preprocess_ppi_data`, so this is a no-op for them.
+
+        Set it to False to search a list that deliberately repeats a pair, for
+        instance the same interaction with the weight two databases give it. Each copy
+        is then a position of its own in the candidate set, and the rows have to
+        differ somewhere -- rows that repeat exactly cannot be selected independently
+        and are rejected.
+
         Note that the returned masks are then indexed against the deduplicated
         table, which is also what 'best_ppi_data' contains.
+
+    duplicates : str, default='highest'
+        Which row to keep for a pair listed more than once, when `deduplicate` is
+        True: 'highest' (the default) keeps the largest score, 'lowest' the smallest,
+        'first' the one appearing first. See `deduplicate_ppi_pairs`.
 
     verbose : boolean, default=False
         Whether to print the progress of each run.
@@ -230,15 +300,16 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         # Not a mechanical requirement -- the mapping onto bidirectional rows is exact
         # for any input. This is about not counting an interaction twice when the table
         # lists it in both directions, which the doubling would then triple.
-        ppi_data = remove_ppi_bidirectionality(ppi_data=ppi_data,
-                                               interaction_columns=interaction_columns,
-                                               verbose=verbose)
-        ppi_data = ppi_data.drop_duplicates(subset=list(interaction_columns))
-        ppi_data = ppi_data.reset_index(drop=True)
+        ppi_data = _deduplicate_pool(ppi_data, interaction_columns=interaction_columns,
+                                     duplicates=duplicates, verbose=verbose)
 
     theta_ppi_data = ppi_data.copy()
-    if 'score' not in theta_ppi_data.columns:
-        theta_ppi_data = theta_ppi_data.assign(score=1.0)
+    _validate_ppi_score(theta_ppi_data)
+
+    # Which pairs the next run may choose from, kept apart from the 'score' column so
+    # that an input weight is never mistaken for a selection. Every pair is available
+    # to the first run.
+    selection = np.ones(len(theta_ppi_data), dtype=bool)
 
     prot_a, prot_b = interaction_columns
     results = dict()
@@ -253,7 +324,7 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
             break
 
         # Each run searches only among the pairs the previous run kept
-        theta_ppi_data = theta_ppi_data.loc[theta_ppi_data['score'] == 1].reset_index(drop=True)
+        theta_ppi_data = theta_ppi_data.loc[selection].reset_index(drop=True)
         n_ppi = len(theta_ppi_data)
         if n_ppi == 0:
             break
@@ -292,11 +363,11 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         best_solution, best_fitness, _ = ga.best_solution()
         best = np.asarray(best_solution, dtype=int)
 
-        theta_ppi_data['score'] = best.astype(float)
+        selection = best.astype(bool)
         drop_fraction = 1.0 - best.sum() / len(best)
 
         # Map the selection back onto the rows of the original ppi_data
-        selected = theta_ppi_data.loc[theta_ppi_data['score'] == 1, [prot_a, prot_b]]
+        selected = theta_ppi_data.loc[selection, [prot_a, prot_b]]
         selected_pairs = set(map(tuple, selected.values))
         mask = [1 if tuple(row) in selected_pairs else 0
                 for row in ppi_data[[prot_a, prot_b]].values]
@@ -311,7 +382,7 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
                   .format(run, best_fitness, int(best.sum()), len(best)))
 
         if runs is None and previous_obj is not None:
-            if (best_fitness - previous_obj) / previous_obj < inc_percentage:
+            if _relative_improvement(best_fitness, previous_obj) < inc_percentage:
                 run += 1
                 break
         previous_obj = best_fitness
@@ -352,7 +423,10 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
         Gene expression matrix, with genes as rows and cells as columns.
 
     ppi_data : pandas.DataFrame
-        List of ligand-receptor pairs. A 'score' column is added if missing.
+        List of ligand-receptor pairs. A 'score' column, if present, is the weight of
+        each interaction: it is preserved on output and multiplied into the weights a
+        candidate selection produces, so a pair contributes its own weight when
+        selected and nothing when not. Missing means every pair weighs 1.
 
     reference_distances : pandas.DataFrame
         Square, symmetric matrix of reference distances between cells, for example
@@ -411,8 +485,8 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
         Passed to each individual search: `population_size`, `generations`, `runs`,
         `inc_percentage`, `max_runs`, `correlation`, `mutation_probability`,
         `keep_elitism`, `included_cells`, `interaction_columns`, `complex_sep`,
-        `complex_agg_method`, `fast`, `validate_fast`, `max_memory_mb` and
-        `deduplicate`. See `_optimize_once` for their meaning.
+        `complex_agg_method`, `fast`, `validate_fast`, `max_memory_mb`,
+        `deduplicate` and `duplicates`. See `_optimize_once` for their meaning.
 
     Returns
     -------
@@ -476,10 +550,9 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
     # The pool the masks are indexed against, matching what each execution searches
     pool = ppi_data
     if kwargs.get('deduplicate', True):
-        pool = remove_ppi_bidirectionality(ppi_data=ppi_data,
-                                           interaction_columns=interaction_columns,
-                                           verbose=False)
-        pool = pool.drop_duplicates(subset=list(interaction_columns)).reset_index(drop=True)
+        pool = _deduplicate_pool(ppi_data, interaction_columns=interaction_columns,
+                                 duplicates=kwargs.get('duplicates', 'highest'),
+                                 verbose=False)
 
     all_executions, masks = {}, []
     for i in range(executions):

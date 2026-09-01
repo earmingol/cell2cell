@@ -193,6 +193,12 @@ def check_symmetry(df):
     '''
     Checks whether a dataframe is symmetric.
 
+    A missing value matches a missing value in the transposed position, so a distance
+    matrix with entries that were not computed -- what
+    `cell2cell.spatial.pairwise_celltype_distances` returns for the pairs it was not
+    asked for -- is still recognized as symmetric. Comparing with `==` alone would
+    call any such matrix asymmetric, since NaN never equals NaN.
+
     Parameters
     ----------
     df : pandas.DataFrame
@@ -204,10 +210,15 @@ def check_symmetry(df):
         Whether a dataframe is symmetric.
     '''
     shape = df.shape
-    if shape[0] == shape[1]:
-        symmetric = (df.values.transpose() == df.values).all()
-    else:
-        symmetric = False
+    if shape[0] != shape[1]:
+        return False
+    values = df.values
+    try:
+        symmetric = np.array_equal(values, values.transpose(), equal_nan=True)
+    except TypeError:
+        # `equal_nan` is only defined for floats, so anything else -- object columns,
+        # strings, integers -- compares as it did before
+        symmetric = bool((values.transpose() == values).all())
     return symmetric
 
 

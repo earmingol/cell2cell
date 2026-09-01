@@ -12,7 +12,7 @@ from natsort import natsorted
 
 ### Preprocess a PPI table from a known list
 def preprocess_ppi_data(ppi_data, interaction_columns, sort_values=None, score=None, rnaseq_genes=None, complex_sep=None,
-             dropna=False, strna='', upper_letter_comparison=True, verbose=True):
+             dropna=False, strna='', upper_letter_comparison=True, duplicates='highest', verbose=True):
     '''
     Preprocess a list of protein-protein interactions by
     removed bidirectionality and keeping the minimum number of columns.
@@ -53,6 +53,13 @@ def preprocess_ppi_data(ppi_data, interaction_columns, sort_values=None, score=N
         respective expression level. Useful when there are inconsistencies in the
         names between the expression matrix and the ligand-receptor annotations.
 
+    duplicates : str, default='highest'
+        What to do with a pair listed more than once, passed to
+        `deduplicate_ppi_pairs` as its `keep`: 'highest' (the default) keeps the row
+        with the largest score, 'lowest' the smallest and 'first' the one appearing
+        first. Pass 'keep' to leave the repeated rows in the list, which is only
+        meaningful when they carry different scores.
+
     verbose : boolean, default=True
         Whether printing or not steps of the analysis.
 
@@ -62,7 +69,8 @@ def preprocess_ppi_data(ppi_data, interaction_columns, sort_values=None, score=N
         A simplified list of protein-protein interactions. It does not contains
         duplicated interactions in both directions (if ProtA-ProtB and
         ProtB-ProtA interactions are present, only the one that appears first
-        is kept) either extra columns beyond interacting ones. It contains only
+        is kept) either extra columns beyond interacting ones, and holds one row
+        per interacting pair unless `duplicates='keep'`. It contains only
         three columns: 'A', 'B', 'score', wherein 'A' and 'B' are the interacting
         partners in the PPI and 'score' represents a weight of the interaction
         for computing cell-cell interactions/communication.
@@ -89,11 +97,107 @@ def preprocess_ppi_data(ppi_data, interaction_columns, sort_values=None, score=N
                                                             interaction_columns=('A', 'B'),
                                                             upper_letter_comparison=upper_letter_comparison
                                                             )
-    simplified_ppi = simplified_ppi.drop_duplicates().reset_index(drop=True)
+    if duplicates == 'keep':
+        # Only rows that are identical throughout, so a pair listed twice with
+        # different scores stays as two interactions
+        simplified_ppi = simplified_ppi.drop_duplicates().reset_index(drop=True)
+    else:
+        simplified_ppi = deduplicate_ppi_pairs(simplified_ppi, interaction_columns=('A', 'B'),
+                                               score='score', keep=duplicates,
+                                               verbose=False)
     return simplified_ppi
 
 
 ### Manipulate PPI networks
+def deduplicate_ppi_pairs(ppi_data, interaction_columns=('A', 'B'), score='score',
+                          keep='highest', verbose=False):
+    '''
+    Keeps a single row for each interacting pair.
+
+    A pair listed more than once is one interaction, so the rows have to be collapsed
+    into one before the list is used: a repeated pair would otherwise contribute more
+    than once to every cell-cell interaction score, and in the ligand-receptor search
+    it would occupy several positions of the candidate set while being a single
+    interaction.
+
+    Which of the repeated rows to keep only matters when they carry different weights
+    in the score column, and `keep` decides that.
+
+    Parameters
+    ----------
+    ppi_data : pandas.DataFrame
+        List of protein-protein interactions (or ligand-receptor pairs).
+
+    interaction_columns : tuple, default=('A', 'B')
+        Columns holding the two partners. Pairs are compared as given, so an
+        interaction and its reverse are two pairs here -- use
+        `remove_ppi_bidirectionality` for those.
+
+    score : str, default='score'
+        Column holding the weight of each interaction. Ignored if absent, in which
+        case the repeated rows are indistinguishable and the first one is kept.
+
+    keep : str, default='highest'
+        Which row to keep among those listing the same pair:
+
+        - 'highest' : the one with the largest score, the strongest evidence for the
+          interaction when the score is a confidence or an expression weight.
+        - 'lowest' : the one with the smallest score, the conservative choice.
+        - 'first' : the one appearing first, whatever its score.
+
+        Ties keep the row that appears first.
+
+    verbose : boolean, default=False
+        Whether printing or not steps of the analysis.
+
+    Returns
+    -------
+    deduplicated_ppi : pandas.DataFrame
+        The list with one row per pair, in the order the pairs first appear in
+        `ppi_data`.
+
+    Examples
+    --------
+    >>> import cell2cell as c2c
+    >>> deduplicated = c2c.preprocessing.deduplicate_ppi_pairs(ppi_data)
+    '''
+    if keep not in ('highest', 'lowest', 'first'):
+        raise ValueError("`keep` must be 'highest', 'lowest' or 'first'")
+    header_interactorA, header_interactorB = interaction_columns
+
+    scores = None
+    if keep != 'first' and score in ppi_data.columns:
+        scores = np.asarray(ppi_data[score].values, dtype=float)
+
+    # Which row is kept for each pair, and where that pair first appeared. The two are
+    # not the same position -- the best-scoring row can come later -- and it is the
+    # first appearance that orders the output, since the order of the pairs is what a
+    # candidate set of the search is indexed against.
+    chosen = {}
+    for position, pair in enumerate(zip(ppi_data[header_interactorA],
+                                        ppi_data[header_interactorB])):
+        previous = chosen.get(pair)
+        if previous is None:
+            chosen[pair] = (position, position)
+            continue
+        first, best = previous
+        if scores is not None:
+            if keep == 'highest':
+                better = scores[position] > scores[best]
+            else:
+                better = scores[position] < scores[best]
+            if better:
+                chosen[pair] = (first, position)
+
+    if verbose:
+        print('Keeping {} of {} rows, one per interacting pair'
+              .format(len(chosen), len(ppi_data)))
+
+    kept = [best for _, best in sorted(chosen.values())]
+    deduplicated_ppi = ppi_data.iloc[kept]
+    return deduplicated_ppi.reset_index(drop=True)
+
+
 def remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=True):
     '''
     Removes duplicate interactions. For example, when ProtA-ProtB and
@@ -118,22 +222,30 @@ def remove_ppi_bidirectionality(ppi_data, interaction_columns, verbose=True):
     unidirectional_ppi : pandas.DataFrame
         List of protein-protein interactions without duplicated interactions
         in both directions (if ProtA-ProtB and ProtB-ProtA interactions are
-        present, only the one that appears first is kept).
+        present, only the one that appears first is kept). A one-way interaction
+        whose reverse is absent is kept, and so is a self-interaction.
     '''
     if verbose:
         print('Removing bidirectionality of PPI network')
     header_interactorA = interaction_columns[0]
     header_interactorB = interaction_columns[1]
-    IA = ppi_data[[header_interactorA, header_interactorB]]
-    IB = ppi_data[[header_interactorB, header_interactorA]]
-    IB.columns = [header_interactorA, header_interactorB]
-    repeated_interactions = pd.merge(IA, IB, on=[header_interactorA, header_interactorB])
-    repeated = list(np.unique(repeated_interactions.values.flatten()))
-    df =  pd.DataFrame(combinations(sorted(repeated), 2), columns=[header_interactorA, header_interactorB])
-    df = df[[header_interactorB, header_interactorA]]   # To keep lexicographically sorted interactions
-    df.columns = [header_interactorA, header_interactorB]
-    unidirectional_ppi = pd.merge(ppi_data, df, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
-    unidirectional_ppi.reset_index(drop=True, inplace=True)
+
+    # Decided one unordered pair at a time. Collecting every protein that takes part in
+    # some reciprocal interaction and then removing all combinations among them, as this
+    # used to do, also deletes one-way interactions between two such proteins even when
+    # their reverse was never in the table.
+    seen = set()
+    drop = np.zeros(len(ppi_data), dtype=bool)
+    for position, (partner_a, partner_b) in enumerate(zip(ppi_data[header_interactorA],
+                                                          ppi_data[header_interactorB])):
+        # A self-interaction is its own reverse, and dropping it would lose the pair
+        if partner_a != partner_b and (partner_b, partner_a) in seen:
+            drop[position] = True
+        else:
+            seen.add((partner_a, partner_b))
+
+    unidirectional_ppi = ppi_data.loc[~drop]
+    unidirectional_ppi = unidirectional_ppi.reset_index(drop=True)
     return unidirectional_ppi
 
 
@@ -707,8 +819,13 @@ def bidirectional_ppi_with_index(ppi_data, interaction_columns=('A', 'B'), verbo
     double, so duplicates are dropped.
 
     Unlike calling `bidirectional_ppi_for_cci` and working out the correspondence
-    afterwards, the provenance here is exact **by construction**, so it does not
-    depend on the values in the score column and is well defined for any input.
+    afterwards, the provenance here is exact **by construction**, so it does not have
+    to be inferred from the values in any column.
+
+    Rows are dropped on the same rule as `bidirectional_ppi_for_cci`, whole-row
+    equality, so two rows listing the same partners with different metadata -- a
+    different score, a different annotation -- are both kept, and each keeps its own
+    place in `origin`.
 
     Parameters
     ----------
@@ -744,8 +861,10 @@ def bidirectional_ppi_with_index(ppi_data, interaction_columns=('A', 'B'), verbo
     origin = np.concatenate([np.arange(len(ppi_data)), np.arange(len(ppi_data))])
 
     # A self-interaction appears identically in both halves; keeping one copy is what
-    # stops it being counted twice
-    keep = ~stacked.duplicated(subset=list(interaction_columns), keep='first').values
+    # stops it being counted twice. Whole-row equality rather than the interacting
+    # columns alone, so a pair listed twice with different metadata survives as two
+    # rows, exactly as `bidirectional_ppi_for_cci` leaves it.
+    keep = ~stacked.duplicated(keep='first').values
     if verbose:
         print("Removing duplicates in bidirectional PPI network.")
     return stacked.loc[keep].reset_index(drop=True), origin[keep]

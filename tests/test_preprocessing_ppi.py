@@ -42,6 +42,122 @@ def test_remove_ppi_bidirectionality_preserves_self_interactions():
     assert result.shape[0] == 1
 
 
+def test_remove_ppi_bidirectionality_keeps_a_one_way_interaction_between_paired_proteins():
+    '''G4-G1 must survive: G1-G4 is not in the table, so it is not a duplicate.
+
+    Both of its partners take part in a reciprocal interaction elsewhere, which used
+    to be enough for it to be deleted.
+    '''
+    ppi = pd.DataFrame({'A': ['G1', 'G2', 'G3', 'G4', 'G4'],
+                        'B': ['G2', 'G1', 'G4', 'G3', 'G1']})
+    result = ppi_module.remove_ppi_bidirectionality(ppi, COLUMNS, verbose=False)
+    pairs = list(zip(result['A'], result['B']))
+
+    assert ('G4', 'G1') in pairs
+    assert len([p for p in pairs if set(p) == {'G1', 'G2'}]) == 1
+    assert len([p for p in pairs if set(p) == {'G3', 'G4'}]) == 1
+    assert len(pairs) == 3
+
+
+def test_remove_ppi_bidirectionality_keeps_the_first_orientation():
+    ppi = pd.DataFrame({'A': ['G2', 'G1'], 'B': ['G1', 'G2']})
+    result = ppi_module.remove_ppi_bidirectionality(ppi, COLUMNS, verbose=False)
+    assert list(zip(result['A'], result['B'])) == [('G2', 'G1')]
+
+
+def test_remove_ppi_bidirectionality_keeps_repeated_rows():
+    '''A pair listed twice in the same direction is not a bidirectional duplicate.'''
+    ppi = pd.DataFrame({'A': ['G1', 'G1'], 'B': ['G2', 'G2']})
+    result = ppi_module.remove_ppi_bidirectionality(ppi, COLUMNS, verbose=False)
+    assert result.shape[0] == 2
+
+
+def test_remove_ppi_bidirectionality_keeps_the_other_columns():
+    ppi = pd.DataFrame({'A': ['G1', 'G2'], 'B': ['G2', 'G1'],
+                        'score': [0.5, 0.9], 'function': ['adhesion', 'signalling']})
+    result = ppi_module.remove_ppi_bidirectionality(ppi, COLUMNS, verbose=False)
+    assert list(result.columns) == list(ppi.columns)
+    assert result.loc[0, 'score'] == 0.5
+    assert result.loc[0, 'function'] == 'adhesion'
+
+
+def test_remove_ppi_bidirectionality_on_empty_input():
+    ppi = pd.DataFrame({'A': [], 'B': []})
+    result = ppi_module.remove_ppi_bidirectionality(ppi, COLUMNS, verbose=False)
+    assert result.shape[0] == 0
+
+
+# ---------------------------------------------------------------------------------
+# deduplicate_ppi_pairs
+# ---------------------------------------------------------------------------------
+
+@pytest.fixture
+def repeated_ppi():
+    '''G1-G2 listed three times with different weights, plus one unrepeated pair.'''
+    return pd.DataFrame({'A': ['G1', 'G3', 'G1', 'G1'],
+                         'B': ['G2', 'G4', 'G2', 'G2'],
+                         'score': [0.5, 1.0, 0.9, 0.2]})
+
+
+def test_deduplicate_ppi_pairs_keeps_the_highest_score_by_default(repeated_ppi):
+    result = ppi_module.deduplicate_ppi_pairs(repeated_ppi, COLUMNS)
+    assert list(zip(result['A'], result['B'])) == [('G1', 'G2'), ('G3', 'G4')]
+    assert result.loc[0, 'score'] == 0.9
+
+
+def test_deduplicate_ppi_pairs_can_keep_the_lowest_score(repeated_ppi):
+    result = ppi_module.deduplicate_ppi_pairs(repeated_ppi, COLUMNS, keep='lowest')
+    assert result.loc[0, 'score'] == 0.2
+
+
+def test_deduplicate_ppi_pairs_can_keep_the_first_row(repeated_ppi):
+    result = ppi_module.deduplicate_ppi_pairs(repeated_ppi, COLUMNS, keep='first')
+    assert result.loc[0, 'score'] == 0.5
+
+
+def test_deduplicate_ppi_pairs_keeps_the_order_pairs_first_appear(repeated_ppi):
+    '''Order matters: it is what the candidate sets of the search are indexed against.'''
+    result = ppi_module.deduplicate_ppi_pairs(repeated_ppi, COLUMNS)
+    assert list(zip(result['A'], result['B'])) == [('G1', 'G2'), ('G3', 'G4')]
+
+
+def test_deduplicate_ppi_pairs_without_a_score_column():
+    ppi = pd.DataFrame({'A': ['G1', 'G1', 'G3'], 'B': ['G2', 'G2', 'G4'],
+                        'source': ['curated', 'predicted', 'curated']})
+    result = ppi_module.deduplicate_ppi_pairs(ppi, COLUMNS)
+    assert result.shape[0] == 2
+    assert result.loc[0, 'source'] == 'curated'      # nothing to compare, so the first
+
+
+def test_deduplicate_ppi_pairs_treats_a_reversed_pair_as_a_different_pair():
+    '''Direction is meaningful for ligand-receptor pairs; reciprocals are a separate step.'''
+    ppi = pd.DataFrame({'A': ['G1', 'G2'], 'B': ['G2', 'G1'], 'score': [0.5, 0.9]})
+    result = ppi_module.deduplicate_ppi_pairs(ppi, COLUMNS)
+    assert result.shape[0] == 2
+
+
+def test_deduplicate_ppi_pairs_rejects_an_unknown_rule(repeated_ppi):
+    with pytest.raises(ValueError):
+        ppi_module.deduplicate_ppi_pairs(repeated_ppi, COLUMNS, keep='cheapest')
+
+
+def test_preprocess_ppi_data_collapses_pairs_that_differ_only_in_score():
+    '''One interaction listed twice would otherwise contribute twice to every score.'''
+    ppi = pd.DataFrame({'A': ['G1', 'G1', 'G3'], 'B': ['G2', 'G2', 'G4'],
+                        'weight': [0.5, 0.9, 1.0]})
+    result = ppi_module.preprocess_ppi_data(ppi, COLUMNS, score='weight', verbose=False)
+    assert result.shape[0] == 2
+    assert result.loc[result['A'] == 'G1', 'score'].tolist() == [0.9]
+
+
+def test_preprocess_ppi_data_can_keep_repeated_pairs():
+    ppi = pd.DataFrame({'A': ['G1', 'G1', 'G3'], 'B': ['G2', 'G2', 'G4'],
+                        'weight': [0.5, 0.9, 1.0]})
+    result = ppi_module.preprocess_ppi_data(ppi, COLUMNS, score='weight',
+                                            duplicates='keep', verbose=False)
+    assert result.shape[0] == 3
+
+
 # ---------------------------------------------------------------------------------
 # simplify_ppi / preprocess_ppi_data
 # ---------------------------------------------------------------------------------

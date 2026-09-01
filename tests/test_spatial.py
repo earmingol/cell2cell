@@ -78,6 +78,77 @@ def test_pairwise_celltype_distances_with_explicit_pairs(toy_coordinates):
     assert result.loc['CT-1', 'CT-2'] > 0
 
 
+def test_pairwise_celltype_distances_leaves_uncomputed_pairs_missing(toy_coordinates):
+    '''A pair that was never computed is NaN, not zero.
+
+    Zero is a distance -- two cell groups in the same place -- so it cannot double as
+    "not calculated" without making the two indistinguishable.
+    '''
+    result = distances.pairwise_celltype_distances(toy_coordinates, group_col='celltype',
+                                                   pairs=[('CT-1', 'CT-2')])
+    assert np.isfinite(result.loc['CT-1', 'CT-2'])
+    assert np.isnan(result.loc['CT-1', 'CT-3'])
+    assert np.isnan(result.loc['CT-2', 'CT-3'])
+    assert np.allclose(np.diag(result.values), 0.0)
+
+
+def test_pairwise_celltype_distances_is_naturally_sorted():
+    '''Every method must agree on the order of rows and columns.'''
+    coordinates = pd.DataFrame({
+        'X': [0.0, 1.0, 2.0, 3.0],
+        'Y': [0.0, 1.0, 2.0, 3.0],
+        'celltype': ['CT-10', 'CT-2', 'CT-1', 'CT-10'],
+    })
+    expected = ['CT-1', 'CT-2', 'CT-10']
+    for method in ('min', 'max', 'mean', 'median'):
+        result = distances.pairwise_celltype_distances(coordinates, group_col='celltype',
+                                                       method=method)
+        assert list(result.index) == expected
+        assert list(result.columns) == expected
+
+
+def test_celltype_distances_orders_every_method_the_same_way():
+    coordinates = pd.DataFrame({
+        'X': [0.0, 1.0, 2.0, 3.0],
+        'Y': [0.0, 1.0, 2.0, 3.0],
+        'celltype': ['CT-10', 'CT-2', 'CT-1', 'CT-10'],
+    })
+    orders = [list(c2c.spatial.celltype_distances(coordinates, group_col='celltype',
+                                                 method=method).index)
+              for method in ('centroid', 'min', 'max', 'mean', 'median')]
+    assert orders == [['CT-1', 'CT-2', 'CT-10']] * len(orders)
+
+
+def test_check_symmetry_accepts_a_matrix_with_uncomputed_pairs(toy_coordinates):
+    '''NaN never equals NaN, so a partial distance matrix needs a NaN-aware check.'''
+    partial = distances.pairwise_celltype_distances(toy_coordinates, group_col='celltype',
+                                                    pairs=[('CT-1', 'CT-2')])
+    assert c2c.preprocessing.check_symmetry(partial)
+    c2c.preprocessing.convert_to_distance_matrix(partial)   # must not raise
+
+    asymmetric = partial.copy()
+    asymmetric.loc['CT-1', 'CT-2'] = asymmetric.loc['CT-2', 'CT-1'] + 1.0
+    assert not c2c.preprocessing.check_symmetry(asymmetric)
+
+
+def test_correlation_objective_refuses_a_reference_with_uncomputed_pairs():
+    '''Correlating against NaN gives NaN, which would silently become zero fitness.'''
+    genes = ['G{}'.format(i) for i in range(20)]
+    rnaseq = c2c.datasets.generate_random_rnaseq(size=4, row_names=genes, random_state=0,
+                                                 verbose=False)
+    matrix = np.ones((4, 4))
+    np.fill_diagonal(matrix, 0.0)
+    matrix[0, 2] = matrix[2, 0] = np.nan
+    reference = pd.DataFrame(matrix, index=rnaseq.columns, columns=rnaseq.columns)
+
+    with pytest.raises(ValueError, match='missing values off the diagonal'):
+        c2c.analysis.CorrelationObjective(
+            rnaseq_data=rnaseq, reference_distances=reference,
+            cutoff_setup={'type': 'constant_value', 'parameter': 10},
+            analysis_setup={'communication_score': 'expression_thresholding',
+                            'cci_score': 'bray_curtis', 'cci_type': 'undirected'})
+
+
 # ---------------------------------------------------------------------------------
 # neighborhoods
 # ---------------------------------------------------------------------------------
@@ -244,6 +315,37 @@ def test_dist_filter_liana_does_not_modify_input(toy_liana, celltype_distances):
     before = toy_liana.copy()
     filtering.dist_filter_liana(toy_liana, celltype_distances, max_dist=20.)
     pd.testing.assert_frame_equal(toy_liana, before)
+
+
+@pytest.fixture
+def partial_celltype_distances(celltype_distances):
+    '''Distances with the CT-1/CT-2 pair never computed, as `pairs=` leaves them.'''
+    partial = celltype_distances.copy()
+    partial.loc['CT-1', 'CT-2'] = np.nan
+    partial.loc['CT-2', 'CT-1'] = np.nan
+    return partial
+
+
+def test_dist_filter_tensor_excludes_pairs_with_no_distance(liana_tensor,
+                                                            partial_celltype_distances):
+    '''An unknown distance cannot pass a threshold, so the pair is masked out.'''
+    filtered = filtering.dist_filter_tensor(liana_tensor, partial_celltype_distances,
+                                            max_dist=20., source_axis=2, target_axis=3)
+    senders = list(filtered.order_names[2])
+    receivers = list(filtered.order_names[3])
+    data = np.asarray(filtered.tensor)
+    i, j = senders.index('CT-1'), receivers.index('CT-2')
+    assert np.allclose(np.nan_to_num(data[:, :, i, j]), 0.0)
+
+
+def test_dist_filter_liana_excludes_pairs_with_no_distance(toy_liana,
+                                                           partial_celltype_distances):
+    '''Independent of the pandas version, where `stack` differs on missing values.'''
+    filtered = filtering.dist_filter_liana(toy_liana, partial_celltype_distances,
+                                           max_dist=20.)
+    kept = set(zip(filtered['source'], filtered['target']))
+    assert ('CT-1', 'CT-2') not in kept
+    assert ('CT-2', 'CT-1') not in kept
 
 
 # ---------------------------------------------------------------------------------
