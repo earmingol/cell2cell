@@ -192,3 +192,115 @@ def test_run_tensor_cell2cell_pipeline_copies_when_asked(interaction_tensor):
         random_state=0, output_folder=None, output_fig=False)
     assert result is not interaction_tensor
     assert interaction_tensor.rank is None
+
+
+# ---------------------------------------------------------------------------------
+# run_tensor_cell2cell_pipeline: argument checking
+# ---------------------------------------------------------------------------------
+
+def _metadata_for(tensor):
+    return c2c.tensor.generate_tensor_metadata(
+        interaction_tensor=tensor,
+        metadata_dicts=[None] * len(tensor.tensor.shape),
+        fill_with_order_elements=True)
+
+
+def test_run_tensor_pipeline_rejects_an_unknown_optimization(interaction_tensor):
+    '''The check happens before any factorization, so this costs nothing to run.'''
+    with pytest.raises(ValueError):
+        c2c.analysis.run_tensor_cell2cell_pipeline(
+            interaction_tensor, tensor_metadata=_metadata_for(interaction_tensor),
+            rank=2, tf_optimization='nonsense', output_fig=False)
+
+
+def test_run_tensor_pipeline_rejects_a_tensor_of_more_than_five_dimensions():
+    tensor = c2c.tensor.PreBuiltTensor(
+        tensor=np.ones((2, 2, 2, 2, 2, 2)),
+        order_names=[['a', 'b']] * 6)
+    with pytest.raises(ValueError):
+        c2c.analysis.run_tensor_cell2cell_pipeline(tensor, tensor_metadata=None, rank=2,
+                                                   output_fig=False)
+
+
+def test_run_tensor_pipeline_needs_one_cmap_per_dimension(interaction_tensor):
+    with pytest.raises(AssertionError):
+        c2c.analysis.run_tensor_cell2cell_pipeline(
+            interaction_tensor, tensor_metadata=_metadata_for(interaction_tensor),
+            rank=2, cmaps=['viridis'], output_fig=False)
+
+
+# ---------------------------------------------------------------------------------
+# run_tensor_cell2cell_pipeline: which parameters each optimization picks
+#
+# 'robust' means 100 factorization runs at 500 iterations, which is far too slow to
+# run here. The factorization calls are recorded instead, so what the pipeline asks
+# for is checked without actually doing it.
+# ---------------------------------------------------------------------------------
+
+@pytest.fixture
+def recorded_pipeline(interaction_tensor):
+    '''Runs the pipeline with the two expensive calls replaced by recorders.'''
+    calls = {}
+
+    def fake_elbow(**kwargs):
+        calls['elbow'] = kwargs
+        interaction_tensor.rank = 2
+        return None, []
+
+    def fake_factorization(**kwargs):
+        calls['factorization'] = kwargs
+
+    interaction_tensor.elbow_rank_selection = fake_elbow
+    interaction_tensor.compute_tensor_factorization = fake_factorization
+
+    def run(**kwargs):
+        c2c.analysis.run_tensor_cell2cell_pipeline(
+            interaction_tensor, tensor_metadata=_metadata_for(interaction_tensor),
+            output_fig=False, **kwargs)
+        return calls
+
+    return run
+
+
+def test_run_tensor_pipeline_regular_optimization_parameters(recorded_pipeline):
+    calls = recorded_pipeline(rank=2, tf_optimization='regular')
+    assert calls['factorization']['runs'] == 1
+    assert calls['factorization']['n_iter_max'] == 100
+    assert calls['factorization']['tol'] == 1e-7
+    # A rank was given, so no elbow analysis is needed
+    assert 'elbow' not in calls
+
+
+def test_run_tensor_pipeline_robust_optimization_parameters(recorded_pipeline):
+    calls = recorded_pipeline(rank=2, tf_optimization='robust')
+    assert calls['factorization']['runs'] == 100
+    assert calls['factorization']['n_iter_max'] == 500
+    assert calls['factorization']['tol'] == 1e-8
+
+
+def test_run_tensor_pipeline_runs_an_elbow_analysis_without_a_rank(recorded_pipeline):
+    calls = recorded_pipeline(rank=None, tf_optimization='regular', upper_rank=3)
+    assert calls['elbow']['upper_rank'] == 3
+    assert calls['elbow']['runs'] == 10
+    assert calls['elbow']['automatic_elbow'] is True
+    # The rank found by the elbow analysis is what gets factorized
+    assert calls['factorization']['rank'] == 2
+
+
+def test_run_tensor_pipeline_robust_elbow_uses_more_runs(recorded_pipeline):
+    calls = recorded_pipeline(rank=None, tf_optimization='robust', upper_rank=3)
+    assert calls['elbow']['runs'] == 20
+    assert calls['elbow']['n_iter_max'] == 500
+
+
+# ---------------------------------------------------------------------------------
+# run_tensor_cell2cell_pipeline: the output files
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.slow
+def test_run_tensor_pipeline_writes_its_outputs(interaction_tensor, tmp_path):
+    c2c.analysis.run_tensor_cell2cell_pipeline(
+        interaction_tensor, tensor_metadata=_metadata_for(interaction_tensor), rank=2,
+        random_state=0, output_folder=str(tmp_path), output_fig=True, fig_format='pdf')
+    assert (tmp_path / 'Tensor-Factorization.pdf').exists()
+    assert (tmp_path / 'Loadings.xlsx').exists()

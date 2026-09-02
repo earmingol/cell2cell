@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 
 import cell2cell as c2c
 from cell2cell.analysis.tensor_downstream import get_factor_specific_ccc_networks
+from cell2cell.plotting import tensor_plot
 
 
 # ---------------------------------------------------------------------------------
@@ -290,3 +291,269 @@ def test_dot_plot(toy_single_cells, toy_ppi):
     fig = c2c.plotting.dot_plot(interactions, evaluation='communication',
                                 significance=1.0)
     assert fig is not None
+
+
+# ---------------------------------------------------------------------------------
+# elbow and convergence plots
+#
+# These take plain arrays, lists and dictionaries, so they need no tensor object.
+# ---------------------------------------------------------------------------------
+
+def _single_run_loss(ranks=8):
+    return [(i + 1, 1.0 / (i + 1)) for i in range(ranks)]
+
+
+def _multi_run_loss(runs=3, ranks=8):
+    base = np.array([1.0 / (i + 1) for i in range(ranks)])
+    return np.vstack([base + 0.01 * run for run in range(runs)])
+
+
+def _coupled_loss(ranks=8):
+    return {'tensor1': _single_run_loss(ranks),
+            'tensor2': [(rank, error * 1.3) for rank, error in _single_run_loss(ranks)],
+            'combined': [(rank, error * 1.1) for rank, error in _single_run_loss(ranks)]}
+
+
+def _coupled_multi_run_loss(runs=3, ranks=8):
+    return {'tensor1': _multi_run_loss(runs, ranks),
+            'tensor2': _multi_run_loss(runs, ranks) * 1.3,
+            'combined': _multi_run_loss(runs, ranks) * 1.1}
+
+
+def test_plot_elbow_saves_the_figure(tmp_path):
+    filename = tmp_path / 'elbow.pdf'
+    tensor_plot.plot_elbow(_single_run_loss(), elbow=2, filename=str(filename))
+    assert filename.exists()
+
+
+@pytest.mark.parametrize('ci', ['95%', 'std'])
+def test_plot_multiple_run_elbow(ci):
+    fig = tensor_plot.plot_multiple_run_elbow(_multi_run_loss(), elbow=3, ci=ci)
+    assert fig is not None
+
+
+def test_plot_multiple_run_elbow_smoothed():
+    fig = tensor_plot.plot_multiple_run_elbow(_multi_run_loss(), smooth=True)
+    assert fig is not None
+
+
+def test_plot_multiple_run_elbow_rejects_an_unknown_ci():
+    with pytest.raises(ValueError):
+        tensor_plot.plot_multiple_run_elbow(_multi_run_loss(), ci='nonsense')
+
+
+def test_plot_multiple_run_elbow_saves_the_figure(tmp_path):
+    filename = tmp_path / 'multi-elbow.pdf'
+    tensor_plot.plot_multiple_run_elbow(_multi_run_loss(), filename=str(filename))
+    assert filename.exists()
+
+
+@pytest.mark.parametrize('show_individual', [False, True])
+def test_plot_coupled_elbow(show_individual):
+    fig = tensor_plot.plot_coupled_elbow(_coupled_loss(), elbow=2,
+                                         show_individual=show_individual)
+    assert fig is not None
+
+
+def test_plot_coupled_elbow_without_an_elbow_and_saved(tmp_path):
+    filename = tmp_path / 'coupled-elbow.pdf'
+    fig = tensor_plot.plot_coupled_elbow(_coupled_loss(), filename=str(filename))
+    assert fig is not None
+    assert filename.exists()
+
+
+@pytest.mark.parametrize('ci', ['95%', 'std'])
+def test_plot_multiple_run_coupled_elbow(ci):
+    fig = tensor_plot.plot_multiple_run_coupled_elbow(_coupled_multi_run_loss(), ci=ci,
+                                                      elbow=2, show_individual=True)
+    assert fig is not None
+
+
+def test_plot_multiple_run_coupled_elbow_smoothed_without_individuals(tmp_path):
+    filename = tmp_path / 'coupled-multi-elbow.pdf'
+    fig = tensor_plot.plot_multiple_run_coupled_elbow(_coupled_multi_run_loss(),
+                                                      smooth=True,
+                                                      filename=str(filename))
+    assert fig is not None
+    assert filename.exists()
+
+
+def test_plot_multiple_run_coupled_elbow_rejects_an_unknown_ci():
+    with pytest.raises(ValueError):
+        tensor_plot.plot_multiple_run_coupled_elbow(_coupled_multi_run_loss(), ci='nonsense')
+
+
+def test_plot_factorization_errors_saves_the_figure(tmp_path):
+    filename = tmp_path / 'errors.pdf'
+    fig = tensor_plot.plot_factorization_errors([0.9, 0.6, 0.5], filename=str(filename))
+    assert fig is not None
+    assert filename.exists()
+
+
+@pytest.mark.parametrize('show_individual', [False, True])
+def test_plot_coupled_factorization_errors(show_individual):
+    fig = tensor_plot.plot_coupled_factorization_errors(
+        [0.9, 0.6, 0.5], [1.0, 0.7, 0.6], [0.95, 0.65, 0.55],
+        show_individual=show_individual)
+    assert fig is not None
+
+
+def test_plot_coupled_factorization_errors_saves_the_figure(tmp_path):
+    filename = tmp_path / 'coupled-errors.pdf'
+    tensor_plot.plot_coupled_factorization_errors(
+        [0.9, 0.6], [1.0, 0.7], [0.95, 0.65], filename=str(filename))
+    assert filename.exists()
+
+
+# ---------------------------------------------------------------------------------
+# order_sorting: reordering the dimensions of a factor plot
+# ---------------------------------------------------------------------------------
+
+def test_apply_order_sorting_by_index(factorized_tensor):
+    factors = factorized_tensor.factors
+    keys = list(factors.keys())
+    reordered, labels = tensor_plot._apply_order_sorting(factors, [3, 2, 1, 0], keys)
+    assert list(reordered.keys()) == keys[::-1]
+    assert labels == keys[::-1]
+
+
+def test_apply_order_sorting_by_name(factorized_tensor):
+    factors = factorized_tensor.factors
+    keys = list(factors.keys())
+    reordered, labels = tensor_plot._apply_order_sorting(factors, keys[::-1], keys)
+    assert list(reordered.keys()) == keys[::-1]
+    assert labels == keys[::-1]
+
+
+def test_apply_order_sorting_defaults_the_labels_to_the_new_keys(factorized_tensor):
+    keys = list(factorized_tensor.factors.keys())
+    _, labels = tensor_plot._apply_order_sorting(factorized_tensor.factors, [1, 0, 2, 3], None)
+    assert labels == [keys[1], keys[0], keys[2], keys[3]]
+
+
+@pytest.mark.parametrize('order_sorting', [[0, 1], [0, 1, 2, 9], ['Contexts', 'Nope', 'A', 'B']])
+def test_apply_order_sorting_rejects_bad_input(factorized_tensor, order_sorting):
+    with pytest.raises(ValueError):
+        tensor_plot._apply_order_sorting(factorized_tensor.factors, order_sorting,
+                                         list(factorized_tensor.factors.keys()))
+
+
+def test_apply_order_sorting_rejects_mixed_types(factorized_tensor):
+    keys = list(factorized_tensor.factors.keys())
+    with pytest.raises(ValueError):
+        tensor_plot._apply_order_sorting(factorized_tensor.factors, [0, keys[1], 2, 3], keys)
+
+
+def test_reorder_metadata_by_index_and_by_name(factorized_tensor):
+    keys = list(factorized_tensor.factors.keys())
+    metadata = ['a', 'b', 'c', 'd']
+    assert tensor_plot._reorder_metadata(metadata, [3, 2, 1, 0], keys) == ['d', 'c', 'b', 'a']
+    assert tensor_plot._reorder_metadata(metadata, keys[::-1], keys) == ['d', 'c', 'b', 'a']
+
+
+def test_reorder_metadata_passes_none_through(factorized_tensor):
+    assert tensor_plot._reorder_metadata(None, [0, 1, 2, 3],
+                                         list(factorized_tensor.factors.keys())) is None
+
+
+def test_reorder_metadata_rejects_mixed_types(factorized_tensor):
+    keys = list(factorized_tensor.factors.keys())
+    with pytest.raises(ValueError):
+        tensor_plot._reorder_metadata(['a', 'b', 'c', 'd'], [0, keys[1], 2, 3], keys)
+
+
+# ---------------------------------------------------------------------------------
+# tensor_factors_plot_from_loadings: the option branches
+# ---------------------------------------------------------------------------------
+
+def test_tensor_factors_plot_from_loadings_with_order_sorting(factorized_tensor):
+    fig, axes = c2c.plotting.tensor_factors_plot_from_loadings(
+        factorized_tensor.factors, order_sorting=[3, 2, 1, 0])
+    assert fig is not None
+
+
+def test_tensor_factors_plot_from_loadings_with_metadata(factorized_tensor):
+    metadata = c2c.tensor.generate_tensor_metadata(
+        interaction_tensor=factorized_tensor,
+        metadata_dicts=[None, None, None, None],
+        fill_with_order_elements=True)
+    fig, axes = c2c.plotting.tensor_factors_plot_from_loadings(
+        factorized_tensor.factors, metadata=metadata)
+    assert fig is not None
+
+
+def test_tensor_factors_plot_from_loadings_sorts_metadata_alongside_the_factors(factorized_tensor):
+    '''The metadata must follow the dimensions when `order_sorting` reorders them.'''
+    metadata = c2c.tensor.generate_tensor_metadata(
+        interaction_tensor=factorized_tensor,
+        metadata_dicts=[None, None, None, None],
+        fill_with_order_elements=True)
+    keys = list(factorized_tensor.factors.keys())
+    fig, axes = c2c.plotting.tensor_factors_plot_from_loadings(
+        factorized_tensor.factors, metadata=metadata, order_sorting=keys[::-1])
+    assert fig is not None
+
+
+def test_tensor_factors_plot_from_loadings_with_reordered_elements(factorized_tensor):
+    cells = list(factorized_tensor.order_names[2])
+    fig, axes = c2c.plotting.tensor_factors_plot_from_loadings(
+        factorized_tensor.factors, reorder_elements={'Sender Cells': cells[::-1]})
+    assert fig is not None
+
+
+def test_tensor_factors_plot_from_loadings_saves_the_figure(factorized_tensor, tmp_path):
+    filename = tmp_path / 'factors.pdf'
+    c2c.plotting.tensor_factors_plot_from_loadings(factorized_tensor.factors,
+                                                   filename=str(filename))
+    assert filename.exists()
+
+
+def test_tensor_factors_plot_from_loadings_rejects_a_wrong_rank(factorized_tensor):
+    with pytest.raises(AssertionError):
+        c2c.plotting.tensor_factors_plot_from_loadings(factorized_tensor.factors, rank=99)
+
+
+def test_tensor_factors_plot_from_loadings_with_a_single_factor(interaction_tensor):
+    '''rank=1 takes a different subplot layout than rank>1.
+
+    `axes` is reshaped to (rank, dim) before either branch runs, so the rank=1 branch
+    used to index it as if it were one-dimensional and hand a whole row of axes to
+    `set_xlabel`.
+    '''
+    interaction_tensor.compute_tensor_factorization(rank=1, random_state=0)
+    fig, axes = c2c.plotting.tensor_factors_plot_from_loadings(interaction_tensor.factors)
+    assert axes.shape == (1, len(interaction_tensor.factors))
+    # One bar per element of each dimension, so nothing was left empty
+    for ax, names in zip(axes[0], interaction_tensor.order_names):
+        assert len(ax.patches) == len(names)
+
+
+def test_generate_plot_df_covers_every_element(factorized_tensor):
+    frame = tensor_plot.generate_plot_df(factorized_tensor)
+    expected = sum(len(names) for names in factorized_tensor.order_names)
+    assert len(frame) == expected * factorized_tensor.rank
+
+
+# ---------------------------------------------------------------------------------
+# aesthetics: the branches the smoke tests above do not reach
+# ---------------------------------------------------------------------------------
+
+def test_get_colors_from_labels_with_numeric_labels():
+    '''Numeric labels are mapped through a continuous norm instead of a cycle.'''
+    colors = c2c.plotting.get_colors_from_labels([1., 2., 3.])
+    assert set(colors.keys()) == {1., 2., 3.}
+    for value in colors.values():
+        assert len(value) == 4
+
+
+def test_map_colors_to_metadata_fills_in_missing_groups(toy_metadata, toy_rnaseq):
+    '''Groups absent from an explicit colour dictionary are filled with white.'''
+    groups = toy_metadata['Groups'].unique().tolist()
+    partial = {groups[0]: (0., 0., 0., 1.)}
+    colors = c2c.plotting.map_colors_to_metadata(metadata=toy_metadata,
+                                                 ref_df=toy_rnaseq,
+                                                 colors=partial,
+                                                 sample_col='#SampleID',
+                                                 group_col='Groups')
+    assert len(colors) == toy_rnaseq.shape[1]
+    assert (1., 1., 1., 1.) in set(colors)

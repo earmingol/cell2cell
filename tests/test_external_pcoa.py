@@ -7,7 +7,10 @@ import pandas as pd
 import pytest
 
 import cell2cell as c2c
-from cell2cell.external.pcoa_utils import scale
+from cell2cell.external.pcoa import _fsvd
+from cell2cell.external.pcoa_utils import (_e_matrix_inplace, _f_matrix_inplace,
+                                           corr, e_matrix, f_matrix, mean_and_std,
+                                           scale, svd_rank)
 
 
 # ---------------------------------------------------------------------------------
@@ -162,3 +165,153 @@ def test_scale_does_not_modify_its_input():
     before = array.copy()
     scale(array)
     assert np.allclose(array, before)
+
+
+# ---------------------------------------------------------------------------------
+# pcoa_utils: mean_and_std
+# ---------------------------------------------------------------------------------
+
+def test_mean_and_std_needs_something_to_compute():
+    with pytest.raises(ValueError):
+        mean_and_std(np.arange(6.), with_mean=False, with_std=False)
+
+
+@pytest.mark.parametrize('axis', [None, 0, 1])
+def test_mean_and_std_with_uniform_weights_matches_the_unweighted_result(axis):
+    '''Uniform weights are the oracle: they must reproduce the unweighted branch.'''
+    array = np.array([[1., 2., 3.], [4., 5., 6.], [7., 8., 10.]])
+    weights = np.ones(array.shape[0] if axis in (None, 0) else array.shape[1])
+    if axis is None:
+        weights = np.ones_like(array)
+    plain_avg, plain_std = mean_and_std(array, axis=axis)
+    weighted_avg, weighted_std = mean_and_std(array, axis=axis, weights=weights)
+    assert np.allclose(plain_avg, weighted_avg)
+    assert np.allclose(plain_std, weighted_std)
+
+
+def test_mean_and_std_weights_shift_the_average():
+    array = np.array([[0., 0.], [10., 10.]])
+    avg, _ = mean_and_std(array, axis=0, weights=np.array([3., 1.]))
+    assert np.allclose(avg, [2.5, 2.5])
+
+
+@pytest.mark.parametrize('axis', [None, 0])
+def test_mean_and_std_rescales_the_variance_for_ddof(axis):
+    '''ddof != 0 multiplies the variance by n / (n - ddof).'''
+    array = np.array([[1., 2.], [3., 5.], [6., 9.]])
+    weights = np.ones_like(array) if axis is None else np.ones(array.shape[0])
+    _, std_0 = mean_and_std(array, axis=axis, weights=weights, ddof=0)
+    _, std_1 = mean_and_std(array, axis=axis, weights=weights, ddof=1)
+    n = array.size if axis is None else array.shape[axis]
+    assert np.allclose(std_1 ** 2, std_0 ** 2 * n / (n - 1))
+
+
+def test_mean_and_std_can_skip_the_mean():
+    array = np.array([[1., 2.], [3., 5.]])
+    avg, std = mean_and_std(array, axis=0, weights=np.ones(2), with_mean=False)
+    assert avg is None
+    assert std is not None
+
+
+def test_mean_and_std_can_skip_the_std():
+    array = np.array([[1., 2.], [3., 5.]])
+    avg, std = mean_and_std(array, axis=0, weights=np.ones(2), with_std=False)
+    assert std is None
+    assert avg is not None
+
+
+# ---------------------------------------------------------------------------------
+# pcoa_utils: corr, svd_rank and the in-place centering helpers
+# ---------------------------------------------------------------------------------
+
+def test_corr_of_a_matrix_with_itself_has_a_unit_diagonal():
+    x = np.array([[1., 4.], [2., 1.], [3., 7.], [4., 2.]])
+    result = corr(x)
+    assert result.shape == (2, 2)
+    assert np.allclose(np.diag(result), 1.0)
+
+
+def test_corr_between_two_matrices_detects_a_perfect_relationship():
+    x = np.array([[1.], [2.], [3.], [4.]])
+    result = corr(x, 2 * x + 5)
+    assert result.shape == (1, 1)
+    assert np.isclose(result[0, 0], 1.0)
+
+
+def test_corr_rejects_matrices_with_different_row_counts():
+    with pytest.raises(ValueError):
+        corr(np.ones((4, 2)), np.ones((3, 2)))
+
+
+def test_svd_rank_counts_the_non_negligible_singular_values():
+    # A rank-2 matrix: the third singular value is numerically zero.
+    matrix = np.outer([1., 2., 3.], [1., 0., 1.]) + np.outer([0., 1., 0.], [0., 1., 0.])
+    singular_values = np.linalg.svd(matrix, compute_uv=False)
+    assert svd_rank(matrix.shape, singular_values) == 2
+
+
+def test_svd_rank_honours_an_explicit_tolerance():
+    singular_values = np.array([5., 1., 0.1])
+    assert svd_rank((3, 3), singular_values, tol=0.5) == 2
+
+
+def test_inplace_centering_matches_the_copying_version(toy_distance):
+    '''The non-in-place `e_matrix`/`f_matrix` pair is the oracle for the in-place one.'''
+    array = np.array(toy_distance, dtype=float)
+    expected = f_matrix(e_matrix(array))
+    centered = _f_matrix_inplace(_e_matrix_inplace(array.copy()))
+    assert np.allclose(centered, expected)
+
+
+def test_e_matrix_inplace_squares_and_halves_negatively(toy_distance):
+    array = np.array(toy_distance, dtype=float)
+    assert np.allclose(_e_matrix_inplace(array.copy()), e_matrix(array))
+
+
+# ---------------------------------------------------------------------------------
+# pcoa: the fsvd method and the argument checks
+# ---------------------------------------------------------------------------------
+
+def test_pcoa_with_fsvd_returns_the_requested_dimensions(toy_distance):
+    result = c2c.external.pcoa(toy_distance, method='fsvd', number_of_dimensions=2)
+    assert result['samples'].shape == (toy_distance.shape[0], 2)
+    assert list(result['samples'].index) == list(toy_distance.index)
+
+
+def test_pcoa_with_fsvd_approximates_the_exact_decomposition(toy_distance):
+    '''FSVD draws a random Gaussian matrix, so only a loose agreement is expected.'''
+    exact = c2c.external.pcoa(toy_distance, method='eigh', number_of_dimensions=2)
+    approximate = c2c.external.pcoa(toy_distance, method='fsvd', number_of_dimensions=2)
+    assert np.allclose(np.asarray(exact['eigvals'])[:2],
+                       np.asarray(approximate['eigvals'])[:2], rtol=1e-3, atol=1e-6)
+
+
+def test_pcoa_with_fsvd_and_all_dimensions(toy_distance):
+    '''`number_of_dimensions=0` asks for every dimension.'''
+    result = c2c.external.pcoa(toy_distance, method='fsvd', number_of_dimensions=0)
+    assert result['samples'].shape[0] == toy_distance.shape[0]
+
+
+def test_pcoa_rejects_an_unknown_method(toy_distance):
+    with pytest.raises(ValueError):
+        c2c.external.pcoa(toy_distance, method='nonsense')
+
+
+def test_pcoa_rejects_a_negative_number_of_dimensions(toy_distance):
+    with pytest.raises(ValueError):
+        c2c.external.pcoa(toy_distance, number_of_dimensions=-1)
+
+
+def test_fsvd_rejects_a_non_square_matrix():
+    with pytest.raises(ValueError):
+        _fsvd(np.ones((3, 4)), 2)
+
+
+def test_fsvd_rejects_more_dimensions_than_the_matrix_has():
+    with pytest.raises(ValueError):
+        _fsvd(np.ones((3, 3)), 5)
+
+
+def test_fsvd_rejects_a_negative_number_of_dimensions():
+    with pytest.raises(ValueError):
+        _fsvd(np.ones((3, 3)), -1)

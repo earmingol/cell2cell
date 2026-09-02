@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 import cell2cell as c2c
-from cell2cell.datasets import toy_data
+from cell2cell.datasets import anndata as anndata_module, gsea_data, toy_data
 
 
 TOY_GENES = ['Protein-A', 'Protein-B', 'Protein-C', 'Protein-D', 'Protein-E', 'Protein-F']
@@ -298,3 +298,50 @@ def test_balf_covid_downloads(tmp_path):
 def test_gsea_msig_downloads():
     pathway_per_gene = c2c.datasets.gsea_msig(organism='human', pathwaydb='KEGG')
     assert len(pathway_per_gene) > 0
+
+
+# ---------------------------------------------------------------------------------
+# The download wrappers, with the download itself replaced
+#
+# These are thin wrappers whose job is to pass the right filename and URL on. The
+# tests above cover the real downloads, but only when asked for explicitly.
+# ---------------------------------------------------------------------------------
+
+def test_gsea_msig_forwards_the_right_pathway_database(tiny_gmt, monkeypatch):
+    seen = {}
+    real_load_gmt = gsea_data.load_gmt
+
+    def fake_load_gmt(filename, backup_url=None, readable_name=False):
+        seen.update(filename=filename, backup_url=backup_url,
+                    readable_name=readable_name)
+        return real_load_gmt(tiny_gmt, backup_url=None, readable_name=readable_name)
+
+    monkeypatch.setattr(gsea_data, 'load_gmt', fake_load_gmt)
+    pathway_per_gene = c2c.datasets.gsea_msig(organism='mouse', pathwaydb='Reactome',
+                                              readable_name=True)
+    expected = gsea_data.PATHWAY_DATA['mouse']['Reactome']
+    assert seen['filename'] == expected['filename']
+    assert seen['backup_url'] == expected['backup_url']
+    assert seen['readable_name'] is True
+    assert len(pathway_per_gene) > 0
+
+
+@pytest.mark.parametrize('organism,pathwaydb', [('martian', 'GOBP'),
+                                                ('human', 'NotADatabase')])
+def test_gsea_msig_rejects_an_unknown_database(organism, pathwaydb):
+    with pytest.raises(ValueError):
+        c2c.datasets.gsea_msig(organism=organism, pathwaydb=pathwaydb)
+
+
+def test_balf_covid_passes_the_filename_and_the_backup_url(monkeypatch):
+    seen = {}
+
+    def fake_read(filename, backup_url=None):
+        seen.update(filename=filename, backup_url=backup_url)
+        return 'an-anndata-object'
+
+    monkeypatch.setattr(anndata_module, 'read', fake_read)
+    result = c2c.datasets.balf_covid(filename='local-copy.h5ad')
+    assert result == 'an-anndata-object'
+    assert seen['filename'] == 'local-copy.h5ad'
+    assert seen['backup_url'].endswith('.h5ad')

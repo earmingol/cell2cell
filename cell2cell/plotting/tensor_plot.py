@@ -273,7 +273,9 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, ord
         for ind, order_factors in enumerate(factors.values()):
             if isinstance(order_factors, pd.Series):
                 order_factors = order_factors.to_frame().T
-            ax = axes[ind]
+            # `axes` was reshaped to (rank, dim), so a single factor still needs both
+            # indices: `axes[ind]` is a whole row, not an Axes.
+            ax = axes[0, ind]
             ax.set_xlabel(order_labels[ind], fontsize=int(1.2 * fontsize), labelpad=fontsize)
             for i, df_row in enumerate(order_factors.T.iterrows()):
                 factor_name = df_row[0]

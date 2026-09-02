@@ -170,3 +170,94 @@ def test_generate_plot_df(factorized_tensor):
     frame = tensor_plot.generate_plot_df(factorized_tensor)
     assert frame is not None
     assert frame.shape[0] > 0
+
+
+# ---------------------------------------------------------------------------------
+# The masked path
+#
+# A mask marks values that should not count towards the reconstruction error. It
+# forces `init='random'` and routes the error through the masked branch of
+# `_compute_norm_error`, which is a different formula from the unmasked one.
+# ---------------------------------------------------------------------------------
+
+@pytest.fixture
+def masked_tensor():
+    '''A small PreBuiltTensor with one missing value, and the matching mask.'''
+    shape = (2, 3, 3, 3)
+    values = (np.arange(np.prod(shape), dtype=float).reshape(shape) + 1.) / np.prod(shape)
+    values[0, 0, 0, 0] = np.nan
+    mask = (~np.isnan(values)).astype(int)
+    names = [['Context-1', 'Context-2'],
+             ['LR-1', 'LR-2', 'LR-3'],
+             ['C1', 'C2', 'C3'],
+             ['C1', 'C2', 'C3']]
+    return c2c.tensor.PreBuiltTensor(tensor=values, order_names=names, mask=mask,
+                                     order_labels=['Contexts', 'Ligand-Receptor Pairs',
+                                                   'Sender Cells', 'Receiver Cells'])
+
+
+def test_masked_tensor_keeps_its_mask(masked_tensor):
+    assert masked_tensor.mask is not None
+    assert masked_tensor.missing_fraction() > 0.
+
+
+def test_compute_norm_error_ignores_the_masked_entries(masked_tensor):
+    '''The masked error only compares the entries the mask keeps, so it differs from
+    the error computed over the whole tensor.'''
+    masked_tensor.compute_tensor_factorization(rank=2, random_state=0, n_iter_max=20)
+    with_mask = factorization._compute_norm_error(masked_tensor.tensor,
+                                                  masked_tensor.tl_object,
+                                                  masked_tensor.mask)
+    without_mask = factorization._compute_norm_error(masked_tensor.tensor,
+                                                     masked_tensor.tl_object)
+    assert 0.0 <= float(with_mask) <= 1.0
+    assert not np.isclose(float(with_mask), float(without_mask))
+
+
+def test_compute_norm_error_needs_a_factorization():
+    with pytest.raises(AssertionError):
+        factorization._compute_norm_error(np.ones((2, 2, 2)), None)
+
+
+@pytest.mark.slow
+def test_elbow_analysis_with_a_mask(masked_tensor):
+    '''The mask is picked up from the tensor and used for every rank.'''
+    fig, errors = masked_tensor.elbow_rank_selection(
+        upper_rank=2, runs=1, automatic_elbow=False, manual_elbow=1,
+        n_iter_max=10, tol=1e-3, random_state=0, verbose=False)
+    assert len(errors) == 2
+    assert all(0.0 <= float(error) <= 1.0 for _, error in errors)
+
+
+@pytest.mark.slow
+def test_multiple_runs_elbow_analysis_with_a_mask(masked_tensor):
+    all_loss = factorization._multiple_runs_elbow_analysis(
+        masked_tensor.tensor, upper_rank=2, runs=2, mask=masked_tensor.mask,
+        n_iter_max=10, tol=1e-3, random_state=0)
+    assert all_loss.shape == (2, 2)
+
+
+# ---------------------------------------------------------------------------------
+# metric='similarity'
+#
+# Instead of the reconstruction error, the runs of each rank are compared to each
+# other with the correlation index, so a rank is good when its runs agree.
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.slow
+def test_multiple_runs_elbow_analysis_with_the_similarity_metric(interaction_tensor):
+    all_loss = factorization._multiple_runs_elbow_analysis(
+        interaction_tensor.tensor, upper_rank=2, runs=2, metric='similarity',
+        n_iter_max=10, tol=1e-3, random_state=0)
+    # With `runs` runs there are runs*(runs-1)/2 pairwise comparisons per rank
+    assert all_loss.shape == (1, 2)
+    assert np.all(np.isfinite(all_loss))
+
+
+@pytest.mark.slow
+def test_elbow_rank_selection_with_the_similarity_metric(interaction_tensor):
+    fig, errors = interaction_tensor.elbow_rank_selection(
+        upper_rank=2, runs=2, metric='similarity', automatic_elbow=False,
+        manual_elbow=1, n_iter_max=10, tol=1e-3, random_state=0, verbose=False)
+    assert interaction_tensor.elbow_metric == 'similarity'
+    assert len(errors) == 2

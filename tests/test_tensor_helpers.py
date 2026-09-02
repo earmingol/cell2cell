@@ -2,6 +2,8 @@
 
 '''Tests for cell2cell.tensor subset, metrics, factor_manipulation and manipulation'''
 
+from collections import OrderedDict
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -216,3 +218,128 @@ def test_concatenate_interaction_tensors_works_on_the_numpy_backend(toy_contexts
     assert combined.tensor.shape[0] == 4
     assert list(combined.order_names[0]) == names
     assert np.allclose(np.asarray(combined.tensor)[:2], np.asarray(first.tensor))
+
+
+# ---------------------------------------------------------------------------------
+# correlation_index: the methods other than the default, and its argument checks
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.parametrize('method', ['stacked', 'max_score', 'min_score', 'avg_score'])
+def test_correlation_index_of_identical_factors_is_zero_for_every_method(factorized_tensor,
+                                                                        method):
+    factors = factorized_tensor.factors
+    assert np.isclose(metrics.correlation_index(factors, factors, method=method), 0.,
+                      atol=1e-6)
+
+
+def test_correlation_index_orders_its_per_dimension_methods(factorized_tensor,
+                                                            interaction_tensor):
+    """min <= avg <= max, since they aggregate the same per-dimension scores."""
+    first = factorized_tensor.factors
+    interaction_tensor.compute_tensor_factorization(rank=3, random_state=7)
+    second = interaction_tensor.factors
+    scores = {method: metrics.correlation_index(first, second, method=method)
+              for method in ['min_score', 'avg_score', 'max_score']}
+    assert scores['min_score'] <= scores['avg_score'] <= scores['max_score']
+
+
+def test_correlation_index_rejects_an_unknown_method(factorized_tensor):
+    with pytest.raises(ValueError):
+        metrics.correlation_index(factorized_tensor.factors, factorized_tensor.factors,
+                                  method='nonsense')
+
+
+def test_correlation_index_rejects_factors_of_different_ranks(factorized_tensor):
+    """Every loading matrix must have one column per factor."""
+    mixed = OrderedDict(factorized_tensor.factors)
+    key = list(mixed.keys())[1]
+    mixed[key] = mixed[key].iloc[:, :2]
+    with pytest.raises(ValueError):
+        metrics.correlation_index(mixed, mixed)
+
+
+def test_correlation_index_rejects_factors_of_different_shapes(factorized_tensor):
+    shorter = OrderedDict(factorized_tensor.factors)
+    key = list(shorter.keys())[0]
+    shorter[key] = shorter[key].iloc[:-1, :]
+    with pytest.raises(ValueError):
+        metrics.correlation_index(factorized_tensor.factors, shorter, method='max_score')
+
+
+def test_correlation_index_rejects_a_zero_column_norm(factorized_tensor):
+    """A factor of all zeros cannot be normalized, so it is rejected."""
+    zeroed = OrderedDict()
+    for key, frame in factorized_tensor.factors.items():
+        frame = frame.copy()
+        frame.iloc[:, 0] = 0.
+        zeroed[key] = frame
+    with pytest.raises(ValueError):
+        metrics.correlation_index(zeroed, zeroed)
+
+
+# ---------------------------------------------------------------------------------
+# subset: the branches the round-trip tests do not reach
+# ---------------------------------------------------------------------------------
+
+def test_find_element_indexes_rejects_an_axis_outside_the_tensor(interaction_tensor):
+    with pytest.raises(AssertionError):
+        subset.find_element_indexes(interaction_tensor, ['C1'], axis=99)
+
+
+def test_find_element_indexes_ignores_unknown_elements(interaction_tensor):
+    indexes = subset.find_element_indexes(interaction_tensor,
+                                          ['Not-A-Cell'], axis=2)
+    assert indexes == []
+
+
+@pytest.mark.parametrize('keep', ['first', 'last', False])
+def test_find_element_indexes_handles_duplicated_elements(interaction_tensor, keep):
+    '''Duplicated element names are resolved according to `keep`.'''
+    duplicated = list(interaction_tensor.order_names[2])
+    duplicated[1] = duplicated[0]
+    interaction_tensor.order_names[2] = duplicated
+    indexes = subset.find_element_indexes(interaction_tensor, [duplicated[0]], axis=2,
+                                          keep=keep)
+    expected = {'first': [0], 'last': [1], False: []}[keep]
+    assert indexes == expected
+
+
+def test_find_element_indexes_rejects_an_unknown_keep(interaction_tensor):
+    duplicated = list(interaction_tensor.order_names[2])
+    duplicated[1] = duplicated[0]
+    interaction_tensor.order_names[2] = duplicated
+    with pytest.raises(ValueError):
+        subset.find_element_indexes(interaction_tensor, [duplicated[0]], axis=2,
+                                    keep='nonsense')
+
+
+def test_subset_tensor_ignores_an_axis_out_of_range(interaction_tensor):
+    '''An axis the tensor does not have is reported and skipped, not an error.'''
+    subsetted = subset.subset_tensor(interaction_tensor, {99: ['whatever']})
+    assert subsetted.tensor.shape == interaction_tensor.tensor.shape
+
+
+def test_subset_tensor_ignores_an_empty_element_list(interaction_tensor):
+    subsetted = subset.subset_tensor(interaction_tensor, {2: []})
+    assert subsetted.tensor.shape == interaction_tensor.tensor.shape
+
+
+def test_subset_tensor_with_no_matching_elements_returns_an_empty_dimension(interaction_tensor):
+    subsetted = subset.subset_tensor(interaction_tensor, {2: ['Not-A-Cell']})
+    assert subsetted.tensor.shape[2] == 0
+
+
+def test_subset_metadata_follows_the_subset(interaction_tensor):
+    metadata = c2c.tensor.generate_tensor_metadata(
+        interaction_tensor=interaction_tensor,
+        metadata_dicts=[None, None, None, None],
+        fill_with_order_elements=True)
+    cells = list(interaction_tensor.order_names[2])[:2]
+    subsetted = subset.subset_tensor(interaction_tensor, {2: cells})
+    new_metadata = subset.subset_metadata(metadata, subsetted)
+    assert list(new_metadata[2]['Element']) == cells
+
+
+def test_subset_metadata_passes_missing_entries_through(interaction_tensor):
+    metadata = [None] * 4
+    assert subset.subset_metadata(metadata, interaction_tensor) == [None] * 4

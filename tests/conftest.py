@@ -271,3 +271,83 @@ def tiny_gmt(tmp_path):
              'TOYDB_PATHWAY_THREE\thttp://toydb.org/three\tProtein-F']
     path.write_text('\n'.join(lines) + '\n')
     return str(path)
+
+
+@pytest.fixture
+def tiny_obo(tmp_path):
+    '''Path to a minimal gene-ontology .obo file.
+
+    Covers the shapes `cell2cell.external.goenrich._parse_terms` has to handle: an
+    `is_a` parent, a `relationship: part_of` parent, and an obsolete term that must be
+    dropped instead of ending up in the graph. The root term is named after its own
+    namespace, which is how `ontology` recognises a root and assigns term depths.
+    '''
+    path = tmp_path / 'toy.obo'
+    lines = ['format-version: 1.2',
+             '',
+             '[Term]',
+             'id: GO:0000001',
+             'name: biological_process',
+             'namespace: biological_process',
+             '',
+             '[Term]',
+             'id: GO:0000002',
+             'name: toy child',
+             'namespace: biological_process',
+             'is_a: GO:0000001 ! toy root',
+             '',
+             '[Term]',
+             'id: GO:0000003',
+             'name: toy part',
+             'namespace: biological_process',
+             'relationship: part_of GO:0000001 ! toy root',
+             '',
+             '[Term]',
+             'id: GO:0000004',
+             'name: toy obsolete',
+             'namespace: biological_process',
+             'is_obsolete: true',
+             '',
+             '']
+    path.write_text('\n'.join(lines))
+    return str(path)
+
+
+@pytest.fixture
+def tiny_gaf(tmp_path):
+    '''Path to a minimal GAF file, as read by `cell2cell.external.goenrich.goa`.
+
+    GAF files have no header: the 17 columns come from `GENE_ASSOCIATION_COLUMNS` and
+    lines starting with "!" are comments. Protein-A and Protein-B carry experimental
+    evidence codes, Protein-C only the electronic `IEA`, so the `experimental` filter
+    is observable.
+    '''
+    path = tmp_path / 'toy.gaf'
+
+    def record(symbol, go_id, evidence):
+        return ['UniProtKB', symbol + '-id', symbol, '', go_id, 'PMID:0000001',
+                evidence, '', 'C', symbol + ' name', '', 'protein', 'taxon:9606',
+                '20230101', 'toydb', '', '']
+
+    lines = ['!gaf-version: 2.1',
+             '\t'.join(record('Protein-A', 'GO:0000002', 'IDA')),
+             '\t'.join(record('Protein-B', 'GO:0000003', 'IMP')),
+             '\t'.join(record('Protein-C', 'GO:0000004', 'IEA'))]
+    path.write_text('\n'.join(lines) + '\n')
+    return str(path)
+
+
+@pytest.fixture
+def tiny_gene2go(tmp_path):
+    '''Path to a minimal NCBI gene2go file, as read by `goenrich.gene2go`.
+
+    Holds one human (tax_id 9606) and one mouse (10090) record so the taxon filter is
+    observable, and one non-experimental evidence code.
+    '''
+    path = tmp_path / 'toy-gene2go.tsv'
+    lines = ['#tax_id\tGeneID\tGO_ID\tEvidence\tQualifier\tGO_term\tPubMed\tCategory',
+             '9606\t1\tGO:0000002\tIDA\t-\ttoy cell adhesion\t1\tProcess',
+             '9606\t2\tGO:0000003\tIEA\t-\ttoy extracellular space\t2\tComponent',
+             '10090\t3\tGO:0000004\tIDA\t-\ttoy cell junction\t3\tProcess']
+    path.write_text('\n'.join(lines) + '\n')
+    return str(path)

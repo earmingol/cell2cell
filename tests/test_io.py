@@ -183,3 +183,151 @@ def test_load_tensor_factors_roundtrip(tmp_path, factorized_tensor):
         expected = factorized_tensor.factors[key]
         assert list(frame.index) == list(expected.index)
         assert np.allclose(frame.values, expected.values)
+
+
+# ---------------------------------------------------------------------------------
+# load_table: the rest of the format auto-detection
+# ---------------------------------------------------------------------------------
+
+def test_load_table_auto_detects_a_txt_file(tmp_path, toy_rnaseq):
+    '''.txt is read as tab-separated, like .tsv.'''
+    filename = tmp_path / 'table.txt'
+    toy_rnaseq.to_csv(filename, sep='\t')
+    loaded = read_data.load_table(str(filename), format='auto', index_col=0, verbose=False)
+    assert loaded.shape == toy_rnaseq.shape
+
+
+def test_load_table_auto_detects_an_excel_file(tmp_path, toy_rnaseq):
+    filename = tmp_path / 'table.xlsx'
+    toy_rnaseq.to_excel(filename)
+    loaded = read_data.load_table(str(filename), format='auto', index_col=0, verbose=False)
+    assert loaded.shape == toy_rnaseq.shape
+
+
+def test_load_table_auto_detects_a_gzipped_file(tmp_path, toy_rnaseq):
+    '''.gz implies a gzip-compressed, tab-separated table.'''
+    filename = tmp_path / 'table.tsv.gz'
+    toy_rnaseq.to_csv(filename, sep='\t', compression='gzip')
+    loaded = read_data.load_table(str(filename), format='auto', index_col=0, verbose=False)
+    assert loaded.shape == toy_rnaseq.shape
+
+
+def test_load_table_reports_what_it_loaded(tmp_path, toy_rnaseq, capsys):
+    filename = tmp_path / 'table.csv'
+    toy_rnaseq.to_csv(filename)
+    read_data.load_table(str(filename), format='auto', index_col=0, verbose=True)
+    assert 'was correctly loaded' in capsys.readouterr().out
+
+
+def test_load_tables_from_directory_with_compressed_files(tmp_path, toy_rnaseq):
+    for name in ['s1', 's2']:
+        toy_rnaseq.to_csv(tmp_path / '{}.csv.gzip'.format(name), compression='gzip')
+    tables = read_data.load_tables_from_directory(str(tmp_path), extension='csv',
+                                                  sep=',', compression='gzip',
+                                                  index_col=0, verbose=False)
+    assert set(tables.keys()) == {'s1', 's2'}
+
+
+def test_load_tables_from_directory_rejects_an_unknown_compression(tmp_path):
+    with pytest.raises(AssertionError):
+        read_data.load_tables_from_directory(str(tmp_path), extension='csv',
+                                             compression='nonsense')
+
+
+# ---------------------------------------------------------------------------------
+# The loaders that post-process what load_table returns
+# ---------------------------------------------------------------------------------
+
+def test_load_rnaseq_can_log_transform(tmp_path, toy_rnaseq):
+    frame = toy_rnaseq.reset_index()
+    filename = tmp_path / 'rnaseq.csv'
+    frame.to_csv(filename, index=False)
+    loaded = read_data.load_rnaseq(str(filename), gene_column='gene_id', format='auto',
+                                   log_transformation=True, verbose=False)
+    assert np.allclose(loaded.values, np.log10(toy_rnaseq.values + 1e-6))
+
+
+def test_load_metadata_can_index_and_filter_by_cell(tmp_path, toy_metadata):
+    filename = tmp_path / 'metadata.csv'
+    toy_metadata.to_csv(filename, index=False)
+    labels = list(toy_metadata['#SampleID'])[:2]
+    loaded = read_data.load_metadata(str(filename), cell_labels=labels,
+                                     index_col='#SampleID', format='auto')
+    assert list(loaded.index) == labels
+
+
+def test_load_cutoffs_without_a_gene_column(tmp_path, toy_rnaseq):
+    '''Without `gene_column` the first column becomes the index.'''
+    cutoffs = c2c.preprocessing.get_constant_cutoff(toy_rnaseq, constant_cutoff=5)
+    filename = tmp_path / 'cutoffs.csv'
+    cutoffs.reset_index().to_csv(filename, index=False)
+    loaded = read_data.load_cutoffs(str(filename), gene_column=None, format='auto',
+                                    verbose=False)
+    assert list(loaded.index) == list(toy_rnaseq.index)
+    assert list(loaded.columns) == ['value']
+
+
+def test_load_ppi_filters_by_score_and_by_the_genes_measured(tmp_path, toy_ppi, toy_rnaseq):
+    filename = tmp_path / 'ppi.csv'
+    toy_ppi.to_csv(filename, index=False)
+    genes = list(toy_rnaseq.index)[:3]
+    loaded = read_data.load_ppi(str(filename), interaction_columns=('A', 'B'),
+                                score='score', rnaseq_genes=genes, format='auto',
+                                verbose=False)
+    assert set(loaded['A']).issubset(set(genes))
+    assert set(loaded['B']).issubset(set(genes))
+
+
+def test_load_ppi_with_complexes(tmp_path, toy_ppi_complex):
+    filename = tmp_path / 'ppi.csv'
+    toy_ppi_complex.to_csv(filename, index=False)
+    loaded = read_data.load_ppi(str(filename), interaction_columns=('A', 'B'),
+                                complex_sep='&', format='auto', verbose=False)
+    assert list(loaded.columns) == ['A', 'B', 'score']
+
+
+# ---------------------------------------------------------------------------------
+# Gene ontology files
+# ---------------------------------------------------------------------------------
+
+def test_load_go_terms(tiny_obo):
+    graph = read_data.load_go_terms(tiny_obo, verbose=False)
+    assert 'GO:0000001' in graph.nodes()
+
+
+def test_load_go_annotations_renames_the_columns(tiny_gaf):
+    '''Only four of the GAF columns are kept, under shorter names.'''
+    annotations = read_data.load_go_annotations(tiny_gaf, experimental_evidence=False,
+                                                verbose=False)
+    assert list(annotations.columns) == ['db', 'Gene', 'Name', 'GO']
+    assert list(annotations['Gene']) == ['Protein-A-id', 'Protein-B-id', 'Protein-C-id']
+    assert annotations['GO'].str.startswith('GO:').all()
+
+
+def test_load_go_annotations_can_keep_only_experimental_evidence(tiny_gaf):
+    annotations = read_data.load_go_annotations(tiny_gaf, experimental_evidence=True,
+                                                verbose=False)
+    assert list(annotations['Name']) == ['Protein-A', 'Protein-B']
+
+
+# ---------------------------------------------------------------------------------
+# load_tensor on a tensor that carries a mask
+# ---------------------------------------------------------------------------------
+
+def test_load_tensor_restores_the_mask_and_the_nan_positions(tmp_path):
+    '''A tensor with missing values keeps `mask`, `loc_nans` and `loc_zeros`, which
+    are converted back into tensorly tensors on load.'''
+    values = np.arange(2 * 2 * 3 * 3, dtype=float).reshape((2, 2, 3, 3))
+    values[0, 0, 0, 0] = np.nan
+    names = [['Context-1', 'Context-2'], ['LR-1', 'LR-2'],
+             ['C1', 'C2', 'C3'], ['C1', 'C2', 'C3']]
+    tensor = c2c.tensor.PreBuiltTensor(tensor=values, order_names=names,
+                                       mask=(~np.isnan(values)).astype(int))
+    filename = str(tmp_path / 'masked-tensor.pkl')
+    save_data.export_variable_with_pickle(tensor, filename)
+
+    loaded = read_data.load_tensor(filename)
+    assert loaded.mask is not None
+    assert np.allclose(np.asarray(loaded.mask), np.asarray(tensor.mask))
+    assert np.allclose(np.asarray(loaded.loc_nans), np.asarray(tensor.loc_nans))
+    assert np.allclose(np.asarray(loaded.loc_zeros), np.asarray(tensor.loc_zeros))
