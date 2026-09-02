@@ -3,6 +3,8 @@
 from __future__ import absolute_import
 
 import random
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -33,9 +35,14 @@ def check_presence_in_dataframe(df, elements, columns=None):
     '''
     if columns is None:
         columns = list(df.columns)
-    df_elements = pd.Series(np.unique(df[columns].values.flatten()))
-    df_elements = df_elements.loc[df_elements.isin(elements)].values
-    found_elements = list(df_elements)
+    elif isinstance(columns, str):
+        # A string would be read by pandas as a single column name, returning a Series
+        # instead of the dataframe the code below expects, as in `shuffle_cols_in_df`.
+        columns = [columns]
+    # `pd.unique` does not sort the values, so it also works when the considered
+    # columns contain a mix of data types (e.g. gene names and scores).
+    df_elements = pd.Series(pd.unique(df[columns].to_numpy(dtype=object).ravel()))
+    found_elements = df_elements.loc[df_elements.isin(elements)].tolist()
     return found_elements
 
 
@@ -136,7 +143,9 @@ def shuffle_dataframe(df, shuffling_number=1, axis=0, random_state=None):
     '''
     df_ = df.copy()
     axis = int(not axis)  # pandas.DataFrame is always 2D
-    to_shuffle = np.rollaxis(df_.values, axis)
+    # `to_numpy(copy=True)` is shuffled in place below, so it must be writable. The array
+    # behind `DataFrame.values` is read-only under the copy-on-write of pandas >= 3.0.
+    to_shuffle = np.rollaxis(df_.to_numpy(copy=True), axis)
     for _ in range(shuffling_number):
         for i, view in enumerate(to_shuffle):
             if random_state is not None:
@@ -184,6 +193,12 @@ def check_symmetry(df):
     '''
     Checks whether a dataframe is symmetric.
 
+    A missing value matches a missing value in the transposed position, so a distance
+    matrix with entries that were not computed -- what
+    `cell2cell.spatial.pairwise_celltype_distances` returns for the pairs it was not
+    asked for -- is still recognized as symmetric. Comparing with `==` alone would
+    call any such matrix asymmetric, since NaN never equals NaN.
+
     Parameters
     ----------
     df : pandas.DataFrame
@@ -195,11 +210,39 @@ def check_symmetry(df):
         Whether a dataframe is symmetric.
     '''
     shape = df.shape
-    if shape[0] == shape[1]:
-        symmetric = (df.values.transpose() == df.values).all()
-    else:
-        symmetric = False
+    if shape[0] != shape[1]:
+        return False
+    values = df.values
+    try:
+        symmetric = np.array_equal(values, values.transpose(), equal_nan=True)
+    except TypeError:
+        # `equal_nan` is only defined for floats, so anything else -- object columns,
+        # strings, integers -- compares as it did before
+        symmetric = bool((values.transpose() == values).all())
     return symmetric
+
+
+def zero_diagonal(df):
+    '''
+    Sets all diagonal elements of a square dataframe to zero.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A square dataframe.
+
+    Returns
+    -------
+    df_ : pandas.DataFrame
+        A copy of df, but with all diagonal elements with a
+        value of zero.
+    '''
+    # `np.array` always copies, so the result is writable. The array behind
+    # `DataFrame.values` is read-only under the copy-on-write of pandas >= 3.0,
+    # which makes it unusable with in-place functions such as `np.fill_diagonal`.
+    values = np.array(df, dtype=float)
+    np.fill_diagonal(values, 0.0)
+    return pd.DataFrame(values, index=df.index, columns=df.columns)
 
 
 def convert_to_distance_matrix(df):
@@ -219,10 +262,10 @@ def convert_to_distance_matrix(df):
         value of zero.
     '''
     if check_symmetry(df):
-        df_ = df.copy()
-        if np.trace(df_.values,) != 0.0:
-            raise Warning("Diagonal elements are not zero. Automatically replaced by zeros")
-        np.fill_diagonal(df_.values, 0.0)
+        if np.trace(df.values,) != 0.0:
+            # Warned instead of raised, so the diagonal is actually replaced below
+            warnings.warn("Diagonal elements are not zero. Automatically replaced by zeros")
+        df_ = zero_diagonal(df)
     else:
         raise ValueError('The DataFrame is not symmetric')
     return df_

@@ -44,9 +44,12 @@ def get_element_abundances(element_lists):
     abundance_dict : dict
         Dictionary containing the number of times that an
         element was present, divided by the total number of
-        lists in `element_lists`.
+        lists in `element_lists`. Keys keep the order in which
+        the elements were first found across `element_lists`.
     '''
-    abundance_dict = Counter(itertools.chain(*map(set, element_lists)))
+    # `dict.fromkeys` removes duplicates within each list while keeping their order,
+    # so that the resulting keys are reproducible across runs (unlike using sets).
+    abundance_dict = Counter(itertools.chain(*[dict.fromkeys(l) for l in element_lists]))
     total = len(element_lists)
     abundance_dict = {k : v/total for k, v in abundance_dict.items()}
     return abundance_dict

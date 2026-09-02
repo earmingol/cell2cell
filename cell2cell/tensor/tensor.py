@@ -5,6 +5,7 @@ import pandas as pd
 import tensorly as tl
 
 from collections import OrderedDict
+from natsort import natsorted
 from tqdm import tqdm
 
 from cell2cell.core.communication_scores import compute_ccc_matrix, aggregate_ccc_matrices
@@ -1142,12 +1143,12 @@ def build_context_ccc_tensor(rnaseq_matrices, ppi_data, how='inner', outer_fract
     if set(df_idxs[0]) == genes:
         genes = df_idxs[0]
     else:
-        genes = sorted(list(genes))
+        genes = natsorted(genes)
 
     if set(df_cols[0]) == cells:
         cells = df_cols[0]
     else:
-        cells = sorted(list(cells))
+        cells = natsorted(cells)
 
     # Filter PPI data for
     ppi_data_ = filter_ppi_by_proteins(ppi_data=ppi_data,

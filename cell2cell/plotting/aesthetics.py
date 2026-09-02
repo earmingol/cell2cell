@@ -6,6 +6,8 @@ import matplotlib.cm as cm
 import matplotlib.patches as patches
 import numpy as np
 
+from natsort import natsorted
+
 
 def get_colors_from_labels(labels, cmap='gist_rainbow', factor=1):
     '''Generates colors for each label in a list given a colormap
@@ -158,7 +160,7 @@ def generate_legend(color_dict, loc='center left', bbox_to_anchor=(1.01, 0.5), n
     '''
     color_patches = []
     if sorted_labels:
-        iteritems = sorted(color_dict.items())
+        iteritems = natsorted(color_dict.items(), key=lambda x: x[0])
     else:
         iteritems = color_dict.items()
     for k, v in iteritems:

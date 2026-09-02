@@ -1,0 +1,67 @@
+# Versions the CI job resolved on Python 3.10, pinned so a new release of a
+# dependency cannot turn a build red without a commit to this repository.
+#
+# This constrains CI only. setup.py stays open, so nothing here limits what a
+# user installing cell2cell gets.
+#
+# To move to newer dependencies, regenerate on Python 3.10 and commit the diff:
+#   python -m venv /tmp/c && /tmp/c/bin/pip install -e '.[test]'
+#   /tmp/c/bin/pip freeze --exclude-editable > ci/constraints-py3.10.txt
+# then re-add this header. Review the diff and run the suite before pushing.
+anndata==0.11.4
+array-api-compat==1.15.0
+certifi==2026.7.22
+charset-normalizer==3.4.9
+cloudpickle==3.1.2
+contourpy==1.3.2
+coverage==7.15.3
+cycler==0.12.1
+et_xmlfile==2.0.0
+exceptiongroup==1.3.1
+fonttools==4.63.0
+gseapy==1.3.1
+h5py==3.16.0
+idna==3.18
+iniconfig==2.3.0
+joblib==1.5.3
+kiwisolver==1.5.0
+kneed==0.8.6
+legacy-api-wrap==1.5
+llvmlite==0.48.0
+matplotlib==3.10.9
+natsort==8.4.0
+networkx==3.4.2
+numba==0.66.0
+numpy==2.2.6
+openpyxl==3.1.5
+packaging==26.3
+pandas==2.3.3
+patsy==1.0.2
+pillow==12.3.0
+pluggy==1.6.0
+pygad==3.7.0
+Pygments==2.20.0
+pynndescent==0.6.0
+pyparsing==3.3.2
+pytest-cov==7.1.0
+pytest==9.1.1
+python-dateutil==2.9.0.post0
+pytz==2026.3.post1
+requests==2.34.2
+scanpy==1.11.5
+scikit-learn==1.7.2
+scipy==1.15.3
+seaborn==0.13.2
+session-info2==0.4.1
+six==1.17.0
+statannotations==0.7.2
+statsmodels==0.14.6
+tensorly==0.9.0
+threadpoolctl==3.6.0
+tomli==2.4.1
+tqdm==4.70.0
+typing_extensions==4.16.0
+tzdata==2026.3
+umap-learn==0.5.12
+urllib3==2.7.0
+xlrd==2.0.2

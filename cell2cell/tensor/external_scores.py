@@ -4,9 +4,28 @@ import numpy as np
 import pandas as pd
 
 from collections import defaultdict
+from natsort import natsorted
 from tqdm import tqdm
 from cell2cell.preprocessing.find_elements import get_element_abundances, get_elements_over_fraction
 from cell2cell.tensor.tensor import PreBuiltTensor
+
+
+def _ordered_intersection(element_lists):
+    '''Intersects multiple lists of elements, keeping the order in which the
+    elements appear in the first list.
+
+    Parameters
+    ----------
+    element_lists : list
+        A list containing lists of elements, one per context.
+
+    Returns
+    -------
+    elements : list
+        Elements present in all lists, ordered as in `element_lists[0]`.
+    '''
+    common = set.intersection(*map(set, element_lists))
+    return [e for e in element_lists[0] if e in common]
 
 
 def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, receptor_col, score_col, how='inner',
@@ -123,10 +142,12 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
     if order_labels is None:
         order_labels = ['Contexts', 'Ligand-Receptor Pairs', 'Sender Cells', 'Receiver Cells']
 
-    # Find all existing LR pairs, sender and receiver cells across contexts
-    lr_dict = defaultdict(set)
-    sender_dict = defaultdict(set)
-    receiver_dict = defaultdict(set)
+    # Find all existing LR pairs, sender and receiver cells across contexts.
+    # Lists (instead of sets) are used to keep the order in which elements are found,
+    # making the tensor reproducible across runs when `sort_elements=False`.
+    lr_dict = defaultdict(list)
+    sender_dict = defaultdict(list)
+    receiver_dict = defaultdict(list)
 
     for k, df in cont_dict.items():
         df['LRs'] = df.apply(lambda row: row[ligand_col] + lr_sep + row[receptor_col], axis=1)
@@ -136,9 +157,9 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
         #     ccc_df = ccc_df.dropna(how='any')
         #     lr_dict[k].update(list(ccc_df.index))
         # else:
-        lr_dict[k].update(df['LRs'].unique().tolist())
-        sender_dict[k].update(df[sender_col].unique().tolist())
-        receiver_dict[k].update(df[receiver_col].unique().tolist())
+        lr_dict[k] = list(dict.fromkeys(lr_dict[k] + df['LRs'].unique().tolist()))
+        sender_dict[k] = list(dict.fromkeys(sender_dict[k] + df[sender_col].unique().tolist()))
+        receiver_dict[k] = list(dict.fromkeys(receiver_dict[k] + df[receiver_col].unique().tolist()))
 
     # Subset LR pairs, sender and receiver cells given parameter 'how'
     df_lrs = [list(lr_dict[k]) for k in context_order]
@@ -146,9 +167,9 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
     df_receivers  = [list(receiver_dict[k]) for k in context_order]
 
     if how == 'inner':
-        lr_pairs = list(set.intersection(*map(set, df_lrs)))
-        sender_cells = list(set.intersection(*map(set, df_senders)))
-        receiver_cells = list(set.intersection(*map(set, df_receivers)))
+        lr_pairs = _ordered_intersection(df_lrs)
+        sender_cells = _ordered_intersection(df_senders)
+        receiver_cells = _ordered_intersection(df_receivers)
     elif how == 'outer':
         lr_pairs = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_lrs),
                                               fraction=outer_fraction)
@@ -159,10 +180,10 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
     elif how == 'outer_lrs':
         lr_pairs = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_lrs),
                                               fraction=outer_fraction)
-        sender_cells = list(set.intersection(*map(set, df_senders)))
-        receiver_cells = list(set.intersection(*map(set, df_receivers)))
+        sender_cells = _ordered_intersection(df_senders)
+        receiver_cells = _ordered_intersection(df_receivers)
     elif how == 'outer_cells':
-        lr_pairs = list(set.intersection(*map(set, df_lrs)))
+        lr_pairs = _ordered_intersection(df_lrs)
         sender_cells = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_senders),
                                                   fraction=outer_fraction)
         receiver_cells = get_elements_over_fraction(abundance_dict=get_element_abundances(element_lists=df_receivers),
@@ -172,10 +193,10 @@ def dataframes_to_tensor(context_df_dict, sender_col, receiver_col, ligand_col, 
 
     if sort_elements:
         if sort_context:
-            context_order = sorted(context_order)
-        lr_pairs = sorted(lr_pairs)
-        sender_cells = sorted(sender_cells)
-        receiver_cells = sorted(receiver_cells)
+            context_order = natsorted(context_order)
+        lr_pairs = natsorted(lr_pairs)
+        sender_cells = natsorted(sender_cells)
+        receiver_cells = natsorted(receiver_cells)
 
     # Build temporal tensor to pass to PreBuiltTensor
     tmp_tensor = []

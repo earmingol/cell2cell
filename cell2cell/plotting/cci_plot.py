@@ -163,7 +163,7 @@ def clustermap_cci(interaction_space, method='ward', optimal_leaf=True, metadata
                                        cbar_fontsize=cbar_fontsize,
                                        **kwargs_)
 
-    if ~symmetric:
+    if not symmetric:
         hier.ax_heatmap.set_xlabel('Receiver cells', fontsize=cbar_fontsize)
         hier.ax_heatmap.set_ylabel('Sender cells', fontsize=cbar_fontsize)
 

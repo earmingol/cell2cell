@@ -87,8 +87,10 @@ def pcoa(distance_matrix, method="eigh", number_of_dimensions=0,
     """
     distance_matrix = convert_to_distance_matrix(distance_matrix)
 
-    # Center distance matrix, a requirement for PCoA here
-    matrix_data = center_distance_matrix(distance_matrix.values, inplace=inplace)
+    # Center distance matrix, a requirement for PCoA here. `np.array` always copies, so
+    # the `inplace` option gets a writable array, unlike `DataFrame.values` under the
+    # copy-on-write of pandas >= 3.0.
+    matrix_data = center_distance_matrix(np.array(distance_matrix, dtype=float), inplace=inplace)
 
     # If no dimension specified, by default will compute all eigenvectors
     # and eigenvalues
@@ -357,7 +359,9 @@ def pcoa_biplot(ordination, y):
         raise ValueError('The eigenvectors and the descriptors must describe '
                          'the same samples.')
 
-    eigvals = ordination['eigvals']
+    # Converted to a numpy array because using np.power() with the `where` argument
+    # on a pandas Series recurses through pandas' ufunc handling.
+    eigvals = np.asarray(ordination['eigvals'])
     coordinates = ordination['samples']
     N = coordinates.shape[0]
 
@@ -373,8 +377,11 @@ def pcoa_biplot(ordination, y):
     #
     # Only get the power of non-zero values, otherwise this will raise a
     # divide by zero warning. There shouldn't be negative eigenvalues(?)
-    Uproj = np.sqrt(N - 1) * spc.dot(np.diag(np.power(eigvals, -0.5,
-                                                      where=eigvals > 0)))
+    # `out` is needed so the entries excluded by `where` are zero instead of
+    # whatever was left in the uninitialized output array.
+    inverse_sqrt = np.power(eigvals, -0.5, where=eigvals > 0,
+                            out=np.zeros_like(eigvals, dtype=float))
+    Uproj = np.sqrt(N - 1) * spc.dot(np.diag(inverse_sqrt))
 
     ordination['features'] = pd.DataFrame(data=Uproj,
                                        index=y.columns.copy(),

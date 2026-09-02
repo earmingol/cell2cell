@@ -5,6 +5,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+from natsort import natsorted
+
 from cell2cell.external import pcoa, _check_ordination
 from cell2cell.plotting.aesthetics import get_colors_from_labels
 
@@ -138,7 +140,7 @@ def pcoa_3dplot(interaction_space, metadata=None, sample_col='#SampleID', group_
         assert all(elem in colors.keys() for elem in set(labels))
 
     # Plot each data point with respective color
-    for i, cell_type in enumerate(sorted(meta_[group_col].unique())):
+    for i, cell_type in enumerate(natsorted(meta_[group_col].unique())):
         cells = list(meta_.loc[meta_[group_col] == cell_type].index)
         if colors is not None:
             ax.scatter(ordination['samples'].loc[cells, 'PC1'],

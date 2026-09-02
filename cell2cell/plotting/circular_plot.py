@@ -9,6 +9,8 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
+from natsort import natsorted
+
 from cell2cell.plotting.aesthetics import get_colors_from_labels, generate_legend
 
 
@@ -165,7 +167,7 @@ def circos_plot(interaction_space, sender_cells, receiver_cells, ligands, recept
     small_R = determine_small_radius(edges_dict)
 
     # Colors
-    cells = list(set(sender_cells+receiver_cells))
+    cells = natsorted(set(sender_cells + receiver_cells))
     if metadata is not None:
         meta = metadata.set_index(sample_col).reindex(cells)
         meta = meta[[group_col]].fillna('NA')
@@ -303,7 +305,7 @@ def get_arc_angles(G, sorting_feature=None):
         values are tuples with angles for the start and end of
         the arc that represents a node.
     '''
-    elements = list(set(G.nodes()))
+    elements = natsorted(G.nodes())
     n_elements = len(elements)
 
     if sorting_feature is not None:

@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import pandas as pd
 import scanpy
 import numpy as np
+from natsort import natsorted
 from tqdm import tqdm
 
 from cell2cell.core import interaction_space as ispace
@@ -462,6 +463,11 @@ class SingleCellInteractions:
             of a given gene.
         - 'average' : Computes the average gene expression among the single cells
             composing a cell type for a given gene.
+        - 'trimean' : Computes the Tukey's trimean of the gene expression among the
+            single cells composing a cell type for a given gene. It is a weighted
+            average of the median and the first and third quartiles
+            (0.5 * Q2 + 0.25 * (Q1 + Q3)), so it is more robust to outliers than
+            the average while still accounting for the spread of the distribution.
 
     barcode_col : str, default='barcodes'
         Column-name for the single cells in the metadata.
@@ -609,6 +615,11 @@ class SingleCellInteractions:
             of a given gene.
         - 'average' : Computes the average gene expression among the single cells
             composing a cell type for a given gene.
+        - 'trimean' : Computes the Tukey's trimean of the gene expression among the
+            single cells composing a cell type for a given gene. It is a weighted
+            average of the median and the first and third quartiles
+            (0.5 * Q2 + 0.25 * (Q1 + Q3)), so it is more robust to outliers than
+            the average while still accounting for the spread of the distribution.
 
     ccc_permutation_pvalues : pandas.DataFrame
         Contains the P-values of the permutation analysis on the
@@ -935,7 +946,7 @@ def initialize_interaction_space(rnaseq_data, ppi_data, cutoff_setup, analysis_s
     if excluded_cells is None:
         excluded_cells = []
 
-    included_cells = sorted(list((set(rnaseq_data.columns) - set(excluded_cells))))
+    included_cells = natsorted(set(rnaseq_data.columns) - set(excluded_cells))
 
     interaction_space = ispace.InteractionSpace(rnaseq_data=rnaseq_data[included_cells],
                                                 ppi_data=ppi_data,

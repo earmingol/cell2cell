@@ -273,7 +273,9 @@ def tensor_factors_plot_from_loadings(factors, rank=None, order_labels=None, ord
         for ind, order_factors in enumerate(factors.values()):
             if isinstance(order_factors, pd.Series):
                 order_factors = order_factors.to_frame().T
-            ax = axes[ind]
+            # `axes` was reshaped to (rank, dim), so a single factor still needs both
+            # indices: `axes[ind]` is a whole row, not an Axes.
+            ax = axes[0, ind]
             ax.set_xlabel(order_labels[ind], fontsize=int(1.2 * fontsize), labelpad=fontsize)
             for i, df_row in enumerate(order_factors.T.iterrows()):
                 factor_name = df_row[0]
@@ -469,7 +471,8 @@ def reorder_dimension_elements(factors, reorder_elements, metadata=None):
     assert all((len(set(factors[key].index).difference(set(reorder_elements[key]))) == 0) for key in reorder_elements.keys()), "All elements of each dimension included should be present"
 
     reordered_factors = factors.copy()
-    new_metadata = metadata.copy()
+    # `metadata` is optional, so it is only copied when it was actually provided
+    new_metadata = metadata.copy() if metadata is not None else None
 
     i = 0
     for k, df in reordered_factors.items():
@@ -596,7 +599,7 @@ def plot_multiple_run_elbow(all_loss, elbow=None, ci='95%', figsize=(4, 2.25), y
         raise ValueError("Specify a correct ci. Either '95%' or 'std'")
 
     plt.fill_between(x, mean - coeff * std, mean + coeff * std, color='steelblue', alpha=.2,
-                     label='$\pm$ 1 std')
+                     label=r'$\pm$ 1 std')
 
     plt.tick_params(axis='both', labelsize=fontsize)
     plt.xlabel('Rank', fontsize=int(1.2 * fontsize))

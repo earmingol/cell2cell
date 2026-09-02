@@ -3,4 +3,6 @@ from cell2cell.datasets.gsea_data import (gsea_msig)
 from cell2cell.datasets.heuristic_data import (HeuristicGOTerms)
 from cell2cell.datasets.random_data import (generate_random_rnaseq, generate_random_ppi, generate_random_cci_scores,
                                             generate_random_metadata)
-from cell2cell.datasets.toy_data import (generate_toy_distance, generate_toy_rnaseq, generate_toy_ppi, generate_toy_metadata)
+from cell2cell.datasets.toy_data import (generate_toy_distance, generate_toy_rnaseq, generate_toy_ppi, generate_toy_metadata,
+                                         generate_toy_contexts, generate_toy_single_cells, generate_toy_coordinates,
+                                         generate_toy_spatial_adata, generate_toy_liana_output)

@@ -2,7 +2,8 @@
 
 from __future__ import absolute_import
 
-from cell2cell.preprocessing import integrate_data, cutoffs, get_genes_from_complexes, add_complexes_to_expression
+from cell2cell.preprocessing import (integrate_data, cutoffs, get_genes_from_complexes, add_complexes_to_expression,
+                                     zero_diagonal)
 from cell2cell.core import cell, cci_scores, communication_scores
 
 import itertools
@@ -64,7 +65,9 @@ def generate_pairs(cells, cci_type, self_interaction=True, remove_duplicates=Tru
         else:
             raise NotImplementedError("CCI type has to be directed or undirected")
     if remove_duplicates:
-        pairs = list(set(pairs))  # Remove duplicates
+        # `dict.fromkeys` removes duplicates while keeping the order given by the
+        # list of cells, so the resulting pairs are reproducible across runs.
+        pairs = list(dict.fromkeys(pairs))
     return pairs
 
 
@@ -510,14 +513,15 @@ class InteractionSpace():
         #                                                        )
 
         # Generate distance matrix
-        if ~(cci_score in ['count', 'icellnet']):
+        if cci_score not in ['count', 'icellnet']:
             self.distance_matrix = self.interaction_elements['cci_matrix'].apply(lambda x: 1 - x)
         else:
             #self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'].max().max()).apply(lambda x: 1 - x)
             # Regularized distance
             mean = np.nanmean(self.interaction_elements['cci_matrix'])
             self.distance_matrix = self.interaction_elements['cci_matrix'].div(self.interaction_elements['cci_matrix'] + mean).apply(lambda x: 1 - x)
-        np.fill_diagonal(self.distance_matrix.values, 0.0)  # Make diagonal zero (delete autocrine-interactions)
+        # Make diagonal zero (delete autocrine-interactions)
+        self.distance_matrix = zero_diagonal(self.distance_matrix)
 
     def pair_communication_score(self, cell1, cell2, communication_score='expression_thresholding',
                                  use_ppi_score=False, verbose=True):

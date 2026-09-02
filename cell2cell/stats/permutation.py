@@ -10,8 +10,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import cell2cell.core.interaction_space as ispace
-from cell2cell.preprocessing import shuffle_rows_in_df
+from cell2cell.preprocessing import shuffle_rows_in_df, zero_diagonal
 
+from natsort import natsorted
 from sklearn.utils import shuffle
 from tqdm import tqdm
 
@@ -142,7 +143,10 @@ def pvalue_from_dist(obs_value, dist, label='', consider_size=False, comparison=
                 label_ = label + ' - p-val: <{:g}'.format(float('{:.1g}'.format(1. / len(dist))))
             else:
                 label_ = label + ' - p-val: {0:.2E}'.format(pval)
-        fig = sns.distplot(dist, hist=True, kde=True, norm_hist=False, rug=False, label=label_)
+        # `sns.distplot` is deprecated and removed in seaborn 0.14. It normalized the
+        # histogram to a density whenever a KDE was drawn, regardless of `norm_hist`,
+        # so `stat='density'` reproduces what it did here.
+        fig = sns.histplot(dist, kde=True, stat='density', label=label_)
         fig.axvline(x=obs_value, color=fig.get_lines()[-1].get_c(), ls='--')
 
         fig.tick_params(axis='both', which='major', labelsize=16)
@@ -196,24 +200,31 @@ def random_switching_ppi_labels(ppi_data, genes=None, random_state=None, interac
     prot_b = interaction_columns[1]
     if permuted_column == 'both':
         if genes is None:
-            genes = list(np.unique(ppi_data_[interaction_columns].values.flatten()))
+            # `interaction_columns` is a tuple, which pandas would treat as a single
+            # column name, so it is converted into a list before selecting them.
+            # An object dtype is requested because the values are protein names, which
+            # pandas >= 3.0 returns as an extension array that has no `.ravel()`.
+            genes = list(np.unique(ppi_data_[list(interaction_columns)].to_numpy(dtype=object).ravel()))
         else:
-            genes = list(set(genes))
+            # Sorted to make the permutation reproducible for a given random_state
+            genes = natsorted(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
         ppi_data_[prot_a] = ppi_data_[prot_a].apply(lambda x: mapper[x])
         ppi_data_[prot_b] = ppi_data_[prot_b].apply(lambda x: mapper[x])
     elif permuted_column == 'first':
         if genes is None:
-            genes = list(np.unique(ppi_data_[prot_a].values.flatten()))
+            genes = list(np.unique(ppi_data_[prot_a].to_numpy(dtype=object)))
         else:
-            genes = list(set(genes))
+            # Sorted to make the permutation reproducible for a given random_state
+            genes = natsorted(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
         ppi_data_[prot_a] = ppi_data_[prot_a].apply(lambda x: mapper[x])
     elif permuted_column == 'second':
         if genes is None:
-            genes = list(np.unique(ppi_data_[prot_b].values.flatten()))
+            genes = list(np.unique(ppi_data_[prot_b].to_numpy(dtype=object)))
         else:
-            genes = list(set(genes))
+            # Sorted to make the permutation reproducible for a given random_state
+            genes = natsorted(set(genes))
         mapper = dict(zip(genes, shuffle(genes, random_state=random_state)))
         ppi_data_[prot_b] = ppi_data_[prot_b].apply(lambda x: mapper[x])
     else: raise ValueError('Not valid option')
@@ -331,9 +342,9 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
         genes = list(rnaseq_data.index)
 
     if excluded_cells is not None:
-        included_cells = sorted(list(set(rnaseq_data.columns) - set(excluded_cells)))
+        included_cells = natsorted(set(rnaseq_data.columns) - set(excluded_cells))
     else:
-        included_cells = sorted(list(set(rnaseq_data.columns)))
+        included_cells = natsorted(set(rnaseq_data.columns))
 
     rnaseq_data_ = rnaseq_data.loc[genes, included_cells]
 
@@ -367,12 +378,15 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
                                                     cci_type=analysis_setup['cci_type'],
                                                     verbose=verbose)
 
+        # The CCI matrix is only filled by this method. Without it, the scores below are the
+        # zeros the interaction space is initialized with.
+        interaction_space.compute_pairwise_cci_scores(verbose=verbose)
+
         # Keep scores
         cci = interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
         cci_diag = np.diag(cci).copy()
-        np.fill_diagonal(cci.values, 0.0)
 
-        iter_scores = scipy.spatial.distance.squareform(cci)
+        iter_scores = scipy.spatial.distance.squareform(zero_diagonal(cci))
         iter_scores = np.reshape(iter_scores, (len(iter_scores), 1)).T
 
         iter_diag = np.reshape(cci_diag, (len(cci_diag), 1)).T
@@ -396,12 +410,13 @@ def run_label_permutation(rnaseq_data, ppi_data, genes, analysis_setup, cutoff_s
                                                      cci_type=analysis_setup['cci_type'],
                                                      verbose=verbose)
 
+    base_interaction_space.compute_pairwise_cci_scores(verbose=verbose)
+
     # Keep scores
     base_cci = base_interaction_space.interaction_elements['cci_matrix'].loc[included_cells, included_cells]
     base_cci_diag = np.diag(base_cci).copy()
-    np.fill_diagonal(base_cci.values, 0.0)
 
-    base_scores = scipy.spatial.distance.squareform(base_cci)
+    base_scores = scipy.spatial.distance.squareform(zero_diagonal(base_cci))
 
     # P-values
     pvals = np.zeros((scores.shape[1], 1))

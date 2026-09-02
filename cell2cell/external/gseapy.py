@@ -29,17 +29,20 @@ def load_gmt(filename, backup_url=None, readable_name=False):
     from pathlib import Path
 
     path = Path(filename)
-    if path.is_file():
-        f = open(path, 'rb')
-    else:
-        if backup_url is not None:
-            try:
-                _download(backup_url, path)
-            except ValueError:  # invalid URL
-                print('Invalid filename or URL')
-            f = open(path, 'rb')
-        else:
-            print('Invalid filename')
+    if not path.is_file():
+        if backup_url is None:
+            raise FileNotFoundError(
+                "No GMT file at '{}' and no `backup_url` to download one from.".format(filename))
+        try:
+            _download(backup_url, path)
+        except ValueError:  # invalid URL
+            raise FileNotFoundError(
+                "No GMT file at '{}' and '{}' is not a valid URL to download one "
+                "from.".format(filename, backup_url))
+        if not path.is_file():
+            raise FileNotFoundError(
+                "Downloading '{}' did not produce a GMT file at '{}'.".format(backup_url, filename))
+    f = open(path, 'rb')
 
     pathway_per_gene = defaultdict(set)
     with f:

@@ -86,11 +86,11 @@ def compute_linkage(distance_matrix, method='ward', optimal_ordering=True):
     Z : numpy.ndarray
         The hierarchical clustering encoded as a linkage matrix.
     '''
-    if (type(distance_matrix) is pd.core.frame.DataFrame):
-        data = distance_matrix.values
-    else:
-        data = distance_matrix.copy()
-    if ~(data.transpose() == data).all():
+    # `np.array` accepts both dataframes and arrays, and always copies, so the diagonal
+    # can be zeroed below. The array behind `DataFrame.values` is read-only under the
+    # copy-on-write of pandas >= 3.0.
+    data = np.array(distance_matrix, dtype=float)
+    if not (data.transpose() == data).all():
         raise ValueError('The matrix is not symmetric')
 
     np.fill_diagonal(data, 0.0)

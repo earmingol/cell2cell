@@ -54,11 +54,15 @@ def umap_biplot(umap_df, figsize=(8 ,8), ax=None, show_axes=True, show_legend=Tr
     if ax is None:
         fig = plt.figure(figsize=figsize)
 
+    # A palette is only meaningful together with a hue. Passing it without one was
+    # ignored with a warning by seaborn, and is removed in seaborn 0.14.
+    palette = cmap if hue is not None else None
+
     ax = sns.scatterplot(x='umap1',
                          y='umap2',
                          data=umap_df,
                          hue=hue,
-                         palette=cmap,
+                         palette=palette,
                          ax=ax
                          )
 

@@ -47,7 +47,9 @@ def dist_filter_tensor(interaction_tensor, distances, max_dist, min_dist=0, sour
     # Use only cell types in the tensor
     dist_df = distances.loc[source_cell_groups, target_cell_groups]
 
-    # Filter cell types by intercellular distances
+    # Filter cell types by intercellular distances. A missing distance -- a pair the
+    # distance matrix was never asked to compute -- fails both comparisons, so the pair
+    # is excluded rather than treated as being at distance zero.
     dist = ((min_dist <= dist_df) & (dist_df <= max_dist)).astype(int).values
 
     # Mapping what re-arrange should be done to keep the original tensor shape
@@ -120,8 +122,10 @@ def dist_filter_liana(liana_outputs, distances, max_dist, min_dist=0, source_col
         It containing pairs from the liana_outputs dataframe that meet the distance
         threshold criteria.
     '''
-    # Convert distances to a long-form dataframe
-    distances = distances.stack().reset_index()
+    # Convert distances to a long-form dataframe. Pairs with no computed distance are
+    # dropped explicitly: `stack` itself drops them on pandas 2 but keeps them on
+    # pandas 3, and either way such a pair cannot pass a distance threshold.
+    distances = distances.stack().dropna().reset_index()
     distances.columns = [source_col, target_col, 'distance']
 
     # Merge the long-form distances DataFrame with pairs_df

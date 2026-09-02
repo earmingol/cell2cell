@@ -95,6 +95,7 @@ setup(name='cell2cell',
                         'seaborn >= 0.11.0',
                         'scikit-learn',
                         'umap-learn',
+                        'natsort',
                         'tqdm',
                         'statsmodels',
                         'statannotations',
@@ -103,6 +104,12 @@ setup(name='cell2cell',
                         'scanpy',
                         'gseapy >= 1.0.3'
                         ],
+      # 3.0.0 is where `fitness_func` gained its `ga_instance` argument, which is the
+      # signature cell2cell.analysis.genetic_algorithm passes
+      extras_require={'test': ['pytest', 'pytest-cov', 'pygad>=3.0.0'],
+                      # Only needed by cell2cell.analysis.optimize_lr_pairs
+                      'ga': ['pygad>=3.0.0'],
+                      },
       classifiers=classifiers,
       entry_points={},
       package_data={},

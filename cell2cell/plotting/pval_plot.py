@@ -189,7 +189,8 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     # Drop all zeros
     df = df.loc[(df != 0).any(axis=1)]
     df = df.T.loc[(df != 0).any(axis=0)].T
-    pval_df = pval_df[df.columns].loc[df.index].applymap(lambda x: -1. * np.log10(x + 1e-9))
+    # Vectorized instead of elementwise, since `DataFrame.applymap` was removed in pandas 3.0
+    pval_df = -1. * np.log10(pval_df[df.columns].loc[df.index] + 1e-9)
 
     n_rows = len(pval_df.index)
     n_cols = len(pval_df.columns)
@@ -211,8 +212,9 @@ def generate_dot_plot(pval_df, score_df, significance=0.05, xlabel='', ylabel=''
     norm = mpl.colors.Normalize(vmin=-1. * max_abs, vmax=max_abs)
     max_size = mpl.colors.Normalize(vmin=0., vmax=3)
 
-    # Colormap
-    cmap = mpl.cm.get_cmap(cmap)
+    # Colormap. `matplotlib.cm.get_cmap` was removed in matplotlib 3.11, and the pyplot
+    # function is the one used elsewhere in this subpackage. It also takes a Colormap.
+    cmap = plt.get_cmap(cmap)
 
     # Create figure with proper height ratios
     # Use height_ratios based on actual inches rather than arbitrary numbers

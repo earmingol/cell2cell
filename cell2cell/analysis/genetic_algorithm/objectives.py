@@ -1,0 +1,343 @@
+# -*- coding: utf-8 -*-
+
+'''Ready-made objective functions for the ligand-receptor search.
+
+`CorrelationObjective` is the one the search uses by default: it scores a candidate
+set of pairs and correlates the resulting cell-cell interaction distances with a
+reference matrix. See `base` for the contract a custom objective has to meet.
+'''
+
+from __future__ import absolute_import
+
+import numpy as np
+import pandas as pd
+import scipy.spatial
+import scipy.stats
+
+from cell2cell.core.interaction_space import InteractionSpace
+from cell2cell.core.prepared_scorer import PreparedCCIScorer
+from cell2cell.preprocessing.ppi import bidirectional_ppi_with_index
+
+
+def correlation_fitness(distance_vector, reference_vector, method='spearman', signed=False):
+    '''
+    Correlation between a candidate's cell-cell distances and the reference.
+
+    Parameters
+    ----------
+    distance_vector : array-like
+        Condensed distance matrix from the candidate set of ligand-receptor pairs.
+
+    reference_vector : array-like
+        Condensed reference matrix, of the same length.
+
+    method : str, default='spearman'
+        'spearman' or 'pearson'.
+
+    signed : boolean, default=False
+        Whether to keep the sign of the correlation. The default takes the absolute
+        value, which is usually what is wanted: it is not known in advance whether
+        the search should favour pairs acting between cells that are *close* or
+        pairs that mark cells which exclude each other, and both are real. Setting
+        it to True restricts the search to positive associations only.
+
+    Returns
+    -------
+    fitness : float
+        Higher is better. NaN correlations, which arise when a candidate produces
+        constant distances, become 0.0.
+    '''
+    if method == 'spearman':
+        corr = scipy.stats.spearmanr(distance_vector, reference_vector)[0]
+    elif method == 'pearson':
+        corr = scipy.stats.pearsonr(distance_vector, reference_vector)[0]
+    elif callable(method):
+        corr = method(distance_vector, reference_vector)
+    else:
+        raise ValueError("`method` must be 'spearman', 'pearson' or a callable")
+    corr = np.nan_to_num(corr)
+    return float(corr) if signed else float(abs(corr))
+
+
+def _as_symmetric(matrix):
+    '''
+    Validates a reference matrix and makes it exactly symmetric.
+
+    `check_symmetry` compares with exact equality, which a matrix produced by a
+    distance function often fails by a few ULP. Rather than rejecting those, they
+    are averaged with their transpose; genuinely asymmetric input still raises.
+    '''
+    values = np.asarray(matrix.values, dtype=float)
+    if values.shape[0] != values.shape[1]:
+        raise ValueError('`reference_distances` must be a square matrix')
+    if list(matrix.index) != list(matrix.columns):
+        raise ValueError('`reference_distances` must have the same cells as rows and columns')
+    if not np.allclose(values, values.T, rtol=1e-8, atol=1e-8, equal_nan=True):
+        raise ValueError('`reference_distances` must be a symmetric matrix')
+    return pd.DataFrame((values + values.T) / 2.0, index=matrix.index, columns=matrix.columns)
+
+
+class CorrelationObjective:
+    '''
+    Correlates a candidate's cell-cell interaction distances with a reference matrix.
+
+    This is the default objective, and the one the *C. elegans* analysis used: the
+    fitness of a set of ligand-receptor pairs is how well the CCI distances it
+    produces reproduce a reference distance between the same cells, such as
+    physical distances from a 3D map or a spatial neighbourhood-enrichment matrix.
+
+    An **objective factory** in the sense of `base`: calling it with a pool of
+    candidate pairs returns an objective bound to that pool, having done all the
+    per-pool work once.
+
+    A 'score' column on the pool is taken as the weight of each interaction and
+    multiplied into the weights a candidate selection produces. Weights of one, the
+    usual case, make this a no-op.
+
+    Parameters
+    ----------
+    rnaseq_data : pandas.DataFrame
+        Gene expression matrix, genes as rows and cells as columns.
+
+    reference_distances : pandas.DataFrame
+        Square, symmetric matrix over the same cells. Only the upper triangle is
+        read, so the diagonal is ignored. Note that with `signed=False` an
+        enrichment matrix works as well as a distance one -- the sign of the
+        correlation flips but its absolute value does not.
+
+    cutoff_setup : dict
+        Cutoff setup, as in `cell2cell.analysis.initialize_interaction_space`.
+
+    analysis_setup : dict
+        With the keys 'communication_score', 'cci_score' and 'cci_type'. `cci_type`
+        must be 'undirected'.
+
+    included_cells : list, default=None
+        Cells to use. If None, those present in both `rnaseq_data` and
+        `reference_distances`.
+
+    correlation : str or callable, default='spearman'
+        Passed to `correlation_fitness`.
+
+    signed : boolean, default=False
+        Whether to keep the sign of the correlation. See `correlation_fitness`.
+
+    fast : boolean, default=True
+        Whether to evaluate with `PreparedCCIScorer`, which is equivalent but
+        vectorized. False rebuilds the scores through `InteractionSpace` for every
+        candidate, as the original implementation did.
+
+    validate_fast : boolean, default=True
+        Whether to check the vectorized path against the reference one on a couple
+        of random candidates when the objective is built.
+
+    max_memory_mb : float, default=512
+        Budget for the scorer's precomputed outer products.
+
+    Examples
+    --------
+    >>> import cell2cell as c2c
+    >>> objective = c2c.analysis.CorrelationObjective(
+    ...     rnaseq_data=rnaseq, reference_distances=physical_distances,
+    ...     cutoff_setup={'type': 'constant_value', 'parameter': 10},
+    ...     analysis_setup={'communication_score': 'expression_thresholding',
+    ...                     'cci_score': 'bray_curtis', 'cci_type': 'undirected'})
+    >>> results = c2c.analysis.optimize_lr_pairs(ppi_data=lr_pairs, objective=objective)
+    '''
+
+    def __init__(self, rnaseq_data, reference_distances, cutoff_setup, analysis_setup,
+                 included_cells=None, correlation='spearman', signed=False, fast=True,
+                 validate_fast=True, max_memory_mb=512, interaction_columns=('A', 'B'),
+                 complex_sep=None, complex_agg_method='min', verbose=False):
+        if analysis_setup['cci_type'] != 'undirected':
+            raise NotImplementedError(
+                "Only 'undirected' interactions are supported, because the objective "
+                "compares condensed symmetric matrices.")
+
+        reference_distances = _as_symmetric(reference_distances)
+        if included_cells is None:
+            included_cells = sorted(set(rnaseq_data.columns) & set(reference_distances.columns))
+        included_cells = list(included_cells)
+        if len(included_cells) < 3:
+            raise ValueError('At least three cells are needed to correlate distances')
+
+        self.rnaseq_data = rnaseq_data
+        self.reference_distances = reference_distances
+        self.cutoff_setup = cutoff_setup
+        self.analysis_setup = analysis_setup
+        self.included_cells = included_cells
+        self.correlation = correlation
+        self.signed = signed
+        self.fast = fast
+        self.validate_fast = validate_fast
+        self.max_memory_mb = max_memory_mb
+        self.interaction_columns = interaction_columns
+        self.complex_sep = complex_sep
+        self.complex_agg_method = complex_agg_method
+        self.verbose = verbose
+
+        self.reference_vector = scipy.spatial.distance.squareform(
+            np.asarray(reference_distances.loc[included_cells, included_cells].values,
+                       dtype=float), checks=False)
+
+        # Checked on the cells actually used, and after `included_cells` has been
+        # applied, so restricting the cells is a way out of it. Condensed form holds
+        # the off-diagonal only. Every correlation against a reference holding NaN is
+        # NaN, which `correlation_fitness` turns into 0.0 -- the search would then run
+        # to completion on a fitness that says nothing about any candidate.
+        if np.isnan(self.reference_vector).any():
+            raise ValueError('`reference_distances` has missing values off the diagonal '
+                             'among the cells being used. These are pairs of cells whose '
+                             'distance was never computed: restrict the cells with '
+                             '`included_cells`, or compute every pair instead of passing '
+                             '`pairs` to the distance function.')
+
+    def __call__(self, pool):
+        return _BoundCorrelationObjective(self, pool)
+
+
+class _BoundCorrelationObjective:
+    '''A `CorrelationObjective` bound to one pool of candidate pairs.'''
+
+    def __init__(self, parent, pool):
+        self.parent = parent
+        self.pool = pool
+        verbose = parent.verbose
+        setup = parent.analysis_setup
+
+        # The table and the provenance come from one call, so a candidate selection can
+        # be expanded to per-row weights with no inference about how the doubling went.
+        bi_ppi_data, self.source = bidirectional_ppi_with_index(
+            ppi_data=pool, interaction_columns=parent.interaction_columns, verbose=verbose)
+
+        # A pool row with no row of its own in the bidirectional table could be
+        # selected without changing anything, which would look like a pair that does
+        # not matter rather than like the duplicate it is. Only reachable with
+        # `deduplicate=False`, since the deduplicated pool has no repeated rows.
+        missing = np.setdiff1d(np.arange(len(pool)), np.unique(self.source))
+        if missing.size:
+            raise ValueError(
+                'Rows {} of the pool repeat an earlier row exactly, so they cannot be '
+                'selected independently. Deduplicate the pairs before searching, or '
+                'leave `deduplicate=True`.'.format(list(missing[:5])))
+
+        # An interaction and its reverse produce the same two rows once the table is
+        # doubled, so one row would have to belong to both candidates at once.
+        prot_a, prot_b = parent.interaction_columns
+        pairs = list(zip(pool[prot_a], pool[prot_b]))
+        pair_set = set(pairs)
+        reciprocal = [position for position, (a, b) in enumerate(pairs)
+                      if a != b and (b, a) in pair_set]
+        if reciprocal:
+            raise ValueError(
+                'The pool lists both directions of the same interaction (rows {}), '
+                'which cannot be selected independently once the table is made '
+                'bidirectional. Leave `deduplicate=True`, or collapse them with '
+                '`remove_ppi_bidirectionality`.'.format(reciprocal[:5]))
+        self.interaction_space = InteractionSpace(
+            rnaseq_data=parent.rnaseq_data[parent.included_cells],
+            ppi_data=bi_ppi_data,
+            gene_cutoffs=parent.cutoff_setup,
+            communication_score=setup['communication_score'],
+            cci_score=setup['cci_score'],
+            cci_type=setup['cci_type'],
+            complex_sep=parent.complex_sep,
+            complex_agg_method=parent.complex_agg_method,
+            interaction_columns=parent.interaction_columns,
+            verbose=verbose)
+
+        space_cells = list(self.interaction_space.interaction_elements['cell_names'])
+        self.take = [space_cells.index(c) for c in parent.included_cells]
+
+        # The interaction weight the pool itself carries, if any. A candidate selects
+        # which interactions are active; the weight says how much each contributes, so
+        # the two multiply rather than one standing in for the other. All ones -- the
+        # usual case -- makes this a no-op.
+        if 'score' in pool.columns:
+            weights = np.asarray(pool['score'].values, dtype=float)
+        else:
+            weights = np.ones(len(pool), dtype=float)
+        self.row_weights = weights[self.source]
+
+        self.scorer = None
+        if parent.fast:
+            try:
+                self.scorer = PreparedCCIScorer(self.interaction_space,
+                                                cci_score=setup['cci_score'],
+                                                max_memory_mb=parent.max_memory_mb)
+            except NotImplementedError:
+                if verbose:
+                    print('Falling back to the reference objective for this CCI score')
+            # `count` treats a NaN product as active, which the scorer's zero
+            # substitution does not reproduce. Only this score is affected.
+            if self.scorer is not None and self.scorer._has_nans and setup['cci_score'] == 'count':
+                self.scorer = None
+
+        if self.scorer is not None and parent.validate_fast:
+            self._validate()
+
+    def _fitness(self, vector):
+        return correlation_fitness(vector, self.parent.reference_vector,
+                                   method=self.parent.correlation, signed=self.parent.signed)
+
+    def _weights(self, masks):
+        '''Per-row weights for a stack of candidate selections.'''
+        return masks[:, self.source] * self.row_weights
+
+    def reference_distance_vector(self, mask):
+        '''Condensed distances of one candidate, via the unmodified `InteractionSpace`.'''
+        weights = self._weights(np.atleast_2d(np.asarray(mask, dtype=float)))[0]
+        space = self.interaction_space
+        space.ppi_data['score'] = weights
+        space.interaction_elements['ppi_score'] = space.ppi_data['score'].values
+        space.compute_pairwise_cci_scores(use_ppi_score=True, verbose=False)
+        distances = space.distance_matrix.loc[self.parent.included_cells,
+                                              self.parent.included_cells]
+        return scipy.spatial.distance.squareform(np.asarray(distances.values, dtype=float),
+                                                 checks=False)
+
+    def reference_value(self, mask):
+        '''Fitness of one candidate through the unmodified `InteractionSpace` path.'''
+        return self._fitness(self.reference_distance_vector(mask))
+
+    def _distance_vectors(self, masks):
+        '''Condensed distances for a stack of candidates, through the scorer.'''
+        weights = self._weights(np.atleast_2d(np.asarray(masks, dtype=float)))
+        if self.parent.analysis_setup['cci_score'] == 'count':
+            # 'count' asks whether an interaction is active, not how strongly, so the
+            # weight only matters through its being non-zero. Passing it as it is would
+            # trip the scorer's binary-weight check for a legitimately weighted pool.
+            weights = (weights != 0).astype(float)
+        distances = self.scorer.distance_batch(weights)[:, self.take][:, :, self.take]
+        return np.array([scipy.spatial.distance.squareform(matrix, checks=False)
+                         for matrix in distances])
+
+    def _validate(self):
+        '''Checks the vectorized path against the reference one on a couple of probes.
+
+        The comparison is on the distance matrices rather than on the fitness. The
+        fitness is a rank correlation, so where two cell pairs are nearly tied a
+        difference of a few ULP between the two paths flips their ranks and moves the
+        correlation by far more than the distances themselves differ.
+        '''
+        n_pool = len(self.pool)
+        probes = np.random.default_rng(0).integers(0, 2, size=(2, n_pool)).astype(float)
+        fast_vectors = self._distance_vectors(probes)
+        reference_vectors = np.array([self.reference_distance_vector(p) for p in probes])
+        if not np.allclose(fast_vectors, reference_vectors, rtol=1e-9, atol=1e-9):
+            worst = np.abs(fast_vectors - reference_vectors).max()
+            raise RuntimeError(
+                'The vectorized objective disagrees with the reference one (largest '
+                'difference {:.3e}). Please report this, and use fast=False meanwhile.'
+                .format(worst))
+
+    def __call__(self, masks):
+        masks = np.atleast_2d(np.asarray(masks, dtype=float))
+        if self.scorer is None:
+            return np.array([self.reference_value(mask) for mask in masks])
+
+        vectors = self._distance_vectors(masks)
+        out = np.empty(len(masks))
+        for n, vector in enumerate(vectors):
+            out[n] = self._fitness(vector)
+        return out

@@ -5,6 +5,8 @@ from __future__ import absolute_import
 import numpy as np
 import pandas as pd
 
+from natsort import natsorted
+
 
 ### Pre-process RNAseq datasets
 def drop_empty_genes(rnaseq_data):
@@ -82,7 +84,9 @@ def scale_expression_by_sum(rnaseq_data, axis=0, sum_value=1e6):
         cell-types/tissues/samples and rows are genes.
     '''
     data = rnaseq_data.values
-    data = sum_value * np.divide(data, np.nansum(data, axis=axis))
+    # `keepdims` is needed so the sums broadcast back along the specified axis.
+    # Without it, normalizing across columns (axis=1) raises a broadcasting error.
+    data = sum_value * np.divide(data, np.nansum(data, axis=axis, keepdims=True))
     scaled_data = pd.DataFrame(data, index=rnaseq_data.index, columns=rnaseq_data.columns)
     return scaled_data
 
@@ -196,9 +200,33 @@ def add_complexes_to_expression(rnaseq_data, complexes, agg_method='min'):
     return tmp_rna
 
 
+def _trimean(x, axis):
+    '''
+    Computes the trimean of the data along the specified axis.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        The input data for which the trimean is to be computed.
+
+    axis : int
+        The axis along which to compute the trimean. Use 0 for columns, 1 for rows.
+
+    Returns
+    -------
+    trimean : numpy.ndarray
+        An array containing the trimean values for each row or column, depending on
+        the specified axis.
+    '''
+    q1, q2, q3 = np.nanpercentile(x, [25, 50, 75], axis=axis)
+    trimean = 0.5 * q2 + 0.25 * (q1 + q3)
+    return trimean
+
+
 def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', celltype_col='cell_types', method='average',
                            transposed=True):
-    '''Aggregates gene expression of single cells into cell types for each gene.
+    '''
+    Aggregates gene expression of single cells into cell types for each gene.
 
     Parameters
     ----------
@@ -229,6 +257,11 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
             of a given gene.
         - 'average' : Computes the average gene expression among the single cells
             composing a cell type for a given gene.
+        - 'trimean' : Computes the Tukey's trimean of the gene expression among the
+            single cells composing a cell type for a given gene. It is a weighted
+            average of the median and the first and third quartiles
+            (0.5 * Q2 + 0.25 * (Q1 + Q3)), so it is more robust to outliers than
+            the average while still accounting for the spread of the distribution.
 
     transposed : boolean, default=True
         Whether the rnaseq_data is organized with columns as
@@ -241,7 +274,7 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
         by cell types. Columns are cell types and rows are genes.
     '''
     assert metadata is not None, "Please provide metadata containing the barcodes and cell-type annotation."
-    assert method in ['average', 'nn_cell_fraction'], "{} is not a valid option for method".format(method)
+    assert method in ['average', 'nn_cell_fraction', 'trimean'], "{} is not a valid option for method".format(method)
 
     meta = metadata.reset_index()
     meta = meta[[barcode_col, celltype_col]].set_index(barcode_col)
@@ -251,18 +284,24 @@ def aggregate_single_cells(rnaseq_data, metadata, barcode_col='barcodes', cellty
         df = rnaseq_data
     else:
         df = rnaseq_data.T
-    df.index = [mapper[c] for c in df.index]
-    df.index.name = 'celltype'
-    df.reset_index(inplace=True)
 
-    agg_df = pd.DataFrame(index=df.columns).drop('celltype')
+    # Grouping by an external list of cell types, instead of replacing the index of
+    # `df` and adding a column to it, avoids modifying the dataframe passed by the user.
+    celltypes = [mapper[c] for c in df.index]
 
-    for celltype, ct_df in df.groupby('celltype'):
-        ct_df = ct_df.drop('celltype', axis=1)
+    agg_df = pd.DataFrame(index=df.columns)
+
+    for celltype, ct_df in df.groupby(celltypes):
         if method == 'average':
             agg = ct_df.mean()
         elif method == 'nn_cell_fraction':
             agg = ((ct_df > 0).sum() / ct_df.shape[0])
+        elif method == 'trimean':
+            agg = pd.Series(_trimean(ct_df.values, axis=0), index=ct_df.columns)
         agg_df[celltype] = agg
+
+    # Naturally sorted to avoid a lexicographic order of the cell types (e.g. to obtain
+    # 'CT-1', 'CT-2', 'CT-10' instead of 'CT-1', 'CT-10', 'CT-2')
+    agg_df = agg_df[natsorted(agg_df.columns)]
     return agg_df
 

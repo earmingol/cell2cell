@@ -65,19 +65,24 @@ def concatenate_interaction_tensors(interaction_tensors, axis, order_labels, rem
     except:
         context = {'dtype': interaction_tensors[0].tensor.dtype, 'device' : None}
 
-    # Concatenate tensors
-    concat_tensor = tl.concatenate([tensor.tensor.to('cpu') for tensor in interaction_tensors], axis=axis)
+    # Concatenate tensors. `.to('cpu')` only exists in backends such as pytorch, so
+    # it is skipped for backends whose tensors are numpy arrays (the default one).
+    def to_cpu(data):
+        return data.to('cpu') if hasattr(data, 'to') else data
+
+    concat_tensor = tl.concatenate([to_cpu(tensor.tensor) for tensor in interaction_tensors], axis=axis)
     if mask is not None:
         assert mask.shape == concat_tensor.shape, "Mask must have the same shape of the concatenated tensor. Here: {}".format(concat_tensor.shape)
     else: # Generate a new mask from all previous masks if all are not None
         if all([tensor.mask is not None for tensor in interaction_tensors]):
-            mask = tl.concatenate([tensor.mask.to('cpu') for tensor in interaction_tensors], axis=axis)
+            mask = tl.concatenate([to_cpu(tensor.mask) for tensor in interaction_tensors], axis=axis)
         else:
             mask = None
 
-    concat_tensor = tl.tensor(concat_tensor, device=context['device'])
+    # The context of a numpy-backed tensor does not include a 'device' key
+    concat_tensor = tl.tensor(concat_tensor, device=context.get('device', None))
     if mask is not None:
-        mask = tl.tensor(mask, device=context['device'])
+        mask = tl.tensor(mask, device=context.get('device', None))
 
     # Concatenate names of elements for the given axis but keep the others as in one tensor
     order_names = []
