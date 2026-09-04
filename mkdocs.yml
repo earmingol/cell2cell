@@ -53,6 +53,7 @@ nav:
       - tutorials/Genetic-Algorithm-LR-Selection.ipynb
       - tutorials/Celegans-Spatial-Code.ipynb
       - tutorials/Custom-Objective-Functions.ipynb
+      - tutorials/Spatial-Code-Across-Samples.ipynb
   - "Tensor-cell2cell Tutorials":
     - tutorials/ASD/01-Tensor-Factorization-ASD.ipynb
     - tutorials/ASD/02-Factor-Specific-ASD.ipynb
