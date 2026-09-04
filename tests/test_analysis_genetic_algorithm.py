@@ -9,6 +9,7 @@ import urllib.request
 import numpy as np
 import pandas as pd
 import pytest
+import scipy.spatial
 
 import cell2cell as c2c
 from cell2cell.analysis import genetic_algorithm as ga
@@ -366,16 +367,95 @@ def test_optimize_lr_pairs_shrinks_the_pair_set(ga_inputs, setups):
     assert counts[0] >= counts[1] >= counts[2]
 
 
-def test_optimize_lr_pairs_rejects_directed(ga_inputs, setups):
+def test_optimize_lr_pairs_runs_directed(ga_inputs, setups):
+    '''Directed used to be refused outright. It now runs, and the reference is read as
+    senders against receivers rather than as unordered pairs.'''
     rnaseq, ppi, reference = ga_inputs
     analysis_setup, cutoff_setup = setups
     analysis_setup = dict(analysis_setup, cci_type='directed')
-    with pytest.raises(NotImplementedError):
-        c2c.analysis.optimize_lr_pairs(rnaseq_data=rnaseq, ppi_data=ppi,
-                                       reference_distances=reference,
-                                       cutoff_setup=cutoff_setup,
-                                       analysis_setup=analysis_setup,
-                                       population_size=8, generations=2, runs=1)
+    # A directed reference is not expected to be symmetric
+    asymmetric = reference.copy()
+    asymmetric.iloc[0, 1] = asymmetric.iloc[1, 0] + 0.5
+    results = c2c.analysis.optimize_lr_pairs(rnaseq_data=rnaseq, ppi_data=ppi,
+                                             reference_distances=asymmetric,
+                                             cutoff_setup=cutoff_setup,
+                                             analysis_setup=analysis_setup,
+                                             population_size=8, generations=2, runs=1)
+    assert results['best_ppi_data'] is not None
+    assert np.isfinite(results['best_obj_fn'])
+
+
+def test_directed_reference_is_not_symmetrized(ga_inputs, setups):
+    '''Averaging with the transpose would destroy what the mode exists to capture.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    asymmetric = reference.copy()
+    asymmetric.iloc[0, 1] = asymmetric.iloc[1, 0] + 0.5
+
+    directed = c2c.analysis.CorrelationObjective(
+        rnaseq_data=rnaseq, reference_distances=asymmetric, cutoff_setup=cutoff_setup,
+        analysis_setup=dict(analysis_setup, cci_type='directed'))
+    values = set(np.round(directed.reference_vector, 10))
+    assert round(asymmetric.iloc[0, 1], 10) in values
+    assert round(asymmetric.iloc[1, 0], 10) in values
+
+
+def test_directed_leaves_the_lr_pairs_unidirectional(ga_inputs, setups):
+    '''Undirected doubles the table; directed keeps one row per pair.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+
+    def rows_in_space(cci_type):
+        objective = c2c.analysis.CorrelationObjective(
+            rnaseq_data=rnaseq, reference_distances=reference,
+            cutoff_setup=cutoff_setup,
+            analysis_setup=dict(analysis_setup, cci_type=cci_type),
+            validate_fast=False)
+        return len(objective(pool).interaction_space.ppi_data)
+
+    assert rows_in_space('directed') == len(pool)
+    assert rows_in_space('undirected') > len(pool)
+
+
+def test_directed_accepts_both_directions_of_an_interaction(ga_inputs, setups):
+    '''They are separate candidates when the pairs are not made bidirectional.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    reciprocal = pool.iloc[[0]].rename(columns={'A': 'B', 'B': 'A'})[pool.columns]
+    both = pd.concat([pool, reciprocal], ignore_index=True)
+
+    def build(cci_type):
+        return c2c.analysis.CorrelationObjective(
+            rnaseq_data=rnaseq, reference_distances=reference,
+            cutoff_setup=cutoff_setup,
+            analysis_setup=dict(analysis_setup, cci_type=cci_type),
+            validate_fast=False)(both)
+
+    assert build('directed') is not None
+    with pytest.raises(ValueError, match='both directions'):
+        build('undirected')
+
+
+def test_directed_scores_the_two_orderings_separately(ga_inputs, setups):
+    '''A to B and B to A are one quantity undirected, and two when directed.'''
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+
+    def matrix(cci_type):
+        bound = c2c.analysis.CorrelationObjective(
+            rnaseq_data=rnaseq, reference_distances=reference,
+            cutoff_setup=cutoff_setup,
+            analysis_setup=dict(analysis_setup, cci_type=cci_type),
+            validate_fast=False)(pool)
+        weights = bound._weights(np.ones((1, len(pool))))
+        return bound.scorer.score_batch(weights)[0]
+
+    undirected, directed = matrix('undirected'), matrix('directed')
+    assert np.allclose(undirected, undirected.T)
+    assert not np.allclose(directed, directed.T)
 
 
 def test_optimize_lr_pairs_rejects_asymmetric_reference(ga_inputs, setups):
@@ -710,7 +790,7 @@ def test_reference_may_hold_missing_values_outside_the_cells_used(ga_inputs, set
                                                 included_cells=kept)
     assert np.isfinite(factory.reference_vector).all()
 
-    with pytest.raises(ValueError, match='missing values off the diagonal'):
+    with pytest.raises(ValueError, match='missing values among the cell pairs'):
         c2c.analysis.CorrelationObjective(rnaseq_data=rnaseq, reference_distances=partial,
                                           cutoff_setup=cutoff_setup,
                                           analysis_setup=analysis_setup)
@@ -1280,3 +1360,426 @@ def test_the_ga_receives_the_pyevolve_equivalent_parameters(ga_inputs, monkeypat
     assert seen['mutation_probability'] == 0.02
     assert seen['crossover_probability'] == 0.9
     assert seen['K_tournament'] == 2
+
+
+# ---------------------------------------------------------------------------------
+# Rectangular references: one group of cells against another
+#
+# The reference is a block, cells on the rows against cells on the columns, rather
+# than a square matrix over one cell list. Only that block is computed.
+# ---------------------------------------------------------------------------------
+
+@pytest.fixture
+def block_inputs(ga_inputs):
+    '''Splits the cells into two disjoint groups, and a reference over the block.'''
+    rnaseq, ppi, reference = ga_inputs
+    cells = list(rnaseq.columns)
+    rows, cols = cells[:3], cells[3:]
+    return rnaseq, ppi, reference, rows, cols
+
+
+def _bound(rnaseq, reference, setups, pool, **kwargs):
+    analysis_setup, cutoff_setup = setups
+    analysis_setup = dict(analysis_setup, **kwargs.pop('analysis_setup', {}))
+    objective = c2c.analysis.CorrelationObjective(
+        rnaseq_data=rnaseq, reference_distances=reference, cutoff_setup=cutoff_setup,
+        analysis_setup=analysis_setup, **kwargs)
+    return objective, objective(pool)
+
+
+@pytest.mark.parametrize('cci_score', ['bray_curtis', 'jaccard', 'icellnet', 'count'])
+def test_block_scorer_equals_the_same_block_of_the_full_matrix(block_inputs, setups,
+                                                               cci_score):
+    '''The load-bearing test: computing only the block gives the block's real values.
+
+    Restricting the cells has to be a restriction, not an approximation, so it is
+    checked against the full square matrix the scorer computes today.
+    '''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    _, bound = _bound(rnaseq, reference, setups, pool, validate_fast=False,
+                      analysis_setup={'cci_score': cci_score})
+
+    full = bound.scorer
+    block = ga.PreparedCCIScorer(bound.interaction_space, cci_score=cci_score,
+                                 row_cells=rows, col_cells=cols)
+    weights = bound._weights(np.random.default_rng(0).integers(
+        0, 2, size=(5, len(pool))).astype(float))
+
+    row_idx = [full.cell_names.index(c) for c in rows]
+    col_idx = [full.cell_names.index(c) for c in cols]
+    expected = full.score_batch(weights)[:, row_idx][:, :, col_idx]
+    np.testing.assert_allclose(block.score_batch(weights), expected, rtol=1e-12, atol=1e-12)
+
+
+def test_block_equivalence_needs_both_directions_equally_weighted(block_inputs, setups):
+    '''The precondition behind the test above, stated as its own check.
+
+    The full-matrix path can symmetrize after the fact and a block cannot, so a block
+    only equals the full matrix's block when each interaction and its reverse carry the
+    same weight. `_weights` guarantees that; raw per-row weights do not.
+    '''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    _, bound = _bound(rnaseq, reference, setups, pool, validate_fast=False)
+
+    full = bound.scorer
+    block = ga.PreparedCCIScorer(bound.interaction_space, row_cells=rows, col_cells=cols)
+    row_idx = [full.cell_names.index(c) for c in rows]
+    col_idx = [full.cell_names.index(c) for c in cols]
+
+    def full_block(W):
+        return full.score_batch(W)[:, row_idx][:, :, col_idx]
+
+    # Weights the objective would produce: an interaction and its reverse share one.
+    paired = bound._weights(np.random.default_rng(1).integers(
+        0, 2, size=(1, len(pool))).astype(float))
+    np.testing.assert_allclose(block.score_batch(paired), full_block(paired),
+                               rtol=1e-12, atol=1e-12)
+
+    # Weighting the two rows of an interaction independently breaks the symmetry the
+    # full-matrix path papers over by mirroring, and the block then differs.
+    unpaired = np.random.default_rng(1).integers(0, 2, size=(1, full.n_ppi)).astype(float)
+    before_mirror = full._combine(*full._terms(unpaired))
+    assert not np.allclose(before_mirror, before_mirror.transpose(0, 2, 1))
+    assert not np.allclose(block.score_batch(unpaired), full_block(unpaired))
+
+
+def test_block_scorer_is_smaller_than_the_full_one(block_inputs, setups):
+    '''The point of the block: the precomputed outer products shrink with it.'''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    _, bound = _bound(rnaseq, reference, setups, pool, validate_fast=False)
+
+    block = ga.PreparedCCIScorer(bound.interaction_space, row_cells=rows, col_cells=cols)
+    assert (block.n_rows, block.n_cols) == (len(rows), len(cols))
+    assert block._P.size < bound.scorer._P.size
+
+
+def test_rectangular_objective_matches_the_interaction_space(block_inputs, setups):
+    '''`validate_fast` is the real check, and it runs on construction.'''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    _, bound = _bound(rnaseq, reference, setups, pool, row_cells=rows, col_cells=cols,
+                      validate_fast=True)
+    masks = np.random.default_rng(2).integers(0, 2, size=(3, len(pool))).astype(float)
+    fast = bound._distance_vectors(masks)
+    slow = np.array([bound.reference_distance_vector(m) for m in masks])
+    np.testing.assert_allclose(fast, slow, rtol=1e-9, atol=1e-9)
+    assert fast.shape[1] == len(rows) * len(cols)
+
+
+def test_rectangular_objective_runs_a_search(block_inputs, setups):
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    analysis_setup, cutoff_setup = setups
+    objective = c2c.analysis.CorrelationObjective(
+        rnaseq_data=rnaseq, reference_distances=reference.loc[rows, cols],
+        cutoff_setup=cutoff_setup, analysis_setup=analysis_setup,
+        row_cells=rows, col_cells=cols)
+    results = c2c.analysis.optimize_lr_pairs(ppi_data=ppi, objective=objective,
+                                             population_size=8, generations=2, runs=1)
+    assert results['best_ppi_data'] is not None
+    assert np.isfinite(results['best_obj_fn'])
+
+
+def test_rectangular_reference_may_be_the_block_alone(block_inputs, setups):
+    '''The reference need not be the full square matrix, only cover the block.'''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    objective, _ = _bound(rnaseq, reference.loc[rows, cols], setups, pool,
+                          row_cells=rows, col_cells=cols, validate_fast=False)
+    assert objective.reference_vector.size == len(rows) * len(cols)
+
+
+def test_undirected_block_still_sums_both_orientations(block_inputs, setups):
+    '''Restricting the rows chooses which cell pairs are compared, not a direction.
+
+    Dropping a pair has to matter whichever side of the block its ligand sits on, or
+    the restriction has quietly halved the signalling considered.
+    '''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    _, bound = _bound(rnaseq, reference, setups, pool, row_cells=rows, col_cells=cols,
+                      validate_fast=False)
+    everything = np.ones((1, len(pool)))
+    full_block = bound._distance_vectors(everything)[0]
+    changed = 0
+    for position in range(len(pool)):
+        without = np.ones((1, len(pool)))
+        without[0, position] = 0.0
+        if not np.allclose(bound._distance_vectors(without)[0], full_block):
+            changed += 1
+    assert changed > 0
+
+
+# ---------------------------------------------------------------------------------
+# Row and column sets that overlap
+# ---------------------------------------------------------------------------------
+
+def test_overlapping_sets_find_self_pairs_by_name_not_position(block_inputs, setups):
+    '''A shared cell need not sit on the matrix diagonal.'''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    row_cells = [rows[0], rows[1]]
+    col_cells = [cols[0], rows[0]]          # the self-pair is at position (0, 1)
+    _, bound = _bound(rnaseq, reference, setups, pool, row_cells=row_cells,
+                      col_cells=col_cells, validate_fast=False)
+    assert bound.scorer.self_pairs.tolist() == [[False, True], [False, False]]
+
+
+@pytest.mark.parametrize('include', [False, True])
+def test_overlapping_sets_honour_the_self_interaction_flag(block_inputs, setups, include):
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    row_cells, col_cells = [rows[0], rows[1]], [cols[0], rows[0]]
+    objective, _ = _bound(rnaseq, reference, setups, pool, row_cells=row_cells,
+                          col_cells=col_cells, include_self_interactions=include,
+                          validate_fast=False)
+    assert objective.mask[0, 1] == include
+
+
+def test_undirected_overlap_compares_each_cell_pair_once(block_inputs, setups):
+    '''Otherwise a pair landing in the block twice would be weighted double.'''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    row_cells = [rows[0], rows[1]]
+    col_cells = [rows[0], cols[0], rows[1]]
+    objective, _ = _bound(rnaseq, reference, setups, pool, row_cells=row_cells,
+                          col_cells=col_cells, validate_fast=False)
+    # {rows[0], rows[1]} appears at (0, 2) and at (1, 0); only one is compared
+    assert objective.mask[0, 2] != objective.mask[1, 0]
+    assert objective.mask.sum() == 3
+
+
+def test_directed_overlap_keeps_both_orderings(block_inputs, setups):
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    row_cells = [rows[0], rows[1]]
+    col_cells = [rows[0], cols[0], rows[1]]
+    objective, _ = _bound(rnaseq, reference, setups, pool, row_cells=row_cells,
+                          col_cells=col_cells, validate_fast=False,
+                          analysis_setup={'cci_type': 'directed'})
+    assert objective.mask[0, 2] and objective.mask[1, 0]
+
+
+@pytest.mark.parametrize('cci_type', ['undirected', 'directed'])
+def test_identical_row_and_column_sets_reproduce_the_square_form(ga_inputs, setups,
+                                                                 cci_type):
+    '''The degeneracy that ties the block path to the one it generalizes.'''
+    rnaseq, ppi, reference = ga_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    cells = sorted(set(rnaseq.columns) & set(reference.columns))
+    masks = np.random.default_rng(3).integers(0, 2, size=(4, len(pool))).astype(float)
+
+    _, square = _bound(rnaseq, reference, setups, pool, validate_fast=False,
+                       analysis_setup={'cci_type': cci_type})
+    _, block = _bound(rnaseq, reference, setups, pool, row_cells=cells, col_cells=cells,
+                      validate_fast=False, analysis_setup={'cci_type': cci_type})
+    np.testing.assert_allclose(square(masks), block(masks), rtol=1e-12, atol=1e-12)
+
+
+def test_rectangular_arguments_are_validated(block_inputs, setups):
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    analysis_setup, cutoff_setup = setups
+    common = dict(rnaseq_data=rnaseq, reference_distances=reference,
+                  cutoff_setup=cutoff_setup, analysis_setup=analysis_setup)
+
+    with pytest.raises(ValueError, match='both `row_cells` and `col_cells`'):
+        c2c.analysis.CorrelationObjective(row_cells=rows, **common)
+    with pytest.raises(ValueError, match='same cells on both axes'):
+        c2c.analysis.CorrelationObjective(row_cells=rows, col_cells=cols,
+                                          included_cells=rows, **common)
+    with pytest.raises(ValueError, match='more than once'):
+        c2c.analysis.CorrelationObjective(row_cells=[rows[0], rows[0]], col_cells=cols,
+                                          **common)
+    with pytest.raises(ValueError, match='no rows for'):
+        c2c.analysis.CorrelationObjective(row_cells=['not-a-cell'], col_cells=cols,
+                                          **common)
+    with pytest.raises(ValueError, match='no columns for'):
+        c2c.analysis.CorrelationObjective(row_cells=rows, col_cells=['not-a-cell'],
+                                          **common)
+    with pytest.raises(ValueError, match='At least three cell pairs'):
+        c2c.analysis.CorrelationObjective(row_cells=rows[:1], col_cells=cols[:1],
+                                          **common)
+
+
+def test_rectangular_reference_rejects_missing_values(block_inputs, setups):
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    analysis_setup, cutoff_setup = setups
+    holed = reference.copy()
+    holed.loc[rows[0], cols[0]] = np.nan
+    with pytest.raises(ValueError, match='missing values among the cell pairs'):
+        c2c.analysis.CorrelationObjective(
+            rnaseq_data=rnaseq, reference_distances=holed, cutoff_setup=cutoff_setup,
+            analysis_setup=analysis_setup, row_cells=rows, col_cells=cols)
+
+
+# ---------------------------------------------------------------------------------
+# Self-interactions
+#
+# Left out by default, since the usual reference is a distance whose diagonal is a
+# trivial zero. Bringing them in is not only a mask change: the distances zero them.
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.parametrize('cci_type', ['undirected', 'directed'])
+def test_self_interactions_are_excluded_by_default(ga_inputs, setups, cci_type):
+    rnaseq, ppi, reference = ga_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    objective, bound = _bound(rnaseq, reference, setups, pool, validate_fast=False,
+                              analysis_setup={'cci_type': cci_type})
+    n = len(objective.row_cells)
+    expected = n * (n - 1) // 2 if cci_type == 'undirected' else n * (n - 1)
+    assert objective.reference_vector.size == expected
+    assert not np.diag(objective.mask).any()
+
+
+@pytest.mark.parametrize('cci_type', ['undirected', 'directed'])
+def test_self_interactions_can_be_included(ga_inputs, setups, cci_type):
+    '''The extra entries must carry real values, not the zeros the distances write.'''
+    rnaseq, ppi, reference = ga_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    without, bound_without = _bound(rnaseq, reference, setups, pool,
+                                    validate_fast=False,
+                                    analysis_setup={'cci_type': cci_type})
+    with_self, bound_with = _bound(rnaseq, reference, setups, pool,
+                                   include_self_interactions=True, validate_fast=False,
+                                   analysis_setup={'cci_type': cci_type})
+    n = len(without.row_cells)
+    assert with_self.reference_vector.size == without.reference_vector.size + n
+
+    masks = np.random.default_rng(4).integers(0, 2, size=(3, len(pool))).astype(float)
+    vectors = bound_with._distance_vectors(masks)
+    is_self = np.eye(n, dtype=bool)[with_self.mask]
+    diagonal = vectors[:, np.flatnonzero(is_self)]
+    assert not np.allclose(diagonal, 0.0)
+    # Still on the same scale as everything else, so the comparison is coherent
+    assert (vectors >= -1e-9).all() and (vectors <= 1.0 + 1e-9).all()
+
+
+def test_self_interactions_change_the_fitness_only_when_included(ga_inputs, setups):
+    rnaseq, ppi, reference = ga_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    masks = np.random.default_rng(5).integers(0, 2, size=(4, len(pool))).astype(float)
+
+    _, off = _bound(rnaseq, reference, setups, pool, validate_fast=False)
+    _, on = _bound(rnaseq, reference, setups, pool, include_self_interactions=True,
+                   validate_fast=False)
+    assert not np.allclose(off(masks), on(masks))
+
+
+def test_self_interactions_still_agree_with_the_interaction_space(ga_inputs, setups):
+    '''The non-zeroed fast path against the non-zeroed oracle.'''
+    rnaseq, ppi, reference = ga_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    _, bound = _bound(rnaseq, reference, setups, pool,
+                      include_self_interactions=True, validate_fast=True)
+    masks = np.random.default_rng(6).integers(0, 2, size=(3, len(pool))).astype(float)
+    fast = bound._distance_vectors(masks)
+    slow = np.array([bound.reference_distance_vector(m) for m in masks])
+    np.testing.assert_allclose(fast, slow, rtol=1e-9, atol=1e-9)
+
+
+def test_self_interactions_check_the_reference_diagonal_only_when_used(ga_inputs, setups):
+    rnaseq, ppi, reference = ga_inputs
+    analysis_setup, cutoff_setup = setups
+    holed = reference.copy()
+    holed.iloc[0, 0] = np.nan
+    common = dict(rnaseq_data=rnaseq, reference_distances=holed,
+                  cutoff_setup=cutoff_setup, analysis_setup=analysis_setup)
+
+    # Off the diagonal is never read by default, so a hole there is harmless
+    assert c2c.analysis.CorrelationObjective(**common) is not None
+    with pytest.raises(ValueError, match='missing values among the cell pairs'):
+        c2c.analysis.CorrelationObjective(include_self_interactions=True, **common)
+
+
+def test_default_self_interaction_setting_reproduces_the_condensed_form(ga_inputs, setups):
+    '''The square undirected default must still be exactly what squareform gave.'''
+    rnaseq, ppi, reference = ga_inputs
+    objective, _ = _bound(rnaseq, reference, setups,
+                          remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False),
+                          validate_fast=False)
+    cells = objective.row_cells
+    condensed = scipy.spatial.distance.squareform(
+        np.asarray(reference.loc[cells, cells].values, dtype=float), checks=False)
+    np.testing.assert_allclose(objective.reference_vector, condensed)
+
+
+# ---------------------------------------------------------------------------------
+# The batched fitness
+# ---------------------------------------------------------------------------------
+
+@pytest.mark.parametrize('method', ['spearman', 'pearson'])
+@pytest.mark.parametrize('signed', [False, True])
+def test_batched_fitness_matches_the_per_candidate_one(method, signed):
+    rng = np.random.default_rng(7)
+    vectors = rng.random((25, 60))
+    reference = rng.random(60)
+    one_by_one = np.array([ga.correlation_fitness(v, reference, method=method,
+                                                  signed=signed) for v in vectors])
+    batched = ga.correlation_fitness_batch(vectors, reference, method=method,
+                                           signed=signed)
+    np.testing.assert_allclose(batched, one_by_one, rtol=1e-12, atol=1e-12)
+
+
+@pytest.mark.parametrize('method', ['spearman', 'pearson'])
+def test_batched_fitness_handles_heavy_ties(method):
+    '''Thresholded expression produces a lot of ties, which rankdata has to break the
+    same way scipy's own correlation does.'''
+    rng = np.random.default_rng(8)
+    vectors = rng.integers(0, 3, size=(20, 40)).astype(float)
+    reference = rng.integers(0, 3, size=40).astype(float)
+    one_by_one = np.array([ga.correlation_fitness(v, reference, method=method)
+                           for v in vectors])
+    batched = ga.correlation_fitness_batch(vectors, reference, method=method)
+    np.testing.assert_allclose(batched, one_by_one, rtol=1e-12, atol=1e-12)
+
+
+def test_batched_fitness_turns_a_constant_candidate_into_zero():
+    reference = np.arange(10.0)
+    constant = np.ones((1, 10))
+    assert ga.correlation_fitness_batch(constant, reference)[0] == 0.0
+
+
+def test_batched_fitness_falls_back_for_a_callable():
+    '''A custom comparison knows nothing about ranks, so it keeps the loop.'''
+    calls = []
+
+    def agreement(candidate, reference):
+        calls.append(candidate)
+        return float(np.mean(candidate > reference))
+
+    rng = np.random.default_rng(9)
+    vectors, reference = rng.random((6, 12)), rng.random(12)
+    batched = ga.correlation_fitness_batch(vectors, reference, method=agreement)
+    expected = np.array([ga.correlation_fitness(v, reference, method=agreement)
+                         for v in vectors])
+    np.testing.assert_allclose(batched, expected)
+    assert len(calls) == 12
+
+
+def test_objective_uses_the_batched_fitness(ga_inputs, setups):
+    '''The whole population goes through one call, and agrees with the slow path.'''
+    rnaseq, ppi, reference = ga_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    _, bound = _bound(rnaseq, reference, setups, pool, validate_fast=False)
+    masks = np.random.default_rng(10).integers(0, 2, size=(6, len(pool))).astype(float)
+    np.testing.assert_allclose(
+        bound(masks), np.array([bound.reference_value(m) for m in masks]),
+        rtol=1e-9, atol=1e-9)
+
+
+def test_block_scorer_validates_its_cell_lists(block_inputs, setups):
+    '''`PreparedCCIScorer` is public, so it checks its own arguments rather than
+    relying on the objective having done it.'''
+    rnaseq, ppi, reference, rows, cols = block_inputs
+    pool = remove_ppi_bidirectionality(ppi, ('A', 'B'), verbose=False)
+    _, bound = _bound(rnaseq, reference, setups, pool, validate_fast=False)
+    space = bound.interaction_space
+
+    with pytest.raises(ValueError, match='more than once'):
+        ga.PreparedCCIScorer(space, row_cells=[rows[0], rows[0]], col_cells=cols)
+    with pytest.raises(ValueError, match='not in the interaction space'):
+        ga.PreparedCCIScorer(space, row_cells=['not-a-cell'], col_cells=cols)
+    with pytest.raises(ValueError, match='not in the interaction space'):
+        ga.PreparedCCIScorer(space, row_cells=rows, col_cells=['not-a-cell'])

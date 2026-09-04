@@ -56,15 +56,34 @@ def _flip_mutation(offspring, ga_instance):
     return offspring
 
 
-def _deduplicate_pool(ppi_data, interaction_columns, duplicates='highest', verbose=False):
+def _is_undirected(analysis_setup, objective=None):
+    '''Whether the search is undirected, from whichever of the two was supplied.
+
+    The pool is prepared before the objective is built, so this has to read the
+    setting from the same place the objective will.
+    '''
+    if analysis_setup is not None:
+        return analysis_setup.get('cci_type', 'undirected') == 'undirected'
+    setup = getattr(objective, 'analysis_setup', None)
+    if isinstance(setup, dict):
+        return setup.get('cci_type', 'undirected') == 'undirected'
+    return True
+
+
+def _deduplicate_pool(ppi_data, interaction_columns, duplicates='highest',
+                      collapse_reciprocals=True, verbose=False):
     '''One row per interaction: reciprocals collapsed, then pairs listed more than once.
+
+    `collapse_reciprocals` is False for a directed search, where an interaction and its
+    reverse act between different cells and are two candidates rather than one.
 
     Both searches reduce the pool the same way, so the masks of a single search and
     those of several executions are indexed against the same table.
     '''
-    ppi_data = remove_ppi_bidirectionality(ppi_data=ppi_data,
-                                           interaction_columns=interaction_columns,
-                                           verbose=verbose)
+    if collapse_reciprocals:
+        ppi_data = remove_ppi_bidirectionality(ppi_data=ppi_data,
+                                               interaction_columns=interaction_columns,
+                                               verbose=verbose)
     return deduplicate_ppi_pairs(ppi_data, interaction_columns=interaction_columns,
                                  keep=duplicates, verbose=False)
 
@@ -354,8 +373,9 @@ def _optimize_once(rnaseq_data=None, ppi_data=None, reference_distances=None,
         # Not a mechanical requirement -- the mapping onto bidirectional rows is exact
         # for any input. This is about not counting an interaction twice when the table
         # lists it in both directions, which the doubling would then triple.
-        ppi_data = _deduplicate_pool(ppi_data, interaction_columns=interaction_columns,
-                                     duplicates=duplicates, verbose=verbose)
+        ppi_data = _deduplicate_pool(
+            ppi_data, interaction_columns=interaction_columns, duplicates=duplicates,
+            collapse_reciprocals=_is_undirected(analysis_setup, objective), verbose=verbose)
 
     theta_ppi_data = ppi_data.copy()
     _validate_ppi_score(theta_ppi_data)
@@ -640,9 +660,10 @@ def optimize_lr_pairs(rnaseq_data=None, ppi_data=None, reference_distances=None,
     # The pool the masks are indexed against, matching what each execution searches
     pool = ppi_data
     if kwargs.get('deduplicate', True):
-        pool = _deduplicate_pool(ppi_data, interaction_columns=interaction_columns,
-                                 duplicates=kwargs.get('duplicates', 'highest'),
-                                 verbose=False)
+        pool = _deduplicate_pool(
+            ppi_data, interaction_columns=interaction_columns,
+            duplicates=kwargs.get('duplicates', 'highest'),
+            collapse_reciprocals=_is_undirected(analysis_setup, objective), verbose=False)
 
     all_executions, masks = {}, []
     for i in range(executions):

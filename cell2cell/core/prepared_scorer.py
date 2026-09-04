@@ -63,20 +63,50 @@ class PreparedCCIScorer:
         per-vector path is prepared, which is still much faster than rebuilding
         the interaction space but does not gain from batching.
 
+    row_cells, col_cells : list, default=None
+        Cells to put on the rows and on the columns of the returned matrices. Both
+        None, the default, gives the full square matrix over every cell in the
+        interaction space.
+
+        Naming them separately computes only that block, which is worth doing when
+        the question is about one group of cells against another -- a set of cell
+        types against the rest, say. The saving is real: the precomputed outer
+        products, and the matrix product that uses them, go from `cells^2` to
+        `len(row_cells) * len(col_cells)`.
+
+        The block is the corresponding block of the full matrix, not an
+        approximation of it. For `cci_type='undirected'` that holds **provided both
+        directions of each ligand-receptor pair carry the same weight**, which is
+        what a bidirectional PPI table scored with per-interaction weights gives; the
+        full-matrix path can symmetrize after the fact, and a block cannot.
+
     Attributes
     ----------
     A, B : numpy.ndarray
-        Weighted ligand and receptor expression, of shape (PPIs, cells).
+        Weighted ligand and receptor expression, of shape (PPIs, cells). Over every
+        cell of the interaction space, whatever `row_cells`/`col_cells` ask for.
 
     cell_names : list
-        Cell names, in the order they have in the interaction space. Rows and
-        columns of every returned matrix follow this order.
+        Cell names, in the order they have in the interaction space.
+
+    row_names, col_names : list
+        Cells on each axis of the returned matrices. Equal to `cell_names` unless
+        `row_cells`/`col_cells` were given.
+
+    square : boolean
+        Whether the two axes hold the same cells in the same order.
+
+    self_pairs : numpy.ndarray
+        Boolean (rows, columns) array, True where the same cell is on both axes.
+        These are the self-interactions; with different row and column sets they are
+        not the matrix diagonal.
 
     batched : boolean
         Whether the precomputed outer products fitted in `max_memory_mb`.
     '''
 
-    def __init__(self, interaction_space, cci_score=None, max_memory_mb=512):
+    def __init__(self, interaction_space, cci_score=None, max_memory_mb=512,
+                 row_cells=None, col_cells=None):
         if cci_score is None:
             cci_score = interaction_space.cci_score
         if cci_score not in LINEAR_CCI_SCORES:
@@ -101,22 +131,50 @@ class PreparedCCIScorer:
         self.B = np.nan_to_num(self.B)
 
         self.n_ppi, self.n_cells = self.A.shape
-        self._A2 = self.A * self.A
-        self._B2 = self.B * self.B
+
+        # Row and column cell subsets. Both None is the full square matrix, which is
+        # what every caller that does not ask for a block gets.
+        known = set(self.cell_names)
+        self.row_names = list(self.cell_names) if row_cells is None else list(row_cells)
+        self.col_names = list(self.cell_names) if col_cells is None else list(col_cells)
+        for label, subset in (('row_cells', self.row_names), ('col_cells', self.col_names)):
+            if len(set(subset)) != len(subset):
+                raise ValueError('`{}` lists the same cell more than once, which would '
+                                 'weight it twice.'.format(label))
+            missing = [cell for cell in subset if cell not in known]
+            if missing:
+                raise ValueError('`{}` has cells that are not in the interaction space: {}'
+                                 .format(label, missing[:5]))
+        position = {cell: i for i, cell in enumerate(self.cell_names)}
+        row_idx = [position[cell] for cell in self.row_names]
+        col_idx = [position[cell] for cell in self.col_names]
+        self.n_rows, self.n_cols = len(row_idx), len(col_idx)
+        self.square = self.row_names == self.col_names
+
+        self._A_rows = self.A[:, row_idx]
+        self._B_cols = self.B[:, col_idx]
+        self._A2 = self._A_rows * self._A_rows
+        self._B2 = self._B_cols * self._B_cols
+
+        # Where the same cell sits on both axes. With different row and column sets
+        # these are not the matrix diagonal, so they are found by name rather than by
+        # position.
+        self.self_pairs = (np.asarray(self.row_names, dtype=object)[:, None] ==
+                           np.asarray(self.col_names, dtype=object)[None, :])
 
         # 'count' asks whether a product is non-zero, not how large it is, and
         # `[w * A * B != 0]` factorizes into the three indicators. Keeping them lets
         # the per-vector path count as well, rather than adding the products up.
         if self.cci_score == 'count':
-            self._A_nonzero = (self.A != 0).astype(float)
-            self._B_nonzero = (self.B != 0).astype(float)
+            self._A_nonzero = (self._A_rows != 0).astype(float)
+            self._B_nonzero = (self._B_cols != 0).astype(float)
 
         # Outer product of every ligand-receptor pair, flattened over the two cell
         # axes so the contraction over PPIs is a plain matrix product.
-        outer_mb = self.n_ppi * self.n_cells * self.n_cells * 8 / 1e6
+        outer_mb = self.n_ppi * self.n_rows * self.n_cols * 8 / 1e6
         self.batched = outer_mb <= max_memory_mb
         if self.batched:
-            outer = self.A[:, :, None] * self.B[:, None, :]
+            outer = self._A_rows[:, :, None] * self._B_cols[:, None, :]
             if self.cci_score == 'count':
                 # 'count' counts the non-zero products rather than adding them up,
                 # which is linear in a binary weight vector but not in a general one.
@@ -131,18 +189,22 @@ class PreparedCCIScorer:
         SA = W @ self._A2
         SB = W @ self._B2
         if self.batched:
-            N = (W @ self._P).reshape(-1, self.n_cells, self.n_cells)
+            N = (W @ self._P).reshape(-1, self.n_rows, self.n_cols)
         elif self.cci_score == 'count':
             # Same indicators as the batched `_P`, so the result does not depend on
             # whether the outer products happened to fit in `max_memory_mb`
             A, B = self._A_nonzero, self._B_nonzero
             N = np.stack([(A * (w != 0)[:, None]).T @ B for w in W])
         else:
-            N = np.stack([(self.A * w[:, None]).T @ self.B for w in W])
+            N = np.stack([(self._A_rows * w[:, None]).T @ self._B_cols for w in W])
         return N, SA, SB
 
     def _combine(self, N, SA, SB):
-        '''Applies the score-specific formula. Shapes: N (n, C, C), SA/SB (n, C).'''
+        '''Applies the score-specific formula. Shapes: N (n, R, S), SA (n, R), SB (n, S).
+
+        Already shape-agnostic: the broadcast below spans a rectangular block just as
+        it spans a square one.
+        '''
         if self.cci_score == 'icellnet' or self.cci_score == 'count':
             return N
 
@@ -171,10 +233,13 @@ class PreparedCCIScorer:
         Returns
         -------
         scores : numpy.ndarray
-            CCI matrices, of shape (n, cells, cells). Rows and columns follow
-            `self.cell_names`. For an undirected interaction space the matrices
-            are symmetrized the same way `compute_pairwise_cci_scores` does, by
-            mirroring the upper triangle.
+            CCI matrices, of shape (n, rows, columns), following `self.row_names`
+            and `self.col_names`. For an undirected interaction space over the full
+            square matrix these are symmetrized the same way
+            `compute_pairwise_cci_scores` does, by mirroring the upper triangle. A
+            rectangular block cannot be mirrored, and does not need to be: with both
+            directions of each interaction equally weighted the result is already
+            symmetric, so the block equals the same block of the full matrix.
         '''
         W = np.atleast_2d(np.asarray(W, dtype=float))
         if W.shape[1] != self.n_ppi:
@@ -189,7 +254,7 @@ class PreparedCCIScorer:
 
         scores = self._combine(*self._terms(W))
 
-        if self.cci_type == 'undirected':
+        if self.cci_type == 'undirected' and self.square:
             # `generate_pairs` yields the upper triangle plus the diagonal, and the
             # scoring loop mirrors each value. The lower triangle of the directed
             # result is therefore never used.
@@ -212,26 +277,37 @@ class PreparedCCIScorer:
             CCI scores, with cells as rows and columns.
         '''
         scores = self.score_batch(np.asarray(ppi_score, dtype=float)[None, :])[0]
-        return pd.DataFrame(scores, index=self.cell_names, columns=self.cell_names)
+        return pd.DataFrame(scores, index=self.row_names, columns=self.col_names)
 
-    def distance_batch(self, W):
+    def distance_batch(self, W, zero_diagonal=True):
         '''
         Computes the distance matrix for each of several PPI weight vectors,
         reproducing what `InteractionSpace.compute_pairwise_cci_scores` derives.
 
         Bounded scores use `1 - score`; the unbounded ones ('count', 'icellnet')
         use the regularized `1 - score / (score + mean)`, where the mean is taken
-        over the whole CCI matrix of that weight vector. The diagonal is zeroed.
+        over the CCI matrix of that weight vector.
+
+        Note that for the unbounded scores over a rectangular block that mean is
+        taken over the block rather than over the full matrix, so the distances
+        differ from the full-matrix ones by a per-candidate constant. A rank
+        correlation is unaffected, since the transform stays monotone; a Pearson
+        one is not.
 
         Parameters
         ----------
         W : numpy.ndarray
             Weights, of shape (n, PPIs).
 
+        zero_diagonal : boolean, default=True
+            Whether to zero the self-interactions, as
+            `compute_pairwise_cci_scores` does. Pass False to keep the autocrine
+            distances, which is only useful when they are going to be read.
+
         Returns
         -------
         distances : numpy.ndarray
-            Distance matrices, of shape (n, cells, cells).
+            Distance matrices, of shape (n, rows, columns).
         '''
         scores = self.score_batch(W)
         if self.cci_score in UNBOUNDED_CCI_SCORES:
@@ -241,6 +317,6 @@ class PreparedCCIScorer:
         else:
             distances = 1.0 - scores
 
-        idx = np.arange(self.n_cells)
-        distances[:, idx, idx] = 0.0
+        if zero_diagonal:
+            distances[:, self.self_pairs] = 0.0
         return distances

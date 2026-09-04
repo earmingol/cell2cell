@@ -152,7 +152,7 @@ def test_correlation_objective_refuses_a_reference_with_uncomputed_pairs():
     matrix[0, 2] = matrix[2, 0] = np.nan
     reference = pd.DataFrame(matrix, index=rnaseq.columns, columns=rnaseq.columns)
 
-    with pytest.raises(ValueError, match='missing values off the diagonal'):
+    with pytest.raises(ValueError, match='missing values among the cell pairs'):
         c2c.analysis.CorrelationObjective(
             rnaseq_data=rnaseq, reference_distances=reference,
             cutoff_setup={'type': 'constant_value', 'parameter': 10},

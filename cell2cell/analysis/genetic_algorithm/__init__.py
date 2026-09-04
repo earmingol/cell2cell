@@ -24,7 +24,10 @@ from cell2cell.preprocessing.ppi import bidirectional_index
 from cell2cell.analysis.genetic_algorithm.base import (CombinedObjective, COMBINERS)
 from cell2cell.analysis.genetic_algorithm.objectives import (CorrelationObjective,
                                                              correlation_fitness,
-                                                             _as_symmetric)
+                                                             correlation_fitness_batch,
+                                                             _as_symmetric, _as_square,
+                                                             _as_block,
+                                                             _comparison_mask)
 from cell2cell.analysis.genetic_algorithm.consensus import (lr_selection_frequency,
                                                             lr_cooccurrence,
                                                             consensus_from_cooccurrence,
