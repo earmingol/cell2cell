@@ -448,7 +448,7 @@ def test_filter_ppi_by_adata_keeps_only_measured_genes(panel_ppi):
     ppi, measured = panel_ppi
     kept, report = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        verbose=False)
+        keep_all_rows=False, verbose=False)
     for column in ('ligand_filtered', 'receptor_filtered'):
         for partner in kept[column]:
             assert all(sub in measured for sub in partner.split('&'))
@@ -469,7 +469,7 @@ def test_filter_ppi_by_adata_strict_drops_a_partly_measured_complex(panel_ppi):
     ppi, measured = panel_ppi
     kept, report = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        complex_policy='strict', verbose=False)
+        complex_policy='strict', keep_all_rows=False, verbose=False)
     assert 'LE&LF' not in set(kept['ligand'])
     assert 'LC&LD' in set(kept['ligand'])        # both subunits measured, so it stays
     assert report.loc['interactions', 'trimmed'] == 0
@@ -479,10 +479,10 @@ def test_filter_ppi_by_adata_strict_keeps_fewer_than_trim(panel_ppi):
     ppi, measured = panel_ppi
     trimmed, _ = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        complex_policy='trim', verbose=False)
+        complex_policy='trim', keep_all_rows=False, verbose=False)
     strict, _ = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        complex_policy='strict', verbose=False)
+        complex_policy='strict', keep_all_rows=False, verbose=False)
     assert len(strict) < len(trimmed)
 
 
@@ -491,7 +491,7 @@ def test_filter_ppi_by_adata_drops_a_pair_with_nothing_left(panel_ppi):
     ppi, measured = panel_ppi
     kept, _ = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        verbose=False)
+        keep_all_rows=False, verbose=False)
     assert 'LG' not in set(kept['ligand'])
 
 
@@ -519,7 +519,7 @@ def test_filter_ppi_by_adata_counts_trimmed_interactions(panel_ppi):
     ppi, measured = panel_ppi
     kept, report = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        verbose=False)
+        keep_all_rows=False, verbose=False)
     shortened = ((kept['ligand_filtered'] != kept['ligand'])
                  | (kept['receptor_filtered'] != kept['receptor'])).sum()
     assert report.loc['interactions', 'trimmed'] == shortened
@@ -530,7 +530,8 @@ def test_filter_ppi_by_adata_without_a_complex_separator(panel_ppi):
     '''With complex_sep=None a partner is one gene, separator or not.'''
     ppi, measured = panel_ppi
     kept, report = ppi_module.filter_ppi_by_adata(
-        ppi, measured, interaction_columns=('ligand', 'receptor'), verbose=False)
+        ppi, measured, interaction_columns=('ligand', 'receptor'), keep_all_rows=False,
+        verbose=False)
     assert set(kept['ligand']) == {'LA'}          # the only row with both partners measured
     assert report.loc['ligand genes', 'total'] == len(ppi)
 
@@ -567,7 +568,8 @@ def test_filter_ppi_by_adata_can_be_case_sensitive(panel_ppi):
     ppi, measured = panel_ppi
     kept, _ = ppi_module.filter_ppi_by_adata(
         ppi, [g.lower() for g in measured], interaction_columns=('ligand', 'receptor'),
-        complex_sep='&', upper_letter_comparison=False, verbose=False)
+        complex_sep='&', upper_letter_comparison=False, keep_all_rows=False,
+        verbose=False)
     assert len(kept) == 0
 
 
@@ -584,7 +586,7 @@ def test_filter_ppi_by_adata_when_nothing_was_measured(panel_ppi):
     ppi, _ = panel_ppi
     kept, report = ppi_module.filter_ppi_by_adata(
         ppi, [], interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        verbose=False)
+        keep_all_rows=False, verbose=False)
     assert len(kept) == 0
     assert report.loc['interactions', 'dropped'] == len(ppi)
     assert report.loc['interactions', 'trimmed'] == 0
@@ -619,8 +621,8 @@ def test_filter_ppi_by_adata_describes_each_interaction(panel_ppi):
         verbose=False)
 
     row = kept[kept['ligand'] == 'LE&LF'].iloc[0]        # LF was not measured
-    assert row['ligand_subunits'] == 2
-    assert row['ligand_measured'] == 1
+    assert row['ligand_genes'] == 2
+    assert row['ligand_genes_dropped'] == 1
     assert np.isclose(row['ligand_fraction_dropped'], 0.5)
     assert row['receptor_fraction_dropped'] == 0.0
     assert row['dropped_genes'] == 'LF'
@@ -648,7 +650,7 @@ def test_filter_ppi_by_adata_can_return_the_dropped_rows(panel_ppi):
     _, measured = panel_ppi
     everything, report = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        keep_all_rows=True, verbose=False)
+        verbose=False)
 
     assert len(everything) == len(ppi)
     assert not everything['kept'].all()
@@ -665,10 +667,10 @@ def test_filter_ppi_by_adata_keep_all_rows_agrees_with_the_default(panel_ppi):
     ppi, measured = panel_ppi
     survivors, _ = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        verbose=False)
+        keep_all_rows=False, verbose=False)
     everything, _ = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        keep_all_rows=True, verbose=False)
+        verbose=False)
     pd.testing.assert_frame_equal(
         survivors, everything[everything['kept']].reset_index(drop=True))
 
@@ -678,14 +680,14 @@ def test_filter_ppi_by_adata_supports_filtering_by_hand(panel_ppi):
     ppi, measured = panel_ppi
     everything, _ = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        keep_all_rows=True, verbose=False)
+        verbose=False)
     # Keep an interaction only when both partners are entirely measured, which is
     # stricter than 'trim' and the same as 'strict'
     mine = everything[(everything['ligand_fraction_dropped'] == 0.0)
                       & (everything['receptor_fraction_dropped'] == 0.0)]
     strict, _ = ppi_module.filter_ppi_by_adata(
         ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
-        complex_policy='strict', verbose=False)
+        complex_policy='strict', keep_all_rows=False, verbose=False)
     assert set(mine['ligand']) == set(strict['ligand'])
 
 
@@ -693,7 +695,49 @@ def test_filter_ppi_by_adata_fraction_dropped_without_complexes(panel_ppi):
     '''With no separator a partner is one gene, so the fraction is 0 or 1.'''
     ppi, measured = panel_ppi
     everything, _ = ppi_module.filter_ppi_by_adata(
-        ppi, measured, interaction_columns=('ligand', 'receptor'),
-        keep_all_rows=True, verbose=False)
+        ppi, measured, interaction_columns=('ligand', 'receptor'), verbose=False)
     assert set(everything['ligand_fraction_dropped']) <= {0.0, 1.0}
-    assert (everything['ligand_subunits'] == 1).all()
+    assert (everything['ligand_genes'] == 1).all()
+
+
+def test_filter_ppi_by_adata_returns_every_interaction_by_default(panel_ppi):
+    '''The list comes back whole, annotated, so the cut can be made from the columns.'''
+    ppi, measured = panel_ppi
+    annotated, report = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    assert len(annotated) == len(ppi)
+    assert annotated['kept'].sum() < len(ppi)          # something did not survive
+    assert report.loc['interactions', 'dropped'] == int((~annotated['kept']).sum())
+
+
+def test_filter_ppi_by_adata_counts_genes_for_the_whole_interaction(panel_ppi):
+    ppi, measured = panel_ppi
+    annotated, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+
+    # The interaction totals are the two partners added together
+    assert (annotated['interaction_genes']
+            == annotated['ligand_genes'] + annotated['receptor_genes']).all()
+    assert (annotated['interaction_genes_dropped']
+            == annotated['ligand_genes_dropped']
+            + annotated['receptor_genes_dropped']).all()
+    assert np.allclose(annotated['interaction_fraction_dropped'],
+                       annotated['interaction_genes_dropped']
+                       / annotated['interaction_genes'])
+
+    # LH&LI paired with RH: of the 3 genes the interaction names, only LI is missing
+    row = annotated[annotated['ligand'] == 'LH&LI'].iloc[0]
+    assert row['interaction_genes'] == 3
+    assert row['interaction_genes_dropped'] == 1
+    assert np.isclose(row['interaction_fraction_dropped'], 1 / 3)
+
+
+def test_filter_ppi_by_adata_dropped_counts_agree_with_the_gene_names(panel_ppi):
+    ppi, measured = panel_ppi
+    annotated, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    listed = annotated['dropped_genes'].map(lambda s: 0 if s == '' else len(s.split(',')))
+    assert (listed == annotated['interaction_genes_dropped']).all()

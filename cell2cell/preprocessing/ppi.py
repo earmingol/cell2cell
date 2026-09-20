@@ -638,7 +638,7 @@ def filter_complex_ppi_by_proteins(ppi_data, proteins, complex_sep='&', upper_le
 
 
 def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex_sep=None,
-                        complex_policy='trim', new_columns=None, keep_all_rows=False,
+                        complex_policy='trim', new_columns=None, keep_all_rows=True,
                         upper_letter_comparison=True, verbose=True):
     '''
     Restricts a list of ligand-receptor pairs to the genes a dataset actually measured.
@@ -688,11 +688,12 @@ def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex
         Names for the two columns holding the filtered partners. If None, the
         originals with '_filtered' appended.
 
-    keep_all_rows : boolean, default=False
-        Whether to return the interactions that did not survive as well, which is what
-        to do when the decision of what to keep is going to be made by hand: the
-        per-interaction columns below say what was lost, and `kept` says what this
-        function would have done. False returns only the survivors.
+    keep_all_rows : boolean, default=True
+        Whether to return every interaction, including the ones that did not survive.
+        The default does, so that what was lost stays visible and the decision of what
+        to keep can be made from the columns below rather than only by the rule this
+        function applies -- `kept` says what that rule would have done. Pass False to
+        get the survivors alone.
 
     upper_letter_comparison : boolean, default=True
         Whether to compare gene names in upper case, which absorbs the casing
@@ -712,16 +713,17 @@ def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex
         Besides `new_columns`, each row carries what was lost, so a list can be cut by
         hand on any rule rather than only on the one this function applies:
 
-        - `<partner>_subunits` : how many genes the partner names, 1 unless it is a
-          complex.
-        - `<partner>_measured` : how many of them the dataset has.
+        - `<partner>_genes` : how many genes the partner names, 1 unless it is a complex.
+        - `<partner>_genes_dropped` : how many of them the dataset does not have.
         - `<partner>_fraction_dropped` : the share that is missing, 0.0 when the partner
           is fully measured and 1.0 when none of it is.
+        - `interaction_genes`, `interaction_genes_dropped`,
+          `interaction_fraction_dropped` : the same three over both partners together.
         - `dropped_genes` : the missing gene names, comma separated, over both partners.
         - `affected` : which side lost something -- the name of one of the interaction
           columns, 'both', or 'none'.
-        - `kept` : whether this function would keep the interaction. Always True unless
-          `keep_all_rows`.
+        - `kept` : whether this function would keep the interaction, under
+          `complex_policy`.
 
     report : pandas.DataFrame
         What the filtering cost, a row each for the partners in the first column, the
@@ -790,12 +792,20 @@ def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex
     detail = pd.DataFrame(index=ppi_data.index)
     detail[new_a] = kept_a
     detail[new_b] = kept_b
+    totals = np.zeros(len(ppi_data))
+    losses = np.zeros(len(ppi_data))
     for column, described in ((col_a, described_a), (col_b, described_b)):
         n_subunits = np.array([d[1] for d in described], dtype=float)
-        n_measured = np.array([d[2] for d in described], dtype=float)
-        detail['{}_subunits'.format(column)] = n_subunits.astype(int)
-        detail['{}_measured'.format(column)] = n_measured.astype(int)
-        detail['{}_fraction_dropped'.format(column)] = 1.0 - n_measured / n_subunits
+        n_dropped = np.array([len(d[3]) for d in described], dtype=float)
+        detail['{}_genes'.format(column)] = n_subunits.astype(int)
+        detail['{}_genes_dropped'.format(column)] = n_dropped.astype(int)
+        detail['{}_fraction_dropped'.format(column)] = n_dropped / n_subunits
+        totals += n_subunits
+        losses += n_dropped
+    # The interaction as a whole, both partners together
+    detail['interaction_genes'] = totals.astype(int)
+    detail['interaction_genes_dropped'] = losses.astype(int)
+    detail['interaction_fraction_dropped'] = losses / totals
 
     lost_a = [d[3] for d in described_a]
     lost_b = [d[3] for d in described_b]
