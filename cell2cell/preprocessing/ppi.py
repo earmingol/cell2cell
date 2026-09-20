@@ -637,6 +637,168 @@ def filter_complex_ppi_by_proteins(ppi_data, proteins, complex_sep='&', upper_le
     return integrated_ppi
 
 
+def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex_sep=None,
+                        complex_policy='trim', new_columns=None, upper_letter_comparison=True,
+                        verbose=True):
+    '''
+    Restricts a list of ligand-receptor pairs to the genes a dataset actually measured.
+
+    A targeted panel -- Xenium, MERFISH, CosMx -- carries a few hundred genes, while a
+    ligand-receptor database names tens of thousands. Scoring the pairs the panel cannot
+    see reports absence of expression where there was only absence of measurement, so the
+    list has to be cut down to what was measured before anything else happens.
+
+    The filtered partners are written to **new columns**, leaving the originals in place,
+    so what a pair became stays visible next to what the database called it.
+
+    Parameters
+    ----------
+    ppi_data : pandas.DataFrame
+        List of protein-protein interactions (or ligand-receptor pairs).
+
+    adata : AnnData or list
+        The dataset whose genes are available. An AnnData is read through its
+        `var_names`; a plain list or Index of gene names is also accepted.
+
+    interaction_columns : tuple, default=('A', 'B')
+        Contains the names of the columns where to find the partners in a
+        dataframe of protein-protein interactions. If the list is for
+        ligand-receptor pairs, the first column is for the ligands and the second
+        for the receptors.
+
+    complex_sep : str, default=None
+        Symbol that separates the protein subunits in a multimeric complex.
+        For example, '&' is the complex_sep for a list of ligand-receptor pairs
+        where a protein partner could be "CD74&CD44". None treats every partner as a
+        single gene, whatever it contains.
+
+    complex_policy : str, default='trim'
+        What to do with a complex only some of whose subunits were measured.
+
+        - 'trim' : keep the measured subunits and drop the rest, so "CD74&CD44"
+                   becomes "CD74" when CD44 is not on the panel. Keeps much more of
+                   the list, at the cost of the retained partner no longer being the
+                   complex the database named -- it is one subunit standing in for it.
+        - 'strict' : drop the interaction unless every subunit was measured, since a
+                     complex missing a subunit is not that complex.
+
+        Either way an interaction goes only when a partner has nothing measured left.
+
+    new_columns : tuple, default=None
+        Names for the two columns holding the filtered partners. If None, the
+        originals with '_filtered' appended.
+
+    upper_letter_comparison : boolean, default=True
+        Whether to compare gene names in upper case, which absorbs the casing
+        differences between an expression matrix and a ligand-receptor annotation.
+        Only the comparison is affected: the names written to the new columns keep the
+        case they had in `ppi_data`.
+
+    verbose : boolean, default=True
+        Whether printing or not a summary of what was dropped.
+
+    Returns
+    -------
+    filtered_ppi : pandas.DataFrame
+        The interactions that survived, with `new_columns` added. Rows keep their other
+        columns and are renumbered.
+
+    report : pandas.DataFrame
+        What the filtering cost, a row each for the partners in the first column, the
+        partners in the second, and whole interactions. Columns are 'total', 'kept',
+        'dropped' and 'fraction_dropped'. The gene rows count distinct gene names,
+        subunits counted individually when `complex_sep` is given, while the interaction
+        row counts rows of `ppi_data`. A further column, 'trimmed', counts the surviving
+        interactions whose partners were shortened.
+
+    Examples
+    --------
+    >>> import cell2cell as c2c
+    >>> kept, report = c2c.preprocessing.filter_ppi_by_adata(
+    ...     ppi_data=lr_pairs, adata=adata, interaction_columns=('ligand', 'receptor'),
+    ...     complex_sep='&')
+    >>> report
+    '''
+    if complex_policy not in ('trim', 'strict'):
+        raise ValueError("`complex_policy` must be 'trim' or 'strict', got {}".format(
+            repr(complex_policy)))
+
+    col_a, col_b = interaction_columns[0], interaction_columns[1]
+    absent = [c for c in (col_a, col_b) if c not in ppi_data.columns]
+    if absent:
+        raise KeyError('`ppi_data` has no column(s) {}'.format(absent))
+
+    if new_columns is None:
+        new_columns = ('{}_filtered'.format(col_a), '{}_filtered'.format(col_b))
+    new_a, new_b = new_columns[0], new_columns[1]
+
+    # An AnnData carries its genes on `var_names`; a bare list is taken as it is
+    genes = getattr(adata, 'var_names', adata)
+    fold = (lambda name: str(name).upper()) if upper_letter_comparison else str
+    measured = set(fold(g) for g in genes)
+
+    def subunits(partner):
+        if complex_sep is None:
+            return [str(partner)]
+        return str(partner).split(complex_sep)
+
+    def keep_measured(partner):
+        # The partner rebuilt from its measured subunits, or None if none are left
+        parts = subunits(partner)
+        present = [p for p in parts if fold(p) in measured]
+        if not present:
+            return None
+        if complex_policy == 'strict' and len(present) != len(parts):
+            return None
+        return present[0] if complex_sep is None else complex_sep.join(present)
+
+    kept_a = ppi_data[col_a].map(keep_measured)
+    kept_b = ppi_data[col_b].map(keep_measured)
+    survives = kept_a.notna() & kept_b.notna()
+
+    filtered_ppi = ppi_data.loc[survives].copy()
+    filtered_ppi[new_a] = kept_a.loc[survives]
+    filtered_ppi[new_b] = kept_b.loc[survives]
+    filtered_ppi = filtered_ppi.reset_index(drop=True)
+
+    def gene_counts(column):
+        all_genes = set()
+        for partner in ppi_data[column]:
+            all_genes.update(subunits(partner))
+        dropped = set(g for g in all_genes if fold(g) not in measured)
+        return len(all_genes), len(dropped)
+
+    if len(filtered_ppi):
+        trimmed = int(((filtered_ppi[new_a] != filtered_ppi[col_a])
+                       | (filtered_ppi[new_b] != filtered_ppi[col_b])).sum())
+    else:
+        trimmed = 0
+
+    counted = []
+    labels = []
+    for column in (col_a, col_b):
+        total, dropped = gene_counts(column)
+        counted.append((total, dropped, 0))
+        labels.append('{} genes'.format(column))
+    counted.append((len(ppi_data), len(ppi_data) - int(survives.sum()), trimmed))
+    labels.append('interactions')
+
+    report = pd.DataFrame(
+        [{'total': total, 'kept': total - dropped, 'dropped': dropped,
+          'fraction_dropped': (dropped / total) if total else 0.0, 'trimmed': trim}
+         for total, dropped, trim in counted], index=labels)
+
+    if verbose:
+        for label, row in report.iterrows():
+            print('{}: {} of {} dropped ({:.1%})'.format(
+                label, int(row['dropped']), int(row['total']), row['fraction_dropped']))
+        if complex_sep is not None and complex_policy == 'trim' and trimmed:
+            print('{} surviving interactions had a partner trimmed to its measured '
+                  'subunits'.format(trimmed))
+
+    return filtered_ppi, report
+
+
 ### These functions below are useful for filtering PPI networks based on GO terms
 def get_filtered_ppi_network(ppi_data, contact_proteins, mediator_proteins=None, reference_list=None,
                              interaction_type='contacts', interaction_columns=('A', 'B'), verbose=True):

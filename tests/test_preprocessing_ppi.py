@@ -423,3 +423,189 @@ def test_remove_ppi_bidirectionality_keeps_using_lexicographic_order():
     # Unidirectional interactions are untouched
     assert ('G3', 'G4') in pairs
     assert result.shape[0] == 4
+
+
+# ---------------------------------------------------------------------------------
+# filter_ppi_by_adata
+#
+# Cutting a ligand-receptor list down to the genes a panel measured, so that a pair
+# the assay could not see is not scored as one the cells did not use.
+# ---------------------------------------------------------------------------------
+
+@pytest.fixture
+def panel_ppi():
+    '''A small LR list with complexes, and the genes a panel would have measured.'''
+    ppi = pd.DataFrame({'ligand': ['LA', 'LB', 'LC&LD', 'LE&LF', 'LG', 'LH&LI'],
+                        'receptor': ['RA', 'RB&RC', 'RD', 'RE', 'RF&RG', 'RH'],
+                        'score': [1., 1., 1., 1., 1., 1.]})
+    # LF, LI, RC, RF and RG were not measured; everything else was
+    measured = ['LA', 'LB', 'LC', 'LD', 'LE', 'LG', 'LH',
+                'RA', 'RB', 'RD', 'RE', 'RH']
+    return ppi, measured
+
+
+def test_filter_ppi_by_adata_keeps_only_measured_genes(panel_ppi):
+    ppi, measured = panel_ppi
+    kept, report = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    for column in ('ligand_filtered', 'receptor_filtered'):
+        for partner in kept[column]:
+            assert all(sub in measured for sub in partner.split('&'))
+
+
+def test_filter_ppi_by_adata_trims_a_partly_measured_complex(panel_ppi):
+    '''The default keeps the measured subunits rather than dropping the pair.'''
+    ppi, measured = panel_ppi
+    kept, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    row = kept[kept['ligand'] == 'LE&LF'].iloc[0]
+    assert row['ligand_filtered'] == 'LE'        # LF was not measured
+    assert row['ligand'] == 'LE&LF'              # the original is left alone
+
+
+def test_filter_ppi_by_adata_strict_drops_a_partly_measured_complex(panel_ppi):
+    ppi, measured = panel_ppi
+    kept, report = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        complex_policy='strict', verbose=False)
+    assert 'LE&LF' not in set(kept['ligand'])
+    assert 'LC&LD' in set(kept['ligand'])        # both subunits measured, so it stays
+    assert report.loc['interactions', 'trimmed'] == 0
+
+
+def test_filter_ppi_by_adata_strict_keeps_fewer_than_trim(panel_ppi):
+    ppi, measured = panel_ppi
+    trimmed, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        complex_policy='trim', verbose=False)
+    strict, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        complex_policy='strict', verbose=False)
+    assert len(strict) < len(trimmed)
+
+
+def test_filter_ppi_by_adata_drops_a_pair_with_nothing_left(panel_ppi):
+    '''RF&RG has no measured subunit, so that interaction cannot be scored at all.'''
+    ppi, measured = panel_ppi
+    kept, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    assert 'LG' not in set(kept['ligand'])
+
+
+def test_filter_ppi_by_adata_reports_what_it_cost(panel_ppi):
+    ppi, measured = panel_ppi
+    _, report = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    assert list(report.index) == ['ligand genes', 'receptor genes', 'interactions']
+
+    # 9 distinct ligand subunits, of which LF and LI were not measured
+    assert report.loc['ligand genes', 'total'] == 9
+    assert report.loc['ligand genes', 'dropped'] == 2
+    assert np.isclose(report.loc['ligand genes', 'fraction_dropped'], 2 / 9)
+
+    # 8 distinct receptor subunits, of which RC, RF and RG were not measured
+    assert report.loc['receptor genes', 'total'] == 8
+    assert report.loc['receptor genes', 'dropped'] == 3
+
+    assert report.loc['interactions', 'total'] == len(ppi)
+    assert (report['kept'] + report['dropped'] == report['total']).all()
+
+
+def test_filter_ppi_by_adata_counts_trimmed_interactions(panel_ppi):
+    ppi, measured = panel_ppi
+    kept, report = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    shortened = ((kept['ligand_filtered'] != kept['ligand'])
+                 | (kept['receptor_filtered'] != kept['receptor'])).sum()
+    assert report.loc['interactions', 'trimmed'] == shortened
+    assert shortened > 0
+
+
+def test_filter_ppi_by_adata_without_a_complex_separator(panel_ppi):
+    '''With complex_sep=None a partner is one gene, separator or not.'''
+    ppi, measured = panel_ppi
+    kept, report = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), verbose=False)
+    assert set(kept['ligand']) == {'LA'}          # the only row with both partners measured
+    assert report.loc['ligand genes', 'total'] == len(ppi)
+
+
+def test_filter_ppi_by_adata_accepts_an_anndata(panel_ppi):
+    '''The genes are read off `var_names`, which is the point of passing an AnnData.'''
+    anndata = pytest.importorskip('anndata')
+    ppi, measured = panel_ppi
+    adata = anndata.AnnData(np.zeros((3, len(measured))),
+                            var=pd.DataFrame(index=measured))
+    from_adata, _ = ppi_module.filter_ppi_by_adata(
+        ppi, adata, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    from_list, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    pd.testing.assert_frame_equal(from_adata, from_list)
+
+
+def test_filter_ppi_by_adata_matches_case_insensitively_but_keeps_the_original(panel_ppi):
+    ppi, measured = panel_ppi
+    kept, _ = ppi_module.filter_ppi_by_adata(
+        ppi, [g.lower() for g in measured], interaction_columns=('ligand', 'receptor'),
+        complex_sep='&', verbose=False)
+    assert len(kept) > 0
+    # Matching ignored the case; the names written out kept the case they had
+    subunits = {sub for partner in kept['ligand_filtered']
+                for sub in partner.split('&')}
+    assert subunits.issubset(set(measured))
+    assert all(sub.isupper() for sub in subunits)
+
+
+def test_filter_ppi_by_adata_can_be_case_sensitive(panel_ppi):
+    ppi, measured = panel_ppi
+    kept, _ = ppi_module.filter_ppi_by_adata(
+        ppi, [g.lower() for g in measured], interaction_columns=('ligand', 'receptor'),
+        complex_sep='&', upper_letter_comparison=False, verbose=False)
+    assert len(kept) == 0
+
+
+def test_filter_ppi_by_adata_names_its_new_columns(panel_ppi):
+    ppi, measured = panel_ppi
+    kept, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        new_columns=('L', 'R'), verbose=False)
+    assert 'L' in kept.columns and 'R' in kept.columns
+    assert 'ligand' in kept.columns and 'score' in kept.columns
+
+
+def test_filter_ppi_by_adata_when_nothing_was_measured(panel_ppi):
+    ppi, _ = panel_ppi
+    kept, report = ppi_module.filter_ppi_by_adata(
+        ppi, [], interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    assert len(kept) == 0
+    assert report.loc['interactions', 'dropped'] == len(ppi)
+    assert report.loc['interactions', 'trimmed'] == 0
+
+
+def test_filter_ppi_by_adata_validates_its_arguments(panel_ppi):
+    ppi, measured = panel_ppi
+    with pytest.raises(ValueError, match='complex_policy'):
+        ppi_module.filter_ppi_by_adata(ppi, measured,
+                                       interaction_columns=('ligand', 'receptor'),
+                                       complex_policy='nonsense')
+    with pytest.raises(KeyError):
+        ppi_module.filter_ppi_by_adata(ppi, measured,
+                                       interaction_columns=('nope', 'receptor'))
+
+
+def test_filter_ppi_by_adata_prints_a_summary(panel_ppi, capsys):
+    ppi, measured = panel_ppi
+    ppi_module.filter_ppi_by_adata(ppi, measured,
+                                   interaction_columns=('ligand', 'receptor'),
+                                   complex_sep='&', verbose=True)
+    printed = capsys.readouterr().out
+    assert 'ligand genes' in printed and 'interactions' in printed
+    assert 'trimmed' in printed
