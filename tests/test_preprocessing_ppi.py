@@ -609,3 +609,91 @@ def test_filter_ppi_by_adata_prints_a_summary(panel_ppi, capsys):
     printed = capsys.readouterr().out
     assert 'ligand genes' in printed and 'interactions' in printed
     assert 'trimmed' in printed
+
+
+def test_filter_ppi_by_adata_describes_each_interaction(panel_ppi):
+    '''The per-row columns are what lets a list be cut by hand.'''
+    ppi, measured = panel_ppi
+    kept, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+
+    row = kept[kept['ligand'] == 'LE&LF'].iloc[0]        # LF was not measured
+    assert row['ligand_subunits'] == 2
+    assert row['ligand_measured'] == 1
+    assert np.isclose(row['ligand_fraction_dropped'], 0.5)
+    assert row['receptor_fraction_dropped'] == 0.0
+    assert row['dropped_genes'] == 'LF'
+    assert row['affected'] == 'ligand'
+
+    intact = kept[kept['ligand'] == 'LA'].iloc[0]
+    assert intact['ligand_fraction_dropped'] == 0.0
+    assert intact['dropped_genes'] == ''
+    assert intact['affected'] == 'none'
+
+
+def test_filter_ppi_by_adata_names_the_side_that_lost_genes(panel_ppi):
+    ppi, measured = panel_ppi
+    kept, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    # RB&RC lost RC, and its ligand LB was measured
+    row = kept[kept['receptor'] == 'RB&RC'].iloc[0]
+    assert row['affected'] == 'receptor'
+    assert set(row['dropped_genes'].split(',')) == {'RC'}
+
+
+def test_filter_ppi_by_adata_can_return_the_dropped_rows(panel_ppi):
+    ppi, report = panel_ppi[0], None
+    _, measured = panel_ppi
+    everything, report = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        keep_all_rows=True, verbose=False)
+
+    assert len(everything) == len(ppi)
+    assert not everything['kept'].all()
+    # The interaction with nothing measured on one side is present but marked
+    lost = everything[~everything['kept']].iloc[0]
+    assert lost['receptor'] == 'RF&RG'
+    assert lost['receptor_fraction_dropped'] == 1.0
+    assert lost['receptor_filtered'] is None or pd.isna(lost['receptor_filtered'])
+    # The report counts it as dropped whichever rows were returned
+    assert report.loc['interactions', 'dropped'] == int((~everything['kept']).sum())
+
+
+def test_filter_ppi_by_adata_keep_all_rows_agrees_with_the_default(panel_ppi):
+    ppi, measured = panel_ppi
+    survivors, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        verbose=False)
+    everything, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        keep_all_rows=True, verbose=False)
+    pd.testing.assert_frame_equal(
+        survivors, everything[everything['kept']].reset_index(drop=True))
+
+
+def test_filter_ppi_by_adata_supports_filtering_by_hand(panel_ppi):
+    '''The point of the columns: a rule this function does not implement.'''
+    ppi, measured = panel_ppi
+    everything, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        keep_all_rows=True, verbose=False)
+    # Keep an interaction only when both partners are entirely measured, which is
+    # stricter than 'trim' and the same as 'strict'
+    mine = everything[(everything['ligand_fraction_dropped'] == 0.0)
+                      & (everything['receptor_fraction_dropped'] == 0.0)]
+    strict, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'), complex_sep='&',
+        complex_policy='strict', verbose=False)
+    assert set(mine['ligand']) == set(strict['ligand'])
+
+
+def test_filter_ppi_by_adata_fraction_dropped_without_complexes(panel_ppi):
+    '''With no separator a partner is one gene, so the fraction is 0 or 1.'''
+    ppi, measured = panel_ppi
+    everything, _ = ppi_module.filter_ppi_by_adata(
+        ppi, measured, interaction_columns=('ligand', 'receptor'),
+        keep_all_rows=True, verbose=False)
+    assert set(everything['ligand_fraction_dropped']) <= {0.0, 1.0}
+    assert (everything['ligand_subunits'] == 1).all()

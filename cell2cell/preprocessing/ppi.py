@@ -638,8 +638,8 @@ def filter_complex_ppi_by_proteins(ppi_data, proteins, complex_sep='&', upper_le
 
 
 def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex_sep=None,
-                        complex_policy='trim', new_columns=None, upper_letter_comparison=True,
-                        verbose=True):
+                        complex_policy='trim', new_columns=None, keep_all_rows=False,
+                        upper_letter_comparison=True, verbose=True):
     '''
     Restricts a list of ligand-receptor pairs to the genes a dataset actually measured.
 
@@ -688,6 +688,12 @@ def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex
         Names for the two columns holding the filtered partners. If None, the
         originals with '_filtered' appended.
 
+    keep_all_rows : boolean, default=False
+        Whether to return the interactions that did not survive as well, which is what
+        to do when the decision of what to keep is going to be made by hand: the
+        per-interaction columns below say what was lost, and `kept` says what this
+        function would have done. False returns only the survivors.
+
     upper_letter_comparison : boolean, default=True
         Whether to compare gene names in upper case, which absorbs the casing
         differences between an expression matrix and a ligand-receptor annotation.
@@ -700,8 +706,22 @@ def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex
     Returns
     -------
     filtered_ppi : pandas.DataFrame
-        The interactions that survived, with `new_columns` added. Rows keep their other
-        columns and are renumbered.
+        The interactions, with their original columns kept and renumbered rows. Only the
+        survivors unless `keep_all_rows`.
+
+        Besides `new_columns`, each row carries what was lost, so a list can be cut by
+        hand on any rule rather than only on the one this function applies:
+
+        - `<partner>_subunits` : how many genes the partner names, 1 unless it is a
+          complex.
+        - `<partner>_measured` : how many of them the dataset has.
+        - `<partner>_fraction_dropped` : the share that is missing, 0.0 when the partner
+          is fully measured and 1.0 when none of it is.
+        - `dropped_genes` : the missing gene names, comma separated, over both partners.
+        - `affected` : which side lost something -- the name of one of the interaction
+          columns, 'both', or 'none'.
+        - `kept` : whether this function would keep the interaction. Always True unless
+          `keep_all_rows`.
 
     report : pandas.DataFrame
         What the filtering cost, a row each for the partners in the first column, the
@@ -718,6 +738,14 @@ def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex
     ...     ppi_data=lr_pairs, adata=adata, interaction_columns=('ligand', 'receptor'),
     ...     complex_sep='&')
     >>> report
+
+    Deciding by hand instead, keeping a complex only when most of it was measured:
+
+    >>> everything, _ = c2c.preprocessing.filter_ppi_by_adata(
+    ...     ppi_data=lr_pairs, adata=adata, interaction_columns=('ligand', 'receptor'),
+    ...     complex_sep='&', keep_all_rows=True)
+    >>> mine = everything[(everything['ligand_fraction_dropped'] <= 0.5)
+    ...                   & (everything['receptor_fraction_dropped'] <= 0.5)]
     '''
     if complex_policy not in ('trim', 'strict'):
         raise ValueError("`complex_policy` must be 'trim' or 'strict', got {}".format(
@@ -742,23 +770,44 @@ def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex
             return [str(partner)]
         return str(partner).split(complex_sep)
 
-    def keep_measured(partner):
-        # The partner rebuilt from its measured subunits, or None if none are left
+    def describe(partner):
+        # Everything a per-row decision might need about one side of an interaction
         parts = subunits(partner)
         present = [p for p in parts if fold(p) in measured]
-        if not present:
-            return None
-        if complex_policy == 'strict' and len(present) != len(parts):
-            return None
-        return present[0] if complex_sep is None else complex_sep.join(present)
+        absent = [p for p in parts if fold(p) not in measured]
+        if not present or (complex_policy == 'strict' and absent):
+            rebuilt = None
+        else:
+            rebuilt = present[0] if complex_sep is None else complex_sep.join(present)
+        return rebuilt, len(parts), len(present), absent
 
-    kept_a = ppi_data[col_a].map(keep_measured)
-    kept_b = ppi_data[col_b].map(keep_measured)
+    described_a = [describe(p) for p in ppi_data[col_a]]
+    described_b = [describe(p) for p in ppi_data[col_b]]
+    kept_a = pd.Series([d[0] for d in described_a], index=ppi_data.index)
+    kept_b = pd.Series([d[0] for d in described_b], index=ppi_data.index)
     survives = kept_a.notna() & kept_b.notna()
 
-    filtered_ppi = ppi_data.loc[survives].copy()
-    filtered_ppi[new_a] = kept_a.loc[survives]
-    filtered_ppi[new_b] = kept_b.loc[survives]
+    detail = pd.DataFrame(index=ppi_data.index)
+    detail[new_a] = kept_a
+    detail[new_b] = kept_b
+    for column, described in ((col_a, described_a), (col_b, described_b)):
+        n_subunits = np.array([d[1] for d in described], dtype=float)
+        n_measured = np.array([d[2] for d in described], dtype=float)
+        detail['{}_subunits'.format(column)] = n_subunits.astype(int)
+        detail['{}_measured'.format(column)] = n_measured.astype(int)
+        detail['{}_fraction_dropped'.format(column)] = 1.0 - n_measured / n_subunits
+
+    lost_a = [d[3] for d in described_a]
+    lost_b = [d[3] for d in described_b]
+    detail['dropped_genes'] = [','.join(a + b) for a, b in zip(lost_a, lost_b)]
+    detail['affected'] = [
+        ('both' if a and b else col_a if a else col_b if b else 'none')
+        for a, b in zip(lost_a, lost_b)]
+    detail['kept'] = survives.values
+
+    filtered_ppi = ppi_data.join(detail)
+    if not keep_all_rows:
+        filtered_ppi = filtered_ppi.loc[survives]
     filtered_ppi = filtered_ppi.reset_index(drop=True)
 
     def gene_counts(column):
@@ -768,14 +817,10 @@ def filter_ppi_by_adata(ppi_data, adata, interaction_columns=('A', 'B'), complex
         dropped = set(g for g in all_genes if fold(g) not in measured)
         return len(all_genes), len(dropped)
 
-    if len(filtered_ppi):
-        trimmed = int(((filtered_ppi[new_a] != filtered_ppi[col_a])
-                       | (filtered_ppi[new_b] != filtered_ppi[col_b])).sum())
-    else:
-        trimmed = 0
+    trimmed = int((survives
+                   & ((kept_a != ppi_data[col_a]) | (kept_b != ppi_data[col_b]))).sum())
 
-    counted = []
-    labels = []
+    counted, labels = [], []
     for column in (col_a, col_b):
         total, dropped = gene_counts(column)
         counted.append((total, dropped, 0))
